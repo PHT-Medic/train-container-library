@@ -9,13 +9,14 @@ the details - if necessary - are accounted for i the section `Detailed Requireme
 
 ## Tabular Requirements
 
-ID | Name                                      | Description |
----|-------------------------------------------|-------------|
-1  | Request for capabilities                  | The Train should be able to check the capabilities of the Station in a single function or method call. Such capabilities could be whether the Station supports GPUs. 
-2  | Support for phases                        | The train might be required to run in multiple phases. A phase is equivalent to one container execution. It should be simple to switch the business logic of the train depending on the phase 
-3  | Train requests resources from the Station | If the Train needs to enter a second phase (because it requires a GPU, the train needs to communicate this to the Station).
-4  | FHIR Search client                        | The library should include a Python FHIR search client such that the explicit use of the `requests` package is avoided.
-5  | File system persistence                   | The library should offer functions for persisting models in a consistent way.
+ID | Name                                                  | Description |
+---|-------------------------------------------------------|-------------|
+1  | Request for capabilities                              | The Train should be able to check the capabilities of the Station in a single function or method call. Such capabilities could be whether the Station supports GPUs. 
+2  | Support for phases                                    | The train might be required to run in multiple phases. A phase is equivalent to one container execution. It should be simple to switch the business logic of the train depending on the phase 
+3  | Train requests resources from the Station             | If the Train needs to enter a second phase (because it requires a GPU, the train needs to communicate this to the Station).
+4  | FHIR Search client                                    | The library should include a Python FHIR search client such that the explicit use of the `requests` package is avoided.
+5  | File system persistence                               | The library should offer functions for persisting models in a consistent way.
+6  | Avoid the need for using primitives like `os.environ` | The train business code should not have the need to import `os`, `requests`, `pickle` at all.
 
 
 ## Detailed Requirements.
