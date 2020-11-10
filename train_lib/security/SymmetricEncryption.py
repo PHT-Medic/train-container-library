@@ -1,4 +1,5 @@
 from cryptography.fernet import Fernet
+from typing import List
 
 
 class FileEncryptor:
@@ -6,35 +7,33 @@ class FileEncryptor:
     Performs symmetric encryption and decryption of sensitive files belonging to the train cargo
     """
 
-    def __init__(self, key):
+    def __init__(self, key: bytes):
         self.fernet = Fernet(key)
 
-    def encrypt_files(self, response):
+    def encrypt_files(self, files: List[str]):
         """
         Decrypt the given files using symmetric encryption
         :return:
         """
-        result = {}
-        types_to_decrypt = {'ModelFile', 'QueryFile'}
-        for (path, (type, decrypted)) in response.items():
-            if type in types_to_decrypt:
-                encrypted = self.fernet.encrypt(decrypted)
-                result[path] = (type, encrypted)
-            else:
-                result[path] = (type, decrypted)
-        return result
+        print("Encrypting files..")
+        for i, file in enumerate(files):
+            print(f"File {i+1}/{len(files)}...", end="")
+            with open(file, "rb") as f:
+                encr_file = self.fernet.encrypt(f.read())
+            with open(file, "wb") as ef:
+                ef.write(encr_file)
+            print("Done")
 
-    def decrypt_files(self, response):
+    def decrypt_files(self, files: List[str]):
         """
         Decrypt the given files using symmetric encryption
         :return:
         """
-        result = {}
-        types_to_decrypt = {'ModelFile', 'QueryFile'}
-        for (path, (type, encrypted)) in response.items():
-            if type in types_to_decrypt:
-                decrypted = self.fernet.decrypt(encrypted)
-                result[path] = (type, decrypted)
-            else:
-                result[path] = (type, encrypted)
-        return result
+        print("Decrypting files..")
+        for i, file in enumerate(files):
+            print(f"File {i + 1}/{len(files)}...", end="")
+            with open(file, "rb") as f:
+                decr_file = self.fernet.decrypt(f.read())
+            with open(file, "wb") as ef:
+                ef.write(decr_file)
+            print("Done")

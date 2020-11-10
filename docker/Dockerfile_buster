@@ -1,0 +1,7 @@
+FROM python:3.8
+WORKDIR /opt/pht_train
+COPY ../requirements.txt /tmp/requirements.txt
+RUN apt-get update -yqq && \
+    apt-get dist-upgrade -yqq && \
+    pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm -rf /tmp

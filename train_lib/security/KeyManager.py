@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
 import os
-import pickle
+import json
 
 
 class KeyManager:
@@ -12,11 +12,20 @@ class KeyManager:
     Class that creates, stores and if necessary updates all relevant keys for symmetric and asymmetric encryption
     """
 
-    def __init__(self, keys):
-        self.keys = keys
+    def __init__(self, config_path: str):
+        self.config_path = config_path
+        with open(config_path, "r") as config_file:
+            self.config = json.load(config_file)
 
     def save_keyfile(self):
-        return pickle.dumps(self.keys)
+        """
+        Store the updated config file as a json at the same location
+
+        :return:
+        :rtype:
+        """
+        with open(self.config_path, "r") as config_file:
+            json.dump(self.config, config_file)
 
     def get_security_param(self, param: str):
         """
@@ -24,7 +33,7 @@ class KeyManager:
         :param param:
         :return: value of the specified parameter
         """
-        return self.keys[param]
+        return self.config[param]
 
     def set_security_param(self, param: str, value):
         """
@@ -33,7 +42,7 @@ class KeyManager:
         :param value: new value for param
         :return:
         """
-        self.keys[param] = value
+        self.config[param] = value
 
     @staticmethod
     def generate_symmetric_key():
@@ -43,14 +52,14 @@ class KeyManager:
         """
         return Fernet.generate_key()
 
-    def get_sym_key(self):
+    def get_sym_key(self, station_id: str):
         """
         Decrypts the symmetric key using a stored private key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
-        private_key = self.load_private_key("RSA_STATION_PRIVATE_KEY")
-        encrypted_sym_key = self.get_security_param("encrypted_key")
-        symmetric_key = private_key.decrypt(encrypted_sym_key,
+        private_key = self.load_private_key("STATION_SK_1")
+        encrypted_sym_key = self.get_security_param("encrypted_key")[station_id]
+        symmetric_key = private_key.decrypt(encrypted_sym_key.encode(),
                                             padding.OAEP(
                                                 mgf=padding.MGF1(algorithm=hashes.SHA512()),
                                                 algorithm=hashes.SHA512(),
@@ -66,7 +75,7 @@ class KeyManager:
         :return: Dictionary consisting of  key = Station Id, value = Symmetric key encrypted with public key of station Id
         """
         enc_keys = {}
-        for station, pk in self.keys["rsa_public_keys"]:
+        for station, pk in self.config["rsa_public_keys"]:
             enc_keys[station] = self.encrypt_symmetric_key(symmetric_key, pk)
         return enc_keys
 
@@ -93,10 +102,11 @@ class KeyManager:
         :return: a private key object either rsa or ec
         """
         # TODO get user/station key from station config via airflow
-        with open(os.environ[key_path], "rb") as pk:
-            private_key = serialization.load_pem_private_key(pk.read(),
-                                                             password=None,
-                                                             backend=default_backend())
+
+        private_key = serialization.load_pem_private_key(os.getenv(key_path).encode(),
+                                                         password=None,
+                                                         backend=default_backend())
+
         return private_key
 
     @staticmethod
