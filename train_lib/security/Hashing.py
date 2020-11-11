@@ -1,5 +1,6 @@
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
+from typing import List
 
 
 def hash_immutable_files(immutable_files, user_id: str, session_id: bytes):
@@ -18,15 +19,17 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes):
     return digest.finalize()
 
 
-def hash_results(model_files, session_id: bytes):
+def hash_results(result_files: List[str], session_id: bytes):
     """
-    Creates a hash of the results of train execution (model files)
-    :param model_files:
+    Creates a hash of the results of train execution
+    :param result_files: List
     :param session_id:
     :return:
     """
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
-    for file in model_files:
-        digest.update(file)
-    digest.update(session_id)
+    for file in result_files:
+        print(file)
+        with open(file, "rb") as f:
+            digest.update(f.read())
+    digest.update(session_id.encode())
     return digest.finalize()

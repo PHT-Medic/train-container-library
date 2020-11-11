@@ -24,8 +24,8 @@ class KeyManager:
         :return:
         :rtype:
         """
-        with open(self.config_path, "r") as config_file:
-            json.dump(self.config, config_file)
+        with open(self.config_path, "w") as config_file:
+            json.dump(self.config, config_file, indent=2)
 
     def get_security_param(self, param: str):
         """
@@ -79,19 +79,30 @@ class KeyManager:
             enc_keys[station] = self.encrypt_symmetric_key(symmetric_key, pk)
         return enc_keys
 
-    def encrypt_symmetric_key(self, sym_key, public_key):
+    def encrypt_symmetric_key(self, sym_key):
         """
-        Encrypt the symmetric key with the provided public key
+        Encrypt the symmetric key with all the provided public keys
+
         :return:
         """
-        public_key = self.load_public_key(public_key)
-        encrypted_key = public_key.encrypt(sym_key,
-                                           padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),
-                                                        algorithm=hashes.SHA512(),
-                                                        label=None)
-                                           )
-        return encrypted_key
+        encrypted_keys = {}
+        for id, key in self.config["rsa_public_keys"].items():
+            public_key = self.load_public_key(key)
+            encrypted_key = public_key.encrypt(sym_key,
+                                               padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),
+                                                            algorithm=hashes.SHA512(),
+                                                            label=None)
+                                               )
+            encrypted_keys[id] = encrypted_key.hex()
+        return encrypted_keys
 
+    def _rsa_pk_encrypt(self, val, public_key):
+        encrypted = public_key.encrypt(val,
+                                       padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),
+                                                    algorithm=hashes.SHA512(),
+                                                    label=None)
+                                       )
+        return encrypted.hex()
 
     @staticmethod
     def load_private_key(key_path):
@@ -103,7 +114,7 @@ class KeyManager:
         """
         # TODO get user/station key from station config via airflow
 
-        private_key = serialization.load_pem_private_key(os.getenv(key_path).encode(),
+        private_key = serialization.load_pem_private_key(bytes.fromhex(os.getenv(key_path)),
                                                          password=None,
                                                          backend=default_backend())
 
