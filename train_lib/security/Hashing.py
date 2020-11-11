@@ -14,7 +14,8 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes):
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     digest.update(user_id.encode())
     for file in immutable_files:
-        digest.update(file)
+        with open(file, "rb") as f:
+            digest.update(f.read())
     digest.update(session_id)
     return digest.finalize()
 

@@ -27,7 +27,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # TODO get environment variables
     sp = SecurityProtocol(station_id=os.getenv("STATION_ID"), config_path=os.path.abspath("../test/train_config.json"),
-                          results_dir=os.path.abspath("../test/example_results"))
+                          results_dir=os.path.abspath("../test/example_results"), train_dir="../scripts")
 
     if args.command == "pre-run":
         pre_run_protocol()

@@ -88,6 +88,7 @@ class SecurityProtocol:
         # now check before the run that no immutable files have changed, based on stored hash
 
         immutable_files = self._parse_files(train_dir)
+        print(immutable_files)
 
         current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
                                             bytes.fromhex(self.key_manager.get_security_param("session_id")))
@@ -188,7 +189,6 @@ class SecurityProtocol:
         print("parsing files")
         for (dir_path, dir_names, file_names) in os.walk(dir):
             files += [os.path.join(dir_path, file) for file in file_names]
-        print("files: ", files)
         return files
 
     def _is_last_station_on_route(self):
