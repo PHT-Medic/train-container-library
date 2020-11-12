@@ -27,6 +27,7 @@ class KeyManager:
         with open(self.config_path, "w") as config_file:
             json.dump(self.config, config_file, indent=2)
 
+    # TODO perform hex encoding/decoding here?
     def get_security_param(self, param: str):
         """
         Returns a parameter from the associated keyfile

@@ -107,22 +107,23 @@ class SecurityProtocol:
         Verify that the results from the execution of the previous station did not change, by hashing the stored results
         from the previous station and comparing it with the decrypted stored hash from the previous station
         """
-        # TODO check for hex conversion
         # verify the hash of the results of the previous station
         prev_results_hash = self.key_manager.get_security_param("e_d")
         results_sig = self.key_manager.get_security_param("e_d_sig")
         # Load the public key of the station
-        station_public_key = self.key_manager.get_security_param("rsa_public_keys")[self._previous_station_id()]
+        ds = self.key_manager.get_security_param("digital_signature")
+        # Get public key of the previous station
+        station_public_key = self.key_manager.get_security_param("rsa_public_keys")[ds[-1]["station"]]
         station_public_key = self.key_manager.load_public_key(station_public_key)
         files = self._parse_files(self.results_dir)
-        results_hash = hash_results(files, self.key_manager.get_security_param("session_id"))
-        station_public_key.verify(results_sig,
+        results_hash = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))
+        station_public_key.verify(bytes.fromhex(results_sig),
                                   results_hash,
                                   padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                               salt_length=padding.PSS.MAX_LENGTH),
                                   utils.Prehashed(hashes.SHA512()))
         # Compare with the files currently present in the train
-        if results_hash != prev_results_hash:
+        if results_hash != bytes.fromhex(prev_results_hash):
             raise ValidationError("The previously hashed results do not match the stored ones")
 
     def sign_digital_signature(self):
@@ -161,10 +162,11 @@ class SecurityProtocol:
         """
         # TODO check byte conversion
         ds = self.key_manager.get_security_param("digital_signature")
-        for key in ds:
-            public_key = self.key_manager.load_public_key(self.key_manager.get_security_param("rsa_public_keys")[key])
-            public_key.verify(bytes.fromhex(ds[key][0]),
-                              bytes.fromhex(ds[key][1]),
+        for sig in ds:
+            public_key = self.key_manager.load_public_key(
+                self.key_manager.get_security_param("rsa_public_keys")[sig["station"]])
+            public_key.verify(bytes.fromhex(sig["sig"][0]),
+                              bytes.fromhex(sig["sig"][1]),
                               padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                           salt_length=padding.PSS.MAX_LENGTH),
                               utils.Prehashed(hashes.SHA512())
