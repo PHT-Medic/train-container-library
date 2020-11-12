@@ -57,9 +57,9 @@ class KeyManager:
         Decrypts the symmetric key using a stored private key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
-        private_key = self.load_private_key("STATION_SK_1")
+        private_key = self.load_private_key("RSA_STATION_PRIVATE_KEY")
         encrypted_sym_key = self.get_security_param("encrypted_key")[station_id]
-        symmetric_key = private_key.decrypt(encrypted_sym_key.encode(),
+        symmetric_key = private_key.decrypt(bytes.fromhex(encrypted_sym_key),
                                             padding.OAEP(
                                                 mgf=padding.MGF1(algorithm=hashes.SHA512()),
                                                 algorithm=hashes.SHA512(),
@@ -87,6 +87,7 @@ class KeyManager:
         """
         encrypted_keys = {}
         for id, key in self.config["rsa_public_keys"].items():
+            print(id, key)
             public_key = self.load_public_key(key)
             encrypted_key = public_key.encrypt(sym_key,
                                                padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),
@@ -127,6 +128,6 @@ class KeyManager:
         :param key: string representation of a public key
         :return: public key object for asymmetric encryption
         """
-        public_key = serialization.load_pem_public_key(key.encode(),
+        public_key = serialization.load_pem_public_key(bytes.fromhex(key),
                                                        backend=default_backend())
         return public_key

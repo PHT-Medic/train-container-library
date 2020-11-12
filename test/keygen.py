@@ -47,7 +47,6 @@ if __name__ == '__main__':
     hash = hash_immutable_files(files, "1", session_id)
     print(hash.hex())
 
-
     with open("../test/keys/user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,
                                                          backend=default_backend())
@@ -58,7 +57,9 @@ if __name__ == '__main__':
                           )
         print(sig.hex())
     with open("../test/keys/user_public_key.pem", "rb") as pk:
-        public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(pk.read(), backend=default_backend())
+        pk_pem = pk.read().hex()
+        public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(bytes.fromhex(pk_pem), backend=default_backend())
+        print("Public Key:", pk_pem)
 
     public_key.verify(sig, hash, padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                           salt_length=padding.PSS.MAX_LENGTH),

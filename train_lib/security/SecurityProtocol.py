@@ -42,7 +42,7 @@ class SecurityProtocol:
 
             # Decrypt all previously encrypted files
             file_encryptor.decrypt_files(files)
-            self.validate_previous_results(files)
+            self.validate_previous_results()
 
     def post_run_protocol(self):
         """
@@ -88,7 +88,8 @@ class SecurityProtocol:
         # now check before the run that no immutable files have changed, based on stored hash
 
         immutable_files = self._parse_files(train_dir)
-        print(immutable_files)
+        # TODO exclude train_config.json
+        immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
 
         current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
                                             bytes.fromhex(self.key_manager.get_security_param("session_id")))
@@ -139,19 +140,19 @@ class SecurityProtocol:
                                       salt_length=padding.PSS.MAX_LENGTH),
                           utils.Prehashed(hashes.SHA512())
                           )
-            ds = {self.station_id: (sig.hex(), digest.hex())}
+            ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
             self.key_manager.set_security_param("digital_signature", ds)
         # TODO is previous station id available??
         else:
             # TODO check this
-            hasher.update(bytes.fromhex(ds[self._previous_station_id()][0]))
+            hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
             digest = hasher.finalize()
             sig = pk.sign(digest,
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                       salt_length=padding.PSS.MAX_LENGTH),
                           utils.Prehashed(hashes.SHA512())
                           )
-            ds[self.station_id] = (sig.hex(), digest.hex())
+            ds.append({"station": self.station_id, "sig": (sig.hex(), digest.hex())})
             self.key_manager.set_security_param("digital_signature", ds)
 
     def verify_digital_signature(self):
@@ -200,7 +201,7 @@ class SecurityProtocol:
         :return: station id of previous station on route
         """
         # get the key of the last entry in the ds dictionary as the previous station id
-        return self.key_manager.get_security_param("digital_signature").config()[-1]
+        return self.key_manager.get_security_param("digital_signature")[-1]
 
     def _next_station_id(self):
         """
