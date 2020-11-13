@@ -88,7 +88,6 @@ class KeyManager:
         """
         encrypted_keys = {}
         for id, key in self.config["rsa_public_keys"].items():
-            print(id, key)
             public_key = self.load_public_key(key)
             encrypted_key = public_key.encrypt(sym_key,
                                                padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),

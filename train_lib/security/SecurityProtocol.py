@@ -28,7 +28,7 @@ class SecurityProtocol:
         being run
         :return:
         """
-
+        print("Executing pre-run protocol...")
         # print(response)
         self.validate_immutable_files(self.train_dir)
 
@@ -43,13 +43,15 @@ class SecurityProtocol:
             file_encryptor.decrypt_files(files)
             self.validate_previous_results()
 
+        print("Success")
+
     def post_run_protocol(self):
         """
         Updates the necessary values and encrypts the updated files after the train is run
         :return:
         """
         # Update the values hash and signature of the results
-
+        print("Executing post-run protocol...")
         files = self._parse_files(self.results_dir)
         e_d = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))
         self.key_manager.set_security_param("e_d", e_d.hex())
@@ -74,6 +76,7 @@ class SecurityProtocol:
             user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
             self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
         self.key_manager.save_keyfile()
+        print("Success")
 
     def validate_immutable_files(self, train_dir: str):
         """
@@ -184,9 +187,10 @@ class SecurityProtocol:
         :return: Tuple consisting of lists of paths for the different file types
         """
         files = list()
-        print("parsing files")
+        print("Detecting files...", end=" ")
         for (dir_path, dir_names, file_names) in os.walk(dir):
             files += [os.path.join(dir_path, file) for file in file_names]
+        print(f"Found {len(files)} Files")
         return files
 
     def _is_last_station_on_route(self):

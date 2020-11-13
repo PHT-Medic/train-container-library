@@ -4,22 +4,14 @@ from train_lib.security.SecurityProtocol import SecurityProtocol
 from dotenv import load_dotenv, find_dotenv
 
 
-def pre_run_protocol():
-    print("Executing pre run protocol")
-    sp.pre_run_protocol()
+def main():
+    """
+    Execute the security protocol based on command line arguments
 
-
-def post_run_protocol():
-    print("Executing post run protocol")
-    sp.post_run_protocol()
-
-
-if __name__ == '__main__':
-    load_dotenv(find_dotenv())
-
-    with open("../test/keys/station_tuebingen_private_key.pem" , "rb") as private_key:
-        station_private_key = private_key.read()
-        hex_private_key = station_private_key.hex()
+    :return:
+    :rtype:
+    """
+    # TODO check for key formats
     os.environ["RSA_STATION_PRIVATE_KEY"] = hex_private_key
     parser = argparse.ArgumentParser()
     parser.add_argument("command", help="the command the security protocol should execute one of: \n- pre-run \n- "
@@ -30,10 +22,21 @@ if __name__ == '__main__':
                           results_dir=os.path.abspath("../test/example_results"), train_dir="../scripts")
 
     if args.command == "pre-run":
-        pre_run_protocol()
+        sp.pre_run_protocol()
     elif args.command == "post-run":
-        post_run_protocol()
+        sp.post_run_protocol()
 
     else:
         raise ValueError(f"Command {args.command} not recognized. Available commands are: pre-run, post-run")
+
+
+if __name__ == '__main__':
+    load_dotenv(find_dotenv())
+    # TODO remove this
+    with open("../test/keys/station_tuebingen_private_key.pem" , "rb") as private_key:
+        station_private_key = private_key.read()
+        hex_private_key = station_private_key.hex()
+    os.environ["RSA_STATION_PRIVATE_KEY"] = hex_private_key
+
+    main()
 

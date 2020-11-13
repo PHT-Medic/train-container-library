@@ -29,7 +29,6 @@ def hash_results(result_files: List[str], session_id: bytes):
     """
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     for file in result_files:
-        print(file)
         with open(file, "rb") as f:
             digest.update(f.read())
     digest.update(session_id)
