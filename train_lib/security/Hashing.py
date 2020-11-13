@@ -32,5 +32,5 @@ def hash_results(result_files: List[str], session_id: bytes):
         print(file)
         with open(file, "rb") as f:
             digest.update(f.read())
-    digest.update(session_id.encode())
+    digest.update(session_id)
     return digest.finalize()

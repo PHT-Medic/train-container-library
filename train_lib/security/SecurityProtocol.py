@@ -28,7 +28,6 @@ class SecurityProtocol:
         being run
         :return:
         """
-        # TODO adapt to new platform/ how to get the files?
 
         # print(response)
         self.validate_immutable_files(self.train_dir)
@@ -52,9 +51,8 @@ class SecurityProtocol:
         # Update the values hash and signature of the results
 
         files = self._parse_files(self.results_dir)
-        e_d = hash_results(files, self.key_manager.get_security_param("session_id"))
+        e_d = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))
         self.key_manager.set_security_param("e_d", e_d.hex())
-        # TODO check on how to get the key
         sk = self.key_manager.load_private_key("RSA_STATION_PRIVATE_KEY")
         e_d_sig = sk.sign(e_d,
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
@@ -67,8 +65,8 @@ class SecurityProtocol:
         new_sym_key = self.key_manager.generate_symmetric_key()
         file_encryptor = FileEncryptor(new_sym_key)
 
-        response = file_encryptor.encrypt_files(files)
-        # TODO needs ti be changed based on last station/ using keys of all stations on route
+        # Encrypt the files
+        file_encryptor.encrypt_files(files)
         self.key_manager.set_security_param("encrypted_key", self.key_manager.encrypt_symmetric_key(new_sym_key))
         # at the last station encrypt the symmetric key using the rsa public key of the user
         if self._is_last_station_on_route():
@@ -88,7 +86,7 @@ class SecurityProtocol:
         # now check before the run that no immutable files have changed, based on stored hash
 
         immutable_files = self._parse_files(train_dir)
-        # TODO exclude train_config.json
+        # TODO check if train_config is excluded
         immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
 
         current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
@@ -143,7 +141,6 @@ class SecurityProtocol:
                           )
             ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
             self.key_manager.set_security_param("digital_signature", ds)
-        # TODO is previous station id available??
         else:
             # TODO check this
             hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
@@ -160,7 +157,6 @@ class SecurityProtocol:
         """
         Verifies the digital signature of the train hereby validating the route etc
         """
-        # TODO check byte conversion
         ds = self.key_manager.get_security_param("digital_signature")
         for sig in ds:
             public_key = self.key_manager.load_public_key(
@@ -177,7 +173,6 @@ class SecurityProtocol:
         Returns true if current station is the first station on the route
         :return:
         """
-        # TODO change this to a more secure way/based on station id and route
         # Check if there are previous results if not station is first station on route
         return self.key_manager.get_security_param("e_d") is None
 
@@ -203,12 +198,4 @@ class SecurityProtocol:
         :return: station id of previous station on route
         """
         # get the key of the last entry in the ds dictionary as the previous station id
-        return self.key_manager.get_security_param("digital_signature")[-1]
-
-    def _next_station_id(self):
-        """
-        Returns the next station id, assuming that station ids are linearly ordered integers
-        :return:
-        """
-        # TODO change to be based on route with nonlinear route ids
-        return self.station_id + 1
+        return self.key_manager.get_security_param("digital_signature")[-1]["station"]
