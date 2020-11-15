@@ -9,6 +9,12 @@ the individual train -> `pre-run`.
 2. After executing the train the updated results need to be encrypted and the train configuration needs to be updated
 to reflect the current state ->`post-run`.
 
+
+To function properly the protocol expects two ennvironment variables to be set:
+1. `STATION_ID` String identifier that has public key/s registered with the central service
+2. `RSA_STATON_PRIVATE_KEY` Hex string containing the private key to be used for decryption and signing.
+
+
 ### Pre-run protocol
 
 
