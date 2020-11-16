@@ -56,6 +56,7 @@ class KeyManager:
     def get_sym_key(self, station_id: str):
         """
         Decrypts the symmetric key using a stored private key
+        :arg station_id: station identifier used to load the correct public key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
         private_key = self.load_private_key("RSA_STATION_PRIVATE_KEY")
@@ -69,22 +70,27 @@ class KeyManager:
                                             )
         return symmetric_key
 
-    def generate_encrypted_keys(self, symmetric_key):
+    def generate_encrypted_keys(self, symmetric_key: bytes):
         """
         Generates a dictionary containing the symmetric key used to encrypt files, encrypted with the public keys of all
         stations on the route
-        :return: Dictionary consisting of  key = Station Id, value = Symmetric key encrypted with public key of station Id
+        :param symmetric_key: byte object containing the symmetric key used to encrypt the mutable files
+        :return: Dictionary consisting of  key = Station Id, value = Symmetric key encrypted with public key of station
         """
         enc_keys = {}
         for station, pk in self.config["rsa_public_keys"]:
             enc_keys[station] = self.encrypt_symmetric_key(symmetric_key, pk)
         return enc_keys
 
-    def encrypt_symmetric_key(self, sym_key):
+    def encrypt_symmetric_key(self, sym_key: bytes):
         """
-        Encrypt the symmetric key with all the provided public keys
+        Encrypt the symmetric key with all public keys provided in the train configuration file
 
-        :return:
+        :param sym_key: byte object containing the the symmetric key used to encrypt the mutable files
+        :return: dictionary containing the symmetric key encrypted with all available public keys, keys are the station
+        ids and values are the symmetric key encrypted with the RSA public key associated with the station id
+
+        :rtype: dict
         """
         encrypted_keys = {}
         for id, key in self.config["rsa_public_keys"].items():

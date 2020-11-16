@@ -1,6 +1,7 @@
 FROM  nvidia/cuda:10.1-cudnn7-runtime-ubuntu18.04 as base
 WORKDIR /
 # Install Python and its tools
+# TODO install newer python3 version and set as default
 RUN apt update && apt install -y --no-install-recommends \
     git \
     build-essential \

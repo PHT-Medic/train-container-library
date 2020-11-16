@@ -1,6 +1,15 @@
 # Train Container Library
 Python library for pht-train images/containers.
 
+## Docker Images
+The docker images defined by the Dockerfiles in the `docker` are the master images that need to be used when building
+train images.
+
+### Available Images
+- `master:slim`: Alpine linux image with python 3.8 and the security protocol installed.
+- `master:buster`: Debian Buster image also with python 3.8 and the security protocol installed
+- `master:dl`: GPU enabled Ubuntu 18.04 image with tensorflow and pytorch and the SP preinstalled
+
 ## Security Protocol
 The pht security protocol adapted from `docs/Secure_PHT_latest__official.pdf` performs two main tasks:
 1. Before executing a train-image on the local machine, unless the station is the first station on the route, the 
@@ -10,22 +19,35 @@ the individual train -> `pre-run`.
 to reflect the current state ->`post-run`.
 
 
-To function properly the protocol expects two ennvironment variables to be set:
+To function  the protocol expects two environment variables to be set:
 1. `STATION_ID` String identifier that has public key/s registered with the central service
 2. `RSA_STATON_PRIVATE_KEY` Hex string containing the private key to be used for decryption and signing.
 
 
 ### Pre-run protocol
+The pre-run protocol consists of the following steps
+1. The hash of the immutable files (train definition) is verified making sure that the executable files did not change
+    during the the train definition.
+2. The digital signature is verified ensuring the correctness of the results at each stop of the train.
+3. The symmetric key is decrypted using the provided station private key
+4. The mutable files in `/opt/pht_results` are decrypted using the symmetric key obtained in the previous step
+5. The decrypted files are hashed and the hash is compared to the one stored in the train configuration file.
 
+Once these steps have been completed the image is ready to be executed.
 
 ### Post-run protocol
 
+1. Calculate the hash of the newly generated results
+2. Sign the hash of the results using the provided `RSA_STATION_PRIVATE_KEY`
+3. Update the the train signature using the session id that is randomly generated at each execution step
+4. Encrypt the resulting files using a newly generated symmetric key
+5. Encrypt the generated symmetric key with the public keys of the train participants
+6. Update the train configuration file
+
+With the completion of these steps the train is ready to be pushed into the registry for further processing
 
 
-## Docker Images
-The docker images in 
 
-### Available Images
 
 
 
