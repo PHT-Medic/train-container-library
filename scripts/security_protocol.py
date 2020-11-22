@@ -36,7 +36,8 @@ if __name__ == '__main__':
     with open("../test/keys/station_tuebingen_private_key.pem" , "rb") as private_key:
         station_private_key = private_key.read()
         hex_private_key = station_private_key.hex()
-    os.environ["RSA_STATION_PRIVATE_KEY"] = hex_private_key
+    print(hex_private_key)
+    # os.environ["RSA_STATION_PRIVATE_KEY"] = hex_private_key
 
-    main()
+    # main()
 
