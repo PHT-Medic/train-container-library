@@ -1,3 +1,5 @@
+from typing import Union
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -12,18 +14,31 @@ class KeyManager:
     Class that creates, stores and if necessary updates all relevant keys for symmetric and asymmetric encryption
     """
 
-    def __init__(self, config_path: str):
-        self.config_path = config_path
-        with open(config_path, "r") as config_file:
-            self.config = json.load(config_file)
+    def __init__(self, train_config: Union[str, dict]):
+        """
+        Initialize a KeyManager instance that handles security relevant values based on a train configuration
+        
+        :param train_config: either a path to a json file storing the configuration values or a dictionary with these values 
+        """
+        self.config_path = None
+        if type(train_config) == dict:
+            self.config = train_config
+        else:
+            self.config_path = train_config
+            with open(train_config, "r") as config_file:
+                self.config = json.load(config_file)
 
-    def save_keyfile(self):
+    def save_keyfile(self, path=None):
         """
         Store the updated config file as a json at the same location
 
         :return:
         :rtype:
         """
+        if not self.config_path and path:
+            raise ValueError("To save the path either a path needs to given as argument or set as an instance variable")
+        if path:
+            self.config_path = path
         with open(self.config_path, "w") as config_file:
             json.dump(self.config, config_file, indent=2)
 
@@ -59,7 +74,7 @@ class KeyManager:
         :arg station_id: station identifier used to load the correct public key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
-        private_key = self.load_private_key("RSA_STATION_PRIVATE_KEY")
+        private_key = self.load_private_key(env_key="RSA_STATION_PRIVATE_KEY")
         encrypted_sym_key = self.get_security_param("encrypted_key")[station_id]
         symmetric_key = private_key.decrypt(bytes.fromhex(encrypted_sym_key),
                                             padding.OAEP(
@@ -112,18 +127,32 @@ class KeyManager:
         return encrypted.hex()
 
     @staticmethod
-    def load_private_key(key_path):
+    def load_private_key(env_key: str = None, key_path: str = None):
         """
         Loads the private key from the path provided provided in the environment variables of the currently
         running image
-        :param key_path: path to the file storing the private key
+        :param key_path: path to a file containing the private key
+        :param env_key: environment variable containing a hex string representing the station private key
         :return: a private key object either rsa or ec
         """
         # TODO get user/station key from station config via airflow
 
-        private_key = serialization.load_pem_private_key(bytes.fromhex(os.getenv(key_path)),
-                                                         password=None,
-                                                         backend=default_backend())
+        if env_key and key_path:
+            raise ValueError(f"Multiple private Key locations specified: \n {env_key} \n {key_path}")
+        # Load key from hex string stored in environment variable
+        if env_key:
+            private_key = serialization.load_pem_private_key(bytes.fromhex(os.getenv(env_key)),
+                                                             password=None,
+                                                             backend=default_backend())
+        # Load key from file
+        elif key_path:
+            with open(key_path, "rb") as sk_f:
+                private_key = serialization.load_pem_private_key(sk_f.read(),
+                                                                 password=None,
+                                                                 backend=default_backend()
+                                                                 )
+        else:
+            raise ValueError("No environment variable or file containing a private key specified")
 
         return private_key
 

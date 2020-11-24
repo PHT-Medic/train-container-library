@@ -18,7 +18,7 @@ def main():
                                         "post-run")
     args = parser.parse_args()
     # TODO get environment variables
-    sp = SecurityProtocol(station_id=os.getenv("STATION_ID"), config_path=os.path.abspath("../test/train_config.json"),
+    sp = SecurityProtocol(station_id=os.getenv("STATION_ID"), config=os.path.abspath("../test/train_config.json"),
                           results_dir=os.path.abspath("../test/example_results"), train_dir="../scripts")
 
     if args.command == "pre-run":

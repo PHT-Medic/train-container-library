@@ -1,17 +1,17 @@
 FROM python:3.8
 WORKDIR /opt/pht_train
-COPY ../requirements.txt /tmp/requirements.txt
+COPY ./requirements.txt /tmp/requirements.txt
 RUN apt-get update -yqq && \
     apt-get dist-upgrade -yqq && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 # install train container library
-COPY ../train_lib /tmp/train-container-library/train_lib
-COPY ../setup.py /tmp/train-container-library/setup.py
-COPY ../README.md /tmp/train-container-library/README.md
+COPY ./train_lib /tmp/train-container-library/train_lib
+COPY ./setup.py /tmp/train-container-library/setup.py
+COPY ./README.md /tmp/train-container-library/README.md
 RUN pip install --no-cache-dir /tmp/train-container-library/ && \
     rm -rf /tmp
 
 # copy execeution scripts and set entrypoint
-COPY ../scripts/security_protocol.py /opt/security/security_protocol.py
-COPY ../scripts/entrypoint.sh /opt/entrypoint.sh
+COPY ./scripts/security_protocol.py /opt/security/security_protocol.py
+COPY ./scripts/entrypoint.sh /opt/entrypoint.sh
 ENTRYPOINT ["sh", "/opt/entrypoint.sh"]

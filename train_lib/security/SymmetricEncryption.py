@@ -1,5 +1,5 @@
 from cryptography.fernet import Fernet
-from typing import List
+from typing import List, Union, BinaryIO
 
 
 class FileEncryptor:
@@ -24,12 +24,17 @@ class FileEncryptor:
                 ef.write(encr_file)
             print("Done")
 
-    def decrypt_files(self, files: List[str]):
+    def decrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False):
         """
         Decrypt the given files using symmetric encryption
         :return:
         """
         print("Decrypting files..")
+        if binary_files:
+            decr_files = []
+            for file in files:
+                decr_files.append(self.fernet.decrypt(file.read()))
+            return decr_files
         for i, file in enumerate(files):
             print(f"File {i + 1}/{len(files)}...", end="")
             with open(file, "rb") as f:

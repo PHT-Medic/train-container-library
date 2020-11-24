@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives.asymmetric import utils, padding
 import pickle
 import glob
 import os
+from typing import Union
 
 
 class SecurityProtocol:
@@ -15,35 +16,54 @@ class SecurityProtocol:
     Class that performs the security protocol outlined in the security concept
     """
 
-    def __init__(self, station_id: str, config_path: str = "/opt/pht_train/train_config.json",
-                 results_dir: str = "/opt/pht_results", train_dir: str = "/opt/pht_train"):
+    def __init__(self, station_id: str, config: Union[str, dict], mutable_files: List[BinaryIO] = None,
+                 immutable_files: List[BinaryIO] = None, results_dir: str = None, train_dir: str = None):
         self.station_id = station_id
-        self.key_manager = KeyManager(config_path=config_path)
+        self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
         self.train_dir = train_dir
 
-    def pre_run_protocol(self):
+    def pre_run_protocol(self, img: str = None, mutable_files: List[BinaryIO] = None,
+                         immutable_files: List[BinaryIO] = None):
         """
         Decrypts the files contained in the train. And performs the steps necessary to validate a train before it is
         being run
         :return:
         """
         print("Executing pre-run protocol...")
-        # print(response)
-        self.validate_immutable_files(self.train_dir)
+        # Execute the protocol with directly passed files and the instances config file
+        if mutable_files and immutable_files:
+            self.validate_immutable_files(files=immutable_files)
+            if not self._is_first_station_on_route():
+                self.verify_digital_signature()
 
-        if not self._is_first_station_on_route():
-            self.verify_digital_signature()
+                file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id))
+                # TODO check this
+                # Decrypt all previously encrypted files
+                file_encryptor.decrypt_files(mutable_files, binary_files=True)
+                self.validate_previous_results()
+            print("Success")
+            return
+        # Execute the protocol parsing the files from the given train and results directories
+        elif self.results_dir and self.train_dir:
+            self.validate_immutable_files(self.train_dir)
 
-            files = self._parse_files(self.results_dir)
+            if not self._is_first_station_on_route():
+                self.verify_digital_signature()
 
-            file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id))
+                files = self._parse_files(self.results_dir)
 
-            # Decrypt all previously encrypted files
-            file_encryptor.decrypt_files(files)
-            self.validate_previous_results()
+                file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id))
 
-        print("Success")
+                # Decrypt all previously encrypted files
+                file_encryptor.decrypt_files(files)
+                self.validate_previous_results()
+            print("Success")
+            return
+        else:
+            raise ValueError("Neither instance variables for  train and results directories nor the the mutable files"
+                             "and immutable files arguments are set.")
+
 
     def post_run_protocol(self):
         """
@@ -55,7 +75,7 @@ class SecurityProtocol:
         files = self._parse_files(self.results_dir)
         e_d = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))
         self.key_manager.set_security_param("e_d", e_d.hex())
-        sk = self.key_manager.load_private_key("RSA_STATION_PRIVATE_KEY")
+        sk = self.key_manager.load_private_key(env_key="RSA_STATION_PRIVATE_KEY")
         e_d_sig = sk.sign(e_d,
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                       salt_length=padding.PSS.MAX_LENGTH),
@@ -72,13 +92,15 @@ class SecurityProtocol:
         self.key_manager.set_security_param("encrypted_key", self.key_manager.encrypt_symmetric_key(new_sym_key))
         # at the last station encrypt the symmetric key using the rsa public key of the user
         if self._is_last_station_on_route():
-            user_public_key = self.key_manager.load_public_key(self.key_manager.get_security_param("rsa_user_public_key"))
+            user_public_key = self.key_manager.load_public_key(
+                self.key_manager.get_security_param("rsa_user_public_key"))
             user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
             self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
+
         self.key_manager.save_keyfile()
         print("Success")
 
-    def validate_immutable_files(self, train_dir: str):
+    def validate_immutable_files(self, train_dir: str = None, files: list = None):
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
         """
@@ -87,13 +109,19 @@ class SecurityProtocol:
         e_h = bytes.fromhex(self.key_manager.get_security_param("e_h"))
         e_h_sig = bytes.fromhex(self.key_manager.get_security_param("e_h_sig"))
         # now check before the run that no immutable files have changed, based on stored hash
+        if train_dir:
+            immutable_files = self._parse_files(train_dir)
+            # TODO check if train_config is excluded
+            immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
 
-        immutable_files = self._parse_files(train_dir)
-        # TODO check if train_config is excluded
-        immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
-
-        current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
-                                            bytes.fromhex(self.key_manager.get_security_param("session_id")))
+            current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
+                                                bytes.fromhex(self.key_manager.get_security_param("session_id")))
+        elif files:
+            current_hash = hash_immutable_files(files,
+                                                str(self.key_manager.get_security_param("user_id")),
+                                                bytes.fromhex(self.key_manager.get_security_param("session_id")),
+                                                binary_files=True
+                                                )
 
         user_pk.verify(e_h_sig,
                        current_hash,
