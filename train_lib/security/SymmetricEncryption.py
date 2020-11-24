@@ -10,12 +10,18 @@ class FileEncryptor:
     def __init__(self, key: bytes):
         self.fernet = Fernet(key)
 
-    def encrypt_files(self, files: List[str]):
+    def encrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False):
         """
         Decrypt the given files using symmetric encryption
         :return:
         """
         print("Encrypting files..")
+        if binary_files:
+            encr_files = []
+            for file in files:
+                encr_files.append(self.fernet.encrypt(file.read()))
+            return encr_files
+
         for i, file in enumerate(files):
             print(f"File {i+1}/{len(files)}...", end="")
             with open(file, "rb") as f:

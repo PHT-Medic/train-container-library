@@ -6,9 +6,9 @@ import json
 import docker
 
 
-def update_results(img: str, path: str, mode="encrypt"):
+def update_archive(img: str, path: str, mode="encrypt"):
     """
-    Updates the result files located at path using the given mode.
+    Updates an archive result files located at path using the given mode.
     Either encrypts or decrypts an archive extracted from the given image and replaces it with a copy of the archive
     containing the same files either decrypted or encrypted
 
@@ -18,7 +18,7 @@ def update_results(img: str, path: str, mode="encrypt"):
     :return:
     """
 
-    files, file_members, all_members = _files_from_archive(extract_archive(img, path))
+    files, file_members, all_members = files_from_archive(extract_archive(img, path))
     if mode == "encrypt":
         pass
     elif mode == "decrypt":
@@ -27,14 +27,20 @@ def update_results(img: str, path: str, mode="encrypt"):
         raise ValueError(f"Unrecognized update mode: {mode}")
 
 
-def extract_train_config(img, config_path: str = "/opt/train_config.json") -> dict:
+def extract_train_config(img: str, config_path: str = "/opt/train_config.json") -> dict:
+    """
+    Extract the train configuration json from the specified image and return it as a dictionary
+    :param img: docker image identifier
+    :param config_path: path of the config file inside the image
+    :return: dictionary containing the  security values stored inside the train:config.json
+    """
     config_archive = extract_archive(img, config_path)
     config_file = config_archive.extractfile("train_config.json")
-    config = json.loads(config_file.read())
-    print(config)
+    train_config = json.loads(config_file.read())
+    return train_config
 
 
-def _files_from_archive(tar_archive: tarfile.TarFile):
+def files_from_archive(tar_archive: tarfile.TarFile):
     """
     Extracts only the actual files from the given tarfile
 
@@ -55,7 +61,7 @@ def _files_from_archive(tar_archive: tarfile.TarFile):
 
 def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     """
-    Extracts a file or folder at the given path from the given container
+    Extracts a file or folder at the given path from the given docker image
 
     :param img: identifier of the img to extract the file from
     :param extract_path: path of the file or directory to extract from the container
@@ -72,8 +78,26 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     return tar
 
 
+def add_archive(img: str, archive: BytesIO, path: str):
+    """
+    Adds a given tar archive to a given docker image at the specified path
+    :param img:  identifier of the image <repository>:<tag>
+    :param archive: tar archive to be added to the image
+    :param path: path at which the tar archive will be added inside the image
+
+    :return:
+    """
+
+    client = docker.from_env()
+    data = client.containers.create(img)
+    print(data.put_archive(path, archive))
+    # Get repository and tag for committing the container to an image
+    repository, tag = img.split(":")
+    data.commit(repository=repository, tag=tag)
+
+
 if __name__ == '__main__':
     IMG = "harbor.personalhealthtrain.de/pht_incoming/tb_sp_test:base"
     DIR = "/opt/pht_train"
 
-    config = extract_train_config(IMG)
+    # config = extract_train_config(IMG)

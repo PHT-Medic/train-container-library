@@ -18,9 +18,10 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binar
     if binary_files:
         for file in immutable_files:
             digest.update(file.read())
-    for file in immutable_files:
-        with open(file, "rb") as f:
-            digest.update(f.read())
+    else:
+        for file in immutable_files:
+            with open(file, "rb") as f:
+                digest.update(f.read())
     digest.update(session_id)
     return digest.finalize()
 

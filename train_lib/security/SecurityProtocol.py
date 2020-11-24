@@ -2,13 +2,12 @@ from .KeyManager import KeyManager
 from .SymmetricEncryption import FileEncryptor
 from .SecurityErrors import ValidationError
 from .Hashing import *
-
+from train_lib.docker_util.docker_ops import *
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import utils, padding
-import pickle
-import glob
 import os
 from typing import Union
+import redis
 
 
 class SecurityProtocol:
@@ -16,15 +15,15 @@ class SecurityProtocol:
     Class that performs the security protocol outlined in the security concept
     """
 
-    def __init__(self, station_id: str, config: Union[str, dict], mutable_files: List[BinaryIO] = None,
-                 immutable_files: List[BinaryIO] = None, results_dir: str = None, train_dir: str = None):
+    def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None):
         self.station_id = station_id
         self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
         self.train_dir = train_dir
+        self.redis = redis.Redis(decode_responses=True)
 
-    def pre_run_protocol(self, img: str = None, mutable_files: List[BinaryIO] = None,
-                         immutable_files: List[BinaryIO] = None):
+    def pre_run_protocol(self, img: str = None, private_key_path: str = None, immutable_dir: str = "/opt/pht_train",
+                         mutable_dir: str = "/opt/pht_results"):
         """
         Decrypts the files contained in the train. And performs the steps necessary to validate a train before it is
         being run
@@ -32,7 +31,9 @@ class SecurityProtocol:
         """
         print("Executing pre-run protocol...")
         # Execute the protocol with directly passed files and the instances config file
-        if mutable_files and immutable_files:
+        if img and private_key_path:
+            print("Extracting files from image...")
+            immutable_files = files_from_archive(extract_archive(img, "/opt/pht_train"))[0]
             self.validate_immutable_files(files=immutable_files)
             if not self._is_first_station_on_route():
                 self.verify_digital_signature()
@@ -63,7 +64,6 @@ class SecurityProtocol:
         else:
             raise ValueError("Neither instance variables for  train and results directories nor the the mutable files"
                              "and immutable files arguments are set.")
-
 
     def post_run_protocol(self):
         """
