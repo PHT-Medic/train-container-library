@@ -1,3 +1,4 @@
+from io import BytesIO
 from typing import Union
 
 from cryptography.hazmat.backends import default_backend
@@ -28,13 +29,16 @@ class KeyManager:
             with open(train_config, "r") as config_file:
                 self.config = json.load(config_file)
 
-    def save_keyfile(self, path=None):
+    def save_keyfile(self, path=None, binary_file=False):
         """
         Store the updated config file as a json at the same location
 
         :return:
         :rtype:
         """
+        if binary_file:
+            return BytesIO(json.dumps(self.config).encode("utf-8"))
+
         if not self.config_path and path:
             raise ValueError("To save the path either a path needs to given as argument or set as an instance variable")
         if path:
@@ -97,7 +101,7 @@ class KeyManager:
             enc_keys[station] = self.encrypt_symmetric_key(symmetric_key, pk)
         return enc_keys
 
-    def encrypt_symmetric_key(self, sym_key: bytes):
+    def encrypt_symmetric_key(self, sym_key: bytes) -> dict:
         """
         Encrypt the symmetric key with all public keys provided in the train configuration file
 

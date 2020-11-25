@@ -90,7 +90,7 @@ def add_archive(img: str, archive: BytesIO, path: str):
 
     client = docker.from_env()
     data = client.containers.create(img)
-    print(data.put_archive(path, archive))
+    data.put_archive(path, archive)
     # Get repository and tag for committing the container to an image
     repository, tag = img.split(":")
     data.commit(repository=repository, tag=tag)

@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from cryptography.fernet import Fernet
 from typing import List, Union, BinaryIO
 
@@ -19,7 +21,8 @@ class FileEncryptor:
         if binary_files:
             encr_files = []
             for file in files:
-                encr_files.append(self.fernet.encrypt(file.read()))
+                # Encrypt the files and convert them to bytes io file objects
+                encr_files.append(BytesIO(self.fernet.encrypt(file.read())))
             return encr_files
 
         for i, file in enumerate(files):
@@ -37,6 +40,7 @@ class FileEncryptor:
         """
         print("Decrypting files..")
         if binary_files:
+            # TODO evaluate memory consumption
             decr_files = []
             for file in files:
                 decr_files.append(self.fernet.decrypt(file.read()))
