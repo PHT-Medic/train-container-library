@@ -36,7 +36,9 @@ def extract_train_config(img: str, config_path: str = "/opt/train_config.json") 
     """
     config_archive = extract_archive(img, config_path)
     config_file = config_archive.extractfile("train_config.json")
-    train_config = json.loads(config_file.read())
+    data = config_file.read()
+    print(data)
+    train_config = json.loads(data)
     return train_config
 
 
@@ -91,6 +93,7 @@ def add_archive(img: str, archive: BytesIO, path: str):
     client = docker.from_env()
     data = client.containers.create(img)
     data.put_archive(path, archive)
+    data.wait()
     # Get repository and tag for committing the container to an image
     repository, tag = img.split(":")
     data.commit(repository=repository, tag=tag)

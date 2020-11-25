@@ -22,7 +22,8 @@ class FileEncryptor:
             encr_files = []
             for file in files:
                 # Encrypt the files and convert them to bytes io file objects
-                encr_files.append(BytesIO(self.fernet.encrypt(file.read())))
+                data = file.read()
+                encr_files.append(BytesIO(self.fernet.encrypt(data)))
             return encr_files
 
         for i, file in enumerate(files):

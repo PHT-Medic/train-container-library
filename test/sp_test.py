@@ -66,5 +66,5 @@ def update_config_with_correct_signature():
 
 
 if __name__ == '__main__':
-    # update_config_with_correct_signature()
+    update_config_with_correct_signature()
     main()

@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives.asymmetric import utils, padding
 import os
 from typing import Union
 import redis
+import time
+from tarfile import TarInfo, TarFile
 
 
 class SecurityProtocol:
@@ -78,8 +80,13 @@ class SecurityProtocol:
             # Get the mutable files and tar archive structure
             mutable_files, mf_members, mf_dir = files_from_archive(extract_archive(img, mutable_dir))
             # Run the post run protocol
-            encrypted_results = self._post_run_outside_container(mutable_files, private_key_path)
-            train_config = self.key_manager.save_keyfile(binary_file=True)
+            encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path)
+            archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
+            archive.seek(0)
+
+            # update the container with the encrypted files
+            self._update_container(img, archive, results_path="/opt", config_path="/opt")
+            print(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
         else:
             print("Executing post-run protocol: \n")
@@ -105,6 +112,8 @@ class SecurityProtocol:
         # Update the digital signature of the train
         self.sign_digital_signature(sk)
 
+        for file in mutable_files:
+            file.seek(0)
         # Encrypt the files
         new_sym_key = self.key_manager.generate_symmetric_key()
         file_encryptor = FileEncryptor(new_sym_key)
@@ -123,11 +132,58 @@ class SecurityProtocol:
 
         return encrypted_results
 
-    def _update_container(self, config_path, results_archive, results_path):
-        pass
+    def _update_container(self, img, results_archive: BytesIO, results_path: str, config_path: str = None):
+        # If a config path is given update the train config inside the container
+        if config_path:
+            config_archive = self._make_train_config_archive()
+            config_archive.seek(0)
+            add_archive(img, config_archive, config_path)
+            config_archive.seek(0)
+            print(config_archive.read())
+        # add the updated results archive
+        add_archive(img, results_archive, results_path)
 
     def _make_results_archive(self, archive_members, file_members, updated_files):
-        pass
+        archive_obj = BytesIO()
+        tar = tarfile.open(fileobj=archive_obj, mode="w")
+
+        # Add the updated members to a new archive
+        for member in archive_members:
+            if member not in file_members:
+                tar.addfile(member)
+        for i, file_member in enumerate(file_members):
+            file_size = updated_files[i].getbuffer().nbytes
+            updated_files[i].seek(0)
+            file_member.size = file_size
+            file_member.mtime = time.time()
+            tar.addfile(file_member, fileobj=updated_files[i])
+
+        # Close tarfile and reset BytesIO
+        tar.close()
+        archive_obj.seek(0)
+
+        return archive_obj
+
+    def _make_train_config_archive(self) -> BytesIO:
+        """
+        Create in memory tar archive containing the train configuration json file
+        :return:
+        """
+        archive_obj = BytesIO()
+
+        tar = tarfile.open(fileobj=archive_obj, mode="w")
+
+        data = self.key_manager.save_keyfile(binary_file=True)
+
+        # Create TarInfo Object based on the data
+        info = TarInfo(name="train_config.json")
+        info.size = data.getbuffer().nbytes
+        info.mtime = time.time()
+
+        tar.addfile(info, data)
+        tar.close()
+        archive_obj.seek(0)
+        return archive_obj
 
     def _post_run_in_container(self):
         """

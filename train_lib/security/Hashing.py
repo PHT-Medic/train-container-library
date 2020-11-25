@@ -36,7 +36,8 @@ def hash_results(result_files: Union[List[str], List[BinaryIO]], session_id: byt
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     if binary_files:
         for file in result_files:
-            digest.update(file.read())
+            data = file.read()
+            digest.update(data)
     else:
         for file in result_files:
             with open(file, "rb") as f:
