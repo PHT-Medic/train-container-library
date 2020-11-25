@@ -72,13 +72,16 @@ class KeyManager:
         """
         return Fernet.generate_key()
 
-    def get_sym_key(self, station_id: str):
+    def get_sym_key(self, station_id: str, private_key_path: str = None):
         """
         Decrypts the symmetric key using a stored private key
         :arg station_id: station identifier used to load the correct public key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
-        private_key = self.load_private_key(env_key="RSA_STATION_PRIVATE_KEY")
+        if private_key_path:
+            private_key = self.load_private_key(key_path=private_key_path)
+        else:
+            private_key = self.load_private_key(env_key="RSA_STATION_PRIVATE_KEY")
         encrypted_sym_key = self.get_security_param("encrypted_key")[station_id]
         symmetric_key = private_key.decrypt(bytes.fromhex(encrypted_sym_key),
                                             padding.OAEP(

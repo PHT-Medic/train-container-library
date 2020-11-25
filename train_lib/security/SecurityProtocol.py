@@ -40,12 +40,17 @@ class SecurityProtocol:
             self.validate_immutable_files(files=immutable_files)
             if not self._is_first_station_on_route():
                 self.verify_digital_signature()
-                file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id))
+                file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id,
+                                                                            private_key_path=private_key_path))
                 # TODO check this
                 # Decrypt all previously encrypted files
                 mutable_files, mf_members, mf_dir = files_from_archive(extract_archive(img, mutable_dir))
                 decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
-                self.validate_previous_results()
+                self.validate_previous_results(files=decrypted_files)
+                archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
+                self._update_container(img, archive, results_path="/opt")
+                # TODO update image
+
             print("Success")
             return
         # Execute the protocol parsing the files from the given train and results directories
@@ -62,6 +67,7 @@ class SecurityProtocol:
                 # Decrypt all previously encrypted files
                 file_encryptor.decrypt_files(files)
                 self.validate_previous_results()
+
             print("Success")
             return
         else:
@@ -268,7 +274,9 @@ class SecurityProtocol:
         station_public_key = self.key_manager.get_security_param("rsa_public_keys")[ds[-1]["station"]]
         station_public_key = self.key_manager.load_public_key(station_public_key)
         if files:
-            results_hash = hash_results(files, binary_files=True)
+            results_hash = hash_results(files,
+                                        session_id=bytes.fromhex(self.key_manager.get_security_param("session_id")),
+                                        binary_files=True)
         else:
             files = self._parse_files(self.results_dir)
             results_hash = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))

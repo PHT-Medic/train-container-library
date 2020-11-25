@@ -44,7 +44,8 @@ class FileEncryptor:
             # TODO evaluate memory consumption
             decr_files = []
             for file in files:
-                decr_files.append(self.fernet.decrypt(file.read()))
+                data = self.fernet.decrypt(file.read())
+                decr_files.append(BytesIO(data))
             return decr_files
         for i, file in enumerate(files):
             print(f"File {i + 1}/{len(files)}...", end="")
