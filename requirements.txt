@@ -3,3 +3,4 @@ requests
 threaded
 python-dotenv
 redis
+docker

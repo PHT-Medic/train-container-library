@@ -4,6 +4,7 @@ from .SecurityErrors import ValidationError
 from .Hashing import *
 from train_lib.docker_util.docker_ops import *
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.asymmetric import utils, padding
 import os
 from typing import Union
@@ -74,10 +75,12 @@ class SecurityProtocol:
             raise ValueError("Neither instance variables for  train and results directories nor the the mutable files"
                              "and immutable files arguments are set.")
 
-    def post_run_protocol(self, img: str = None, private_key_path: str = None, immutable_dir: str = "/opt/pht_train",
-                          mutable_dir: str = "/opt/pht_results"):
+    def post_run_protocol(self, img: str = None, private_key_path: str = None, mutable_dir: str = "/opt/pht_results"):
         """
-        Updates the necessary values and encrypts the updated files after the train is run
+        Updates the necessary values and encrypts the updated files after a successful train execution
+
+        :param img:
+
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
@@ -230,6 +233,10 @@ class SecurityProtocol:
     def validate_immutable_files(self, train_dir: str = None, files: list = None):
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
+
+        :raises ValidationError: when the files to be executed do not match the agreed upon files
+
+        :return:
         """
         # check the signature of the stored hash value using ec signature verifying that it is created by the user
         user_pk = self.key_manager.load_public_key(self.key_manager.get_security_param("rsa_user_public_key"))
@@ -289,9 +296,14 @@ class SecurityProtocol:
         if results_hash != bytes.fromhex(prev_results_hash):
             raise ValidationError("The previously hashed results do not match the stored ones")
 
-    def sign_digital_signature(self, pk):
+    def sign_digital_signature(self, pk: RSAPrivateKey):
         """
-        Signs the train after the execution of the algorithm
+        Update the digital signature of the train after successful execution of the train.
+        If there is no previous signature present creates a signature based on the session id, otherwise the
+        signature of the previous station is loaded, signed using the current stations private key and appended to
+        the list of signatures stored in the train.
+
+        :param pk: private key of the currently running station
         """
         ds = self.key_manager.get_security_param("digital_signature")
         hasher = hashes.Hash(hashes.SHA512(), default_backend())
@@ -306,7 +318,7 @@ class SecurityProtocol:
             ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
             self.key_manager.set_security_param("digital_signature", ds)
         else:
-            # TODO check this
+            # TODO do we need to add the session key here?
             hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
             digest = hasher.finalize()
             sig = pk.sign(digest,
@@ -319,7 +331,11 @@ class SecurityProtocol:
 
     def verify_digital_signature(self):
         """
-        Verifies the digital signature of the train hereby validating the route etc
+        Verifies the digital signature of the train by iterating over the list of signatures and verifying each one
+        using the correct public key stored in the train configuration json
+
+        :raise: InvalidSignatureError if any of the signed values can not be validated using the provided public keys
+
         """
         ds = self.key_manager.get_security_param("digital_signature")
         for sig in ds:
