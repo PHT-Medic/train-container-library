@@ -4,3 +4,11 @@ threaded
 python-dotenv
 redis
 docker
+pandas
+python-dotenv
+fhirpy
+threaded
+scikit-learn
+matplotlib
+seaborn
+
