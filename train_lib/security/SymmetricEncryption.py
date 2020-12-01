@@ -20,7 +20,8 @@ class FileEncryptor:
         print("Encrypting files..")
         if binary_files:
             encr_files = []
-            for file in files:
+            for i, file in enumerate(files):
+                print(f"Encrypting file {i}/{len(files)}...")
                 # Encrypt the files and convert them to bytes io file objects
                 data = file.read()
                 encr_files.append(BytesIO(self.fernet.encrypt(data)))

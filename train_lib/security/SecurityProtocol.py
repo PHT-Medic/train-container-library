@@ -245,7 +245,6 @@ class SecurityProtocol:
         # now check before the run that no immutable files have changed, based on stored hash
         if train_dir:
             immutable_files = self._parse_files(train_dir)
-            # TODO check if train_config is excluded
             immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
 
             current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),

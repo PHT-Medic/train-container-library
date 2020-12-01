@@ -97,6 +97,7 @@ def add_archive(img: str, archive: BytesIO, path: str):
     # Get repository and tag for committing the container to an image
     repository, tag = img.split(":")
     data.commit(repository=repository, tag=tag)
+    data.wait()
 
 
 if __name__ == '__main__':
