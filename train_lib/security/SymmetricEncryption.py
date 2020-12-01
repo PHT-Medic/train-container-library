@@ -21,10 +21,11 @@ class FileEncryptor:
         if binary_files:
             encr_files = []
             for i, file in enumerate(files):
-                print(f"Encrypting file {i}/{len(files)}...")
+                print(f"file {i + 1}/{len(files)}...", end="")
                 # Encrypt the files and convert them to bytes io file objects
                 data = file.read()
                 encr_files.append(BytesIO(self.fernet.encrypt(data)))
+                print("Done")
             return encr_files
 
         for i, file in enumerate(files):
@@ -44,9 +45,11 @@ class FileEncryptor:
         if binary_files:
             # TODO evaluate memory consumption
             decr_files = []
-            for file in files:
+            for i, file in enumerate(files):
+                print(f"file {i + 1}/{len(files)}...", end="")
                 data = self.fernet.decrypt(file.read())
                 decr_files.append(BytesIO(data))
+                print("Done")
             return decr_files
         for i, file in enumerate(files):
             print(f"File {i + 1}/{len(files)}...", end="")
