@@ -257,14 +257,15 @@ class SecurityProtocol:
                                                 )
         print("e_h", e_h)
         print("file hash", current_hash)
+        if e_h != current_hash:
+            raise ValidationError("Immutable Files have changed")
         # Verify that the hash value corresponds with the signature
         user_pk.verify(e_h_sig,
                        current_hash,
                        padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                    salt_length=padding.PSS.MAX_LENGTH),
                        utils.Prehashed(hashes.SHA512()))
-        if e_h != current_hash:
-            raise ValidationError("Immutable Files")
+
 
     def validate_previous_results(self, files: List[BinaryIO] = None):
         """
