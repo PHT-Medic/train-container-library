@@ -175,7 +175,7 @@ class SecurityProtocol:
         :param config_path: path to write the updated train_config.json
         :return:
         """
-        # TODO check how many layers are added
+        # TODO check how many layers are added - improve this to use one container access
         # If a config path is given update the train config inside the container
         if config_path:
             config_archive = self._make_train_config_archive()
@@ -187,6 +187,8 @@ class SecurityProtocol:
             # print(json.loads(config_data))
         # add the updated results archive
         add_archive(img, results_archive, results_path)
+        user_key = self._make_user_key()
+        add_archive(img, user_key, "/opt/pht_results")
         # Tag container as latest TODO check this
         client = docker.from_env()
         container = client.containers.create(img)
@@ -243,6 +245,20 @@ class SecurityProtocol:
         tar.close()
         archive_obj.seek(0)
         return archive_obj
+
+    def _make_user_key(self):
+        archive_obj = BytesIO()
+        tar = tarfile.open(fileobj=archive_obj, mode="w")
+        # Extract user key from config and convert it to bytesio
+        data = BytesIO(bytes.fromhex(self.key_manager.get_security_param("user_encrypted_sym_key")))
+        info = TarInfo(name="user_sym_key.key")
+        info.size = data.getbuffer().nbytes
+        print(info.size)
+        info.mtime = time.time()
+        tar.addfile(info, data)
+        archive_obj.seek(0)
+        return archive_obj
+
 
     def _post_run_in_container(self):
         """
