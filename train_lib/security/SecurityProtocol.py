@@ -8,14 +8,25 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.asymmetric import utils, padding
 import os
 from typing import Union
-import redis
 import time
-from tarfile import TarInfo, TarFile
+from tarfile import TarInfo
+import docker
 
 
 class SecurityProtocol:
     """
     Class that performs the security protocol outlined in the security concept
+
+    :param station_id: PID used to identify the station and to access the correct security values inside the
+        train_config.json
+
+    :type station_id: str
+    :param config: either a string containing a path to the train_config.json or a dictionary containing the values
+        parsed from said json file
+    :type config: Union[str, dict]
+    :param results_dir: path to the directory containing the results
+    :param train_dir: path to the directory containing the immutable files defining a train
+
     """
 
     def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None):
@@ -23,7 +34,7 @@ class SecurityProtocol:
         self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
         self.train_dir = train_dir
-        self.redis = redis.Redis(decode_responses=True)
+        # self.redis = redis.Redis(decode_responses=True)
 
     def pre_run_protocol(self, img: str = None, private_key_path: str = None, immutable_dir: str = "/opt/pht_train",
                          mutable_dir: str = "/opt/pht_results"):
@@ -49,7 +60,7 @@ class SecurityProtocol:
                 decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
                 self.validate_previous_results(files=decrypted_files)
                 archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
-                self._update_container(img, archive, results_path="/opt")
+                self._update_image(img, archive, results_path="/opt")
                 # TODO update image
 
             print("Success")
@@ -77,10 +88,13 @@ class SecurityProtocol:
 
     def post_run_protocol(self, img: str = None, private_key_path: str = None, mutable_dir: str = "/opt/pht_results"):
         """
-        Updates the necessary values and encrypts the updated files after a successful train execution
+        Updates the necessary values in the train_config.json and encrypts the updated files after a successful train
+        execution.
 
-        :param img:
-
+        :param img: identifier of the image <repository>:<tag>
+        :param private_key_path: path to the private key associated with the current station and with the corresponding
+            public key registered in vault under the PID chosen by the station
+        :param mutable_dir: path to the directory in which the mutable files are stored
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
@@ -94,7 +108,7 @@ class SecurityProtocol:
             archive.seek(0)
 
             # update the container with the encrypted files
-            self._update_container(img, archive, results_path="/opt", config_path="/opt")
+            self._update_image(img, archive, results_path="/opt", config_path="/opt")
             print(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
         else:
@@ -102,6 +116,16 @@ class SecurityProtocol:
             self._post_run_in_container()
 
     def _post_run_outside_container(self, mutable_files: List[BytesIO], private_key_path: str) -> List[BytesIO]:
+        """
+        Performs the post run protocol on the mutable files contained in an image. Consisting of encrypting the
+        mutable files and updateing the train_config.json. The extracted mutable files are encrypted and the
+        train_config.json is updated to reflect the current state of the train.
+        The changed files are written to the base image and the resulting image is tagged as latest.
+
+        :param mutable_files: list of BytesIO objects containing the mutable files for a train
+        :param private_key_path: path to private key used to sign the results
+        :return:
+        """
         print("prev results hash", self.key_manager.get_security_param("e_d"))
         # Update the hash value of the mutable files
         e_d = hash_results(result_files=mutable_files,
@@ -141,18 +165,46 @@ class SecurityProtocol:
 
         return encrypted_results
 
-    def _update_container(self, img, results_archive: BytesIO, results_path: str, config_path: str = None):
+    def _update_image(self, img, results_archive: BytesIO, results_path: str, config_path: str = None):
+        """
+        Update the base image with the encrypted results files and the updated train_config.json and tag it as
+        latest
+        :param img: identifier of the image <repository>:<tag>
+        :param results_archive: tar archive containing the encrypted results
+        :param results_path: path to write the results to
+        :param config_path: path to write the updated train_config.json
+        :return:
+        """
+        # TODO check how many layers are added
         # If a config path is given update the train config inside the container
         if config_path:
             config_archive = self._make_train_config_archive()
             config_archive.seek(0)
             add_archive(img, config_archive, config_path)
             config_archive.seek(0)
-            print(config_archive.read())
+            config_data = config_archive.read()
+            print(config_data)
+            # print(json.loads(config_data))
         # add the updated results archive
         add_archive(img, results_archive, results_path)
+        # Tag container as latest TODO check this
+        client = docker.from_env()
+        container = client.containers.create(img)
+        repository = img.split(":")[0]
+        container.commit(repository=repository, tag="latest")
+        container.wait()
+        container.remove()
 
-    def _make_results_archive(self, archive_members, file_members, updated_files):
+    @staticmethod
+    def _make_results_archive(archive_members, file_members, updated_files):
+        """
+        Creates a tar archive containing the updated results
+
+        :param archive_members: tar directory structure of the pht_results directory
+        :param file_members: the members of the archive representing actual files
+        :param updated_files: updated files associated with the file_members that will be written to the archive
+        :return: updated tar archive to be copied into the new image.
+        """
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
 
@@ -179,16 +231,14 @@ class SecurityProtocol:
         :return:
         """
         archive_obj = BytesIO()
-
         tar = tarfile.open(fileobj=archive_obj, mode="w")
-
         data = self.key_manager.save_keyfile(binary_file=True)
 
         # Create TarInfo Object based on the data
         info = TarInfo(name="train_config.json")
         info.size = data.getbuffer().nbytes
         info.mtime = time.time()
-
+        # add config data and reset the archive
         tar.addfile(info, data)
         tar.close()
         archive_obj.seek(0)
@@ -265,7 +315,6 @@ class SecurityProtocol:
                        padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                    salt_length=padding.PSS.MAX_LENGTH),
                        utils.Prehashed(hashes.SHA512()))
-
 
     def validate_previous_results(self, files: List[BinaryIO] = None):
         """
@@ -357,15 +406,15 @@ class SecurityProtocol:
         return self.key_manager.get_security_param("e_d") is None
 
     @staticmethod
-    def _parse_files(dir):
+    def _parse_files(target_dir):
         """
         Parses the exported files from a container and sorts them into relevant categories
-        :param dir: directory in which to find all files
+        :param target_dir: directory in which to find all files
         :return: Tuple consisting of lists of paths for the different file types
         """
         files = list()
         print("Detecting files...", end=" ")
-        for (dir_path, dir_names, file_names) in os.walk(dir):
+        for (dir_path, dir_names, file_names) in os.walk(target_dir):
             files += [os.path.join(dir_path, file) for file in file_names]
         print(f"Found {len(files)} Files")
         return files

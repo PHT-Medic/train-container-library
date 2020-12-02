@@ -17,9 +17,9 @@ def generate_user_key_pair():
         f.write(pem)
     user_public_key = user_private_key.public_key()
     public_pem = user_public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
 
     with open("../test/keys/user_public_key.pem", "wb") as f:
         f.write(public_pem)
@@ -46,17 +46,16 @@ if __name__ == '__main__':
     #     files += [os.path.join(dir_path, file) for file in file_names]
     # # hash = hash_immutable_files(files, "1", session_id)
 
-
-    hash = bytes.fromhex("443e1811432206fa3527e03e40785a174dcac2065c15161131942d38c6113ab2449520e59ef6b8e5d9eb3163a8bbaed4db50d057472ffe8ce10ba6af86fbb907")
-    print("Hash: ", hash.hex())
+    train_hash = bytes.fromhex("f66e367a877664d7297bde5b663d6f2c413aa1db8b70837fd3e3983d28524e5b4bde783e5f2379deb26796d70fe2305f5ae9b0807d5955df96441af3030ff1b0")
+    print("Hash: ", train_hash.hex())
     with open("../test/keys/user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,
                                                          backend=default_backend())
-        sig = private_key.sign(hash,
-                          padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                      salt_length=padding.PSS.MAX_LENGTH),
-                          utils.Prehashed(hashes.SHA512())
-                          )
+        sig = private_key.sign(train_hash,
+                               padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
+                                           salt_length=padding.PSS.MAX_LENGTH),
+                               utils.Prehashed(hashes.SHA512())
+                               )
         print("Signature: ", sig.hex())
     with open("../test/keys/user_public_key.pem", "rb") as pk:
         pk_pem = pk.read().hex()
@@ -64,8 +63,7 @@ if __name__ == '__main__':
                                                                          backend=default_backend())
         print("Public Key:", pk_pem)
 
-    public_key.verify(sig, hash, padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                          salt_length=padding.PSS.MAX_LENGTH),
-                              utils.Prehashed(hashes.SHA512()))
-
-
+    public_key.verify(sig,
+                      train_hash,
+                      padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
+                      utils.Prehashed(hashes.SHA512()))

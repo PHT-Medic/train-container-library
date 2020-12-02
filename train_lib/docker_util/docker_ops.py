@@ -98,6 +98,7 @@ def add_archive(img: str, archive: BytesIO, path: str):
     repository, tag = img.split(":")
     data.commit(repository=repository, tag=tag)
     data.wait()
+    data.remove()
 
 
 if __name__ == '__main__':

@@ -8,16 +8,18 @@ import json
 from tarfile import TarInfo
 from timeit import default_timer as timer
 import time
+from dotenv import find_dotenv, load_dotenv
 
-IMG = "harbor.personalhealthtrain.de/pht_incoming/tb_sp_test:base"
+IMG = "harbor.personalhealthtrain.de/pht_incoming/22:latest"
 
 
 def main():
+    load_dotenv(find_dotenv())
     train_config = extract_train_config(IMG)
     # Execute pre run protocol
-    sp = SecurityProtocol("tuebingen", config=train_config)
+    sp = SecurityProtocol("2", config=train_config)
     start = timer()
-    sp.pre_run_protocol(img=IMG, private_key_path="./keys/station_tuebingen_private_key.pem")
+    sp.pre_run_protocol(img=IMG, private_key_path="./keys/station_aachen_private_key.pem")
     print(f"Pre run execution time: {timer() - start}")
 
     # Run the image
@@ -31,8 +33,9 @@ def main():
     print(f"Train execution time: {timer() - start}")
 
     # Post run
-
-    sp.post_run_protocol(img=IMG, private_key_path=os.path.abspath("./keys/station_tuebingen_private_key.pem"))
+    start = timer()
+    sp.post_run_protocol(img=IMG, private_key_path=os.path.abspath("./keys/station_aachen_private_key.pem"))
+    print(f"Post run execution time: {timer() - start}")
 
 
 def update_config_with_correct_signature():
@@ -66,5 +69,5 @@ def update_config_with_correct_signature():
 
 
 if __name__ == '__main__':
-    update_config_with_correct_signature()
+    # update_config_with_correct_signature()
     main()
