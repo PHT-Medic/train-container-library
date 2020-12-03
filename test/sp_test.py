@@ -10,7 +10,7 @@ from timeit import default_timer as timer
 import time
 from dotenv import find_dotenv, load_dotenv
 
-IMG = "harbor.personalhealthtrain.de/pht_incoming/22:latest"
+IMG = "harbor.personalhealthtrain.de/pht_incoming/22:base"
 
 
 def main():
