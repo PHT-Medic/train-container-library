@@ -52,7 +52,7 @@ def files_from_archive(tar_archive: tarfile.TarFile):
 
     file_members = []
     for member in tar_archive.getmembers():
-        if member.isreg() and member.name != "user_sym_key.key":  # skip if the TarInfo is not files
+        if member.isreg():  # skip if the TarInfo is not files
             file_members.append(member)
 
     files = []

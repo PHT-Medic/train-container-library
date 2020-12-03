@@ -61,7 +61,6 @@ class SecurityProtocol:
                 self.validate_previous_results(files=decrypted_files)
                 archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
                 self._update_image(img, archive, results_path="/opt")
-                # TODO update image
 
             print("Success")
             return
@@ -156,12 +155,11 @@ class SecurityProtocol:
         encrypted_symmetric_keys = self.key_manager.encrypt_symmetric_key(new_sym_key)
         self.key_manager.set_security_param("encrypted_key", encrypted_symmetric_keys)
         # at the last station encrypt the symmetric key using the rsa public key of the user
-        # TODO does this always currently make this the permanent solution
-        if self._is_last_station_on_route():
-            user_public_key = self.key_manager.load_public_key(
-                self.key_manager.get_security_param("rsa_user_public_key"))
-            user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
-            self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
+
+        user_public_key = self.key_manager.load_public_key(
+            self.key_manager.get_security_param("rsa_user_public_key"))
+        user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
+        self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
 
         return encrypted_results
 
@@ -188,7 +186,8 @@ class SecurityProtocol:
         # add the updated results archive
         add_archive(img, results_archive, results_path)
         user_key = self._make_user_key()
-        add_archive(img, user_key, "/opt/pht_results")
+        # add user key to opt directory
+        add_archive(img, user_key, "/opt")
         # Tag container as latest TODO check this
         client = docker.from_env()
         container = client.containers.create(img)
