@@ -103,11 +103,11 @@ class SecurityProtocol:
             mutable_files, mf_members, mf_dir = files_from_archive(extract_archive(img, mutable_dir))
             # Run the post run protocol
             encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path)
-            archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
-            archive.seek(0)
+            results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
+            results_archive.seek(0)
 
             # update the container with the encrypted files
-            self._update_image(img, archive, results_path="/opt", config_path="/opt")
+            self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
             print(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
         else:
@@ -175,24 +175,25 @@ class SecurityProtocol:
         """
         # TODO check how many layers are added - improve this to use one container access
         # If a config path is given update the train config inside the container
+        client = docker.from_env()
+        base_image = img.split(":")[0] + ":" + "base"
+        container = client.containers.create(base_image)
+
         if config_path:
             config_archive = self._make_train_config_archive()
             config_archive.seek(0)
-            add_archive(img, config_archive, config_path)
-            config_archive.seek(0)
-            config_data = config_archive.read()
-            print(config_data)
-            # print(json.loads(config_data))
+            # add_archive(img, config_archive, config_path)
+            container.put_archive(config_path, config_archive)
         # add the updated results archive
-        add_archive(img, results_archive, results_path)
+        container.put_archive(results_path, results_archive)
+        # add_archive(img, results_archive, results_path)
         user_key = self._make_user_key()
         # add user key to opt directory
-        add_archive(img, user_key, "/opt")
+        # add_archive(img, user_key, "/opt")
+        container.put_archive("/opt", user_key)
         # Tag container as latest TODO check this
-        client = docker.from_env()
-        container = client.containers.create(img)
-        repository = img.split(":")[0]
-        container.commit(repository=repository, tag="latest")
+        repo, tag = img.split(":")
+        container.commit(repository=repo, tag=tag)
         container.wait()
         container.remove()
 
@@ -257,7 +258,6 @@ class SecurityProtocol:
         tar.addfile(info, data)
         archive_obj.seek(0)
         return archive_obj
-
 
     def _post_run_in_container(self):
         """
