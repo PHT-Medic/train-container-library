@@ -41,6 +41,11 @@ class SecurityProtocol:
         """
         Decrypts the files contained in the train. And performs the steps necessary to validate a train before it is
         being run
+
+        :param img: identifier of the image from which the security relevant files will be extracted
+        :param private_key_path:
+        :param immutable_dir:
+        :param mutable_dir:
         :return:
         """
         print("Executing pre-run protocol...")
@@ -60,6 +65,8 @@ class SecurityProtocol:
                 decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
                 self.validate_previous_results(files=decrypted_files)
                 archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
+                print("Adding decrypted files to image")
+                print(archive.name)
                 self._update_image(img, archive, results_path="/opt")
 
             print("Success")
@@ -180,13 +187,16 @@ class SecurityProtocol:
         container = client.containers.create(base_image)
 
         if config_path:
+            print("Updating train config")
             config_archive = self._make_train_config_archive()
             config_archive.seek(0)
             # add_archive(img, config_archive, config_path)
             container.put_archive(config_path, config_archive)
         # add the updated results archive
+        print("Adding encrypted result files")
         container.put_archive(results_path, results_archive)
         # add_archive(img, results_archive, results_path)
+        print("Updating user key file ")
         user_key = self._make_user_key()
         # add user key to opt directory
         # add_archive(img, user_key, "/opt")
