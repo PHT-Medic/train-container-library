@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/train-container-library/badge/?version=latest)](https://train-container-library.readthedocs.io/en/latest/?badge=latest)
+
 # Train Container Library
 Python library for pht-train images/containers.
 

@@ -15,29 +15,34 @@ but can also be used independently i.e. to to offer decryption of result to auth
     TODO add images showing how the security protocol works
 
 
+The classes and functions implementing the security protocol are documented in the following sections.
+
 Security Protocol
 -----------------
-
-Documentation for the classes and functions involved in executing the security protocol
-
-
 
 .. automodule:: train_lib.security.SecurityProtocol
     :members:
     :undoc-members:
     :show-inheritance:
 
+Key Manager
+-----------
 
 .. automodule:: train_lib.security.KeyManager
     :members:
     :undoc-members:
     :show-inheritance:
 
+Hashing
+-------
 
 .. automodule:: train_lib.security.Hashing
     :members:
     :undoc-members:
     :show-inheritance:
+
+Symmetric Encryption
+--------------------
 
 .. automodule:: train_lib.security.SymmetricEncryption
     :members:
