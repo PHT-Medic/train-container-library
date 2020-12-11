@@ -14,9 +14,9 @@
 #
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('../'))
 sys.setrecursionlimit(1500)
-
 
 # -- Project information -----------------------------------------------------
 
@@ -28,7 +28,6 @@ author = 'Michael Graf'
 version = ''
 # The full version, including alpha/beta/rc tags
 release = '0.0.1'
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -46,8 +45,10 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'sphinx.ext.autoref'
+    'sphinx.ext.autosectionlabel'
 ]
+
+autosectionlabel_prefix_document = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -75,7 +76,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
-
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -111,7 +111,6 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'PHTtraincontainerlibrarydoc'
 
-
 # -- Options for LaTeX output ------------------------------------------------
 
 latex_elements = {
@@ -140,7 +139,6 @@ latex_documents = [
      'Michael Graf', 'manual'),
 ]
 
-
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
@@ -149,7 +147,6 @@ man_pages = [
     (master_doc, 'phttraincontainerlibrary', 'PHT train container library Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -161,7 +158,6 @@ texinfo_documents = [
      author, 'PHTtraincontainerlibrary', 'One line description of project.',
      'Miscellaneous'),
 ]
-
 
 # -- Options for Epub output -------------------------------------------------
 
@@ -179,7 +175,6 @@ epub_title = project
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
-
 
 # -- Extension configuration -------------------------------------------------
 
