@@ -6,6 +6,7 @@ PHT Trains. This is done by encrypting the resulting files using envelope encryp
 Additionally the progression of the train, the validity of the image and the results, as well as the identities of the
 participating stations are validated before a participant executes a train image.
     TODO add link to paper
+
 A more detailed description of the steps involved in the Protocol refer [link to paper].
 
 The different stages of this protocol are used in the main DAG used by the pht station [link to station docu, repo]
