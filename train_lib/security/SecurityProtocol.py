@@ -266,6 +266,7 @@ class SecurityProtocol:
         print(info.size)
         info.mtime = time.time()
         tar.addfile(info, data)
+        tar.close()
         archive_obj.seek(0)
         return archive_obj
 

@@ -21,7 +21,7 @@ The classes and functions implementing the security protocol are documented in t
 Security Protocol
 -----------------
 
-.. automodule:: train_lib.security.SecurityProtocol
+.. autoclass:: train_lib.security.SecurityProtocol.SecurityProtocol
     :members:
     :undoc-members:
     :show-inheritance:
@@ -29,7 +29,7 @@ Security Protocol
 Key Manager
 -----------
 
-.. automodule:: train_lib.security.KeyManager
+.. autoclass:: train_lib.security.KeyManager.KeyManager
     :members:
     :undoc-members:
     :show-inheritance:
@@ -45,7 +45,7 @@ Hashing
 Symmetric Encryption
 --------------------
 
-.. automodule:: train_lib.security.SymmetricEncryption
+.. autoclass:: train_lib.security.SymmetricEncryption.FileEncryptor
     :members:
     :undoc-members:
     :show-inheritance:

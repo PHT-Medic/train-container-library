@@ -24,18 +24,20 @@ class Consumer(object):
     commands that were issued and that should surface in the output as well.
 
     """
-    EXCHANGE = 'message'
+    EXCHANGE = 'pht'
     EXCHANGE_TYPE = 'topic'
-    QUEUE = 'consumer-test'
-    ROUTING_KEY = 'pht'
+    QUEUE = 'main'
+    ROUTING_KEY = '*'
 
-    def __init__(self, amqp_url: str, queue: str = None):
+    def __init__(self, amqp_url: str, queue: str = None, auto_reconnect=False, routing_key: str = None):
         """Create a new instance of the consumer class, passing in the AMQP
         URL used to connect to RabbitMQ.
 
         :param str amqp_url: The AMQP url to connect with
 
         """
+        self.auto_reconnect = auto_reconnect
+        self._reconnect_delay = 0
         self.should_reconnect = False
         self.was_consuming = False
 
@@ -49,6 +51,8 @@ class Consumer(object):
         # for higher consumer throughput
         self._prefetch_count = 1
 
+        if routing_key:
+            self.ROUTING_KEY = routing_key
         if queue:
             self.QUEUE = queue
 
@@ -184,7 +188,7 @@ class Consumer(object):
         self._channel.exchange_declare(
             exchange=exchange_name,
             exchange_type=self.EXCHANGE_TYPE,
-            callback=cb)
+            callback=cb, durable=True)
 
     def on_exchange_declareok(self, _unused_frame, userdata):
         """Invoked by pika when RabbitMQ has finished the Exchange.Declare RPC
@@ -207,7 +211,7 @@ class Consumer(object):
         """
         LOGGER.info('Declaring queue %s', queue_name)
         cb = functools.partial(self.on_queue_declareok, userdata=queue_name)
-        self._channel.queue_declare(queue=queue_name, callback=cb)
+        self._channel.queue_declare(queue=queue_name, callback=cb, durable=True)
 
     def on_queue_declareok(self, _unused_frame, userdata):
         """Method invoked by pika when the Queue.Declare RPC call made in
@@ -368,8 +372,18 @@ class Consumer(object):
         starting the IOLoop to block and allow the SelectConnection to operate.
 
         """
-        self._connection = self.connect()
-        self._connection.ioloop.start()
+        if self.auto_reconnect:
+            while True:
+                try:
+                    self._connection = self.connect()
+                    self._connection.ioloop.start()
+                except KeyboardInterrupt:
+                    self.stop()
+                    break
+                self._maybe_reconnect()
+        else:
+            self._connection = self.connect()
+            self._connection.ioloop.start()
 
     def stop(self):
         """Cleanly shutdown the connection to RabbitMQ by stopping the consumer
@@ -392,17 +406,37 @@ class Consumer(object):
                 self._connection.ioloop.stop()
             LOGGER.info('Stopped')
 
+    def _maybe_reconnect(self):
+        if self.should_reconnect:
+            self.stop()
+            reconnect_delay = self._get_reconnect_delay()
+            LOGGER.info('Reconnecting after %d seconds', reconnect_delay)
+            time.sleep(reconnect_delay)
+            self.run()
+
+    def _get_reconnect_delay(self):
+        if self.was_consuming:
+            self._reconnect_delay = 0
+        else:
+            self._reconnect_delay += 1
+        if self._reconnect_delay > 30:
+            self._reconnect_delay = 30
+        return self._reconnect_delay
+
 
 class ReconnectingConsumer(object):
     """This is an example consumer that will reconnect if the nested
-    ExampleConsumer indicates that a reconnect is necessary.
+    Consumer indicates that a reconnect is necessary.
 
     """
 
-    def __init__(self, amqp_url: str, queue: str = None):
+    def __init__(self, amqp_url: str, queue: str = None, consumer: Consumer = None):
         self._reconnect_delay = 0
         self._amqp_url = amqp_url
-        self._consumer = Consumer(self._amqp_url, queue=queue)
+        if consumer:
+            self._consumer = consumer
+        else:
+            self._consumer = Consumer(self._amqp_url, queue=queue)
         self.queue = queue
         if queue:
             self._consumer.QUEUE = queue
