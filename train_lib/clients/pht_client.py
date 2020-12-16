@@ -7,10 +7,12 @@ from typing import Union, List
 from tarfile import TarFile
 from dotenv import load_dotenv, find_dotenv
 import os
+import logging
 
 
 UI_TRAIN_API = "http://pht-ui.personalhealthtrain.de/api/pht/trains/"
 
+LOGGER = logging.getLogger(__name__)
 
 class PHTClient:
     """
@@ -56,7 +58,7 @@ class PHTClient:
         if self.rmq_params:
             connection = pika.BlockingConnection(self.rmq_params)
         else:
-            print("No connection to rabbit mq specified, attempting connection on localhost")
+            LOGGER.info("No connection to rabbit mq specified, attempting connection on localhost")
             connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         channel = connection.channel()
         channel.exchange_declare(exchange=exchange, exchange_type=exchange_type, durable=True)
@@ -64,7 +66,7 @@ class PHTClient:
         json_message = json.dumps(message).encode("utf-8")
         channel.basic_publish(exchange=exchange, routing_key=routing_key, body=json_message)
 
-        print(" [x] Sent %r" % json_message)
+        LOGGER.info(" [x] Sent %r" % json_message)
         connection.close()
 
     def get_train_files_archive(self, train_id: str):
