@@ -103,7 +103,6 @@ class PHTClient:
             url = self.api_url + endpoint
         headers = self._create_api_headers(token)
         with requests.get(url, params=params, headers=headers, stream=True) as r:
-            print(r.content)
             r.raise_for_status()
             file_obj = BytesIO()
             for chunk in r.iter_content():
