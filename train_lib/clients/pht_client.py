@@ -43,7 +43,7 @@ class PHTClient:
         if ampq_url:
             self.rmq_params = pika.URLParameters(ampq_url)
 
-    def publish_message_rabbit_mq(self, message: Union[str, bytes, List[str]], exchange: str = "pht",
+    def publish_message_rabbit_mq(self, message: Union[str, bytes, List[str], dict], exchange: str = "pht",
                                   exchange_type: str = "topic", routing_key: str = "pht"):
         """
         Publish a message to rabbit mq with the given message parameters
@@ -69,7 +69,7 @@ class PHTClient:
         LOGGER.info(" [x] Sent %r" % json_message)
         connection.close()
 
-    def get_train_files_archive(self, train_id: str):
+    def get_train_files_archive(self, train_id: str, token=None):
         """
         Get the tar archive containing files for building a train from the UI api
 
@@ -77,12 +77,16 @@ class PHTClient:
         :return:
         """
         endpoint = train_id + "/tar"
-        archive = self._get_tar_archive_from_stream(endpoint)
+        if not token:
+            archive = self._get_tar_archive_from_stream(endpoint)
+        else:
+            archive = self._get_tar_archive_from_stream(endpoint, token=token)
+
 
         return archive
 
     def _get_tar_archive_from_stream(self, endpoint: str, params: dict = None,
-                                     external_endpoint: bool = False) -> TarFile:
+                                     external_endpoint: bool = False, token: str = None) -> TarFile:
         """
         Read a stream of tar data from the given endpoint and return an in memory BytesIO object containing the data
 
@@ -97,7 +101,9 @@ class PHTClient:
             url = endpoint
         else:
             url = self.api_url + endpoint
-        with requests.get(url, params=params, headers=self.api_headers, stream=True) as r:
+        headers = self._create_api_headers(token)
+        with requests.get(url, params=params, headers=headers, stream=True) as r:
+            print(r.content)
             r.raise_for_status()
             file_obj = BytesIO()
             for chunk in r.iter_content():
@@ -156,8 +162,12 @@ class PHTClient:
         r.raise_for_status()
 
     def _create_headers(self, api_token, vault_token):
-        self.headers = {"token": api_token}
+        self.headers = self._create_api_headers(api_token)
         self.vault_headers = {"X-Vault-Token": vault_token}
+
+    def _create_api_headers(self, api_token):
+        headers = {"Authorization": f"Bearer {api_token}"}
+        return headers
 
 
 
