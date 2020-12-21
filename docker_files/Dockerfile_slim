@@ -1,5 +1,8 @@
 FROM python:3.8-slim
+LABEL maintainer="marius.herr@uni-tuebingen.de"
 
+
+### install requirements
 WORKDIR /opt/pht_train
 COPY ./requirements.txt /tmp/requirements.txt
 RUN apt-get update -yqq && \

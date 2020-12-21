@@ -11,4 +11,6 @@ threaded
 scikit-learn
 matplotlib
 seaborn
+pathlib
+asyncio
 

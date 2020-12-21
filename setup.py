@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="pht-train-container-library",
     version="0.0.1",
-    author="Michael Graf",
+    author="Michael Graf, Marius Herr",
     author_email="",
     description="PHT train container library",
     long_description=long_description,
