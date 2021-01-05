@@ -2,6 +2,9 @@ import json
 import pickle
 import os
 
+from train_lib.security.HomomorphicAddition import secure_addition
+from train_lib.security.KeyManager import KeyManager
+
 
 class Train:
     def __init__(self,  results=None, query=None):
@@ -19,6 +22,9 @@ class Train:
         :return:
         """
         try:
+            if not os.path.isdir('/opt/pht_results'):
+                os.makedirs('/opt/pht_results')
+                print('Created results directory')
             with open('/opt/pht_results/' + self.results, 'rb') as results_file:
                 return pickle.load(file=results_file)
         except Exception:
@@ -31,9 +37,6 @@ class Train:
         :return:
         """
         try:
-            if not os.path.isdir('/opt/pht_results'):
-                os.makedirs('/opt/pht_results')
-                print('Created results directory')
             with open('/opt/pht_results/' + self.results, 'wb') as results_file:
                 return pickle.dump(results, results_file)
         except Exception:
@@ -61,3 +64,25 @@ class Train:
         with open('/opt/pht_results/' + self.query, 'w') as queries:
             return json.dump(query, queries)
 
+    def get_user_pk(self):
+        try:
+            with open('/opt/train_config.json', 'r') as train_conf:
+                conf = json.load(train_conf)
+                return conf['user_secure_add_pk']
+        except Exception:
+            return {'user_secure_add_pk': None}
+
+    def secure_addition(self, local_result):
+        result = self.load_results()
+        try:
+            prev_result = result['analysis']['task_a']
+        except KeyError:
+            print("Previous secure addition empty")
+            prev_result = None
+        try:
+            n = KeyManager.get_security_param(param="user_he_key")
+        except Exception:
+            print("Empty string - use default n")
+            n = 261846875800526071848173346729411495257
+
+        return secure_addition(local_result, prev_result, int(n))

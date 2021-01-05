@@ -7,6 +7,7 @@ from pathlib import Path
 from fhirpy import AsyncFHIRClient
 from fhirpy.base.searchset import Raw
 
+
 async def genome_query(query):
     dotenv.load_dotenv()
 
