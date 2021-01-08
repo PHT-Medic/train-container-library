@@ -66,7 +66,7 @@ class SecurityProtocol:
                 self.validate_previous_results(files=decrypted_files)
                 archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
                 print("Adding decrypted files to image")
-                print(archive.name)
+                # print(archive.name)
                 self._update_image(img, archive, results_path="/opt")
 
             print("Success")
