@@ -76,6 +76,7 @@ class Train:
         result = self.load_results()
         try:
             prev_result = result['analysis']['task_a']
+            print("Previous secure addition value {}".format(prev_result))
         except KeyError:
             print("Previous secure addition empty")
             prev_result = None

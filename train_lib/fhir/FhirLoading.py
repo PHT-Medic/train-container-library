@@ -21,7 +21,6 @@ async def genome_query(query):
     )
 
     media_dat = []
-
     patients_data, media_data = [], []
 
     # Search for patients

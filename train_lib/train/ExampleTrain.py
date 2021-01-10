@@ -2,6 +2,9 @@ import json
 import pickle
 import os
 
+from train_lib.security.HomomorphicAddition import secure_addition
+from train_lib.security.KeyManager import KeyManager
+
 
 class Train:
     def __init__(self,  results=None, query=None):
@@ -48,7 +51,8 @@ class Train:
             output_list = data['output_param_list']
             media = data["media"]
             return query_lst, output_list, media
-        except Exception:
+        except Exception as e:
+            print(e)
             data = {
                         "query_lst": [["link", "NF-CORE-Station1"],
                                       ["link", "NF-CORE-Station2"],
@@ -69,4 +73,26 @@ class Train:
         """
         with open('/opt/pht_results/' + self.query, 'w') as queries:
             return json.dump(query_file, queries, indent=4)
+
+    def secure_addition_avg(self, total_age, num_pat):
+        result = self.load_results()
+        try:
+            prev_num_pat = result['discovery']['secure_num_pat']
+            prev_total_age = result['discovery']['secure_total_age']
+
+            print("Previous secure addition value total number patients:\n"
+                  "{}\nand total age\n{}".format(prev_num_pat, prev_total_age))
+        except KeyError:
+            print("Previous secure addition empty")
+            prev_num_pat = None
+            prev_total_age = None
+        try:
+            n = KeyManager.get_security_param(param="user_he_key")
+        except Exception:
+            print("Empty string - use default n")
+            n = 261846875800526071848173346729411495257
+        result['discovery']['secure_num_pat'] = secure_addition(num_pat, prev_num_pat, int(n))
+        result['discovery']['secure_total_age'] = secure_addition(total_age, prev_total_age, int(n))
+
+        return result
 
