@@ -20,6 +20,16 @@ The classes and functions implementing the security protocol are documented in t
 
 Security Protocol
 -----------------
+The following image shows the steps performed by the protocol, the pre-run protocol is performed before a train is executed
+and after decrypting the files checks the validity of the immutable files, if the hash of the result files corresponds to the hash sent by the
+previous station and the validity of the digital signature.
+
+After a successful execution of the train container the post-run protocol calculates the hash of the  results, signs the
+hash and the digital signature, encrypts the files using a new symmetric key. This key is encrypted using the public keys
+provided in the train configuration .json file and stored in the image. Before it is transferred to other stations.
+
+
+.. image:: ../assets/security-protocol.png
 
 .. autoclass:: train_lib.security.SecurityProtocol.SecurityProtocol
     :members:
