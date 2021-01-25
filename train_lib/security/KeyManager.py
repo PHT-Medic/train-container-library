@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 import os
 import json
 
+
 class KeyManager:
     """
     Class that creates, stores and if necessary updates all relevant keys for symmetric and asymmetric encryption

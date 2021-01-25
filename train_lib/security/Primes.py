@@ -1,7 +1,6 @@
 import random
 
 
-
 def ipow(a, b, n):
     """calculates (a**b) % n via binary exponentiation, yielding itermediate
        results as Rabin-Miller requires"""

@@ -15,6 +15,7 @@ class Train:
         """
         self.results = results
         self.query = query
+        self.key_manager = KeyManager(train_config='/opt/train_config.json')
 
     def load_results(self):
         """
@@ -44,7 +45,7 @@ class Train:
 
     def load_queries(self):
         try:
-            with open('/opt/pht_results/' + self.query, 'r') as query:
+            with open('/opt/' + self.query, 'r') as query:
                 data = json.load(query)
 
             query_lst = data['query_lst']
@@ -71,7 +72,7 @@ class Train:
         :param query:
         :return:
         """
-        with open('/opt/pht_results/' + self.query, 'w') as queries:
+        with open('/opt/' + self.query, 'w') as queries:
             return json.dump(query_file, queries, indent=4)
 
     def secure_addition_avg(self, total_age, num_pat):
@@ -87,10 +88,13 @@ class Train:
             prev_num_pat = None
             prev_total_age = None
         try:
-            n = KeyManager.get_security_param(param="user_he_key")
-        except Exception:
-            print("Empty string - use default n")
-            n = 261846875800526071848173346729411495257
+            n = self.key_manager.get_security_param(param="user_he_key")
+            print('Using he key from user in train config {}'.format(n))
+        except Exception as e:
+            print(e)
+            print("Errors: no users HE key - use default n")
+
+            n = 26186875800526071848173346729411495257
         result['discovery']['secure_num_pat'] = secure_addition(num_pat, prev_num_pat, int(n))
         result['discovery']['secure_total_age'] = secure_addition(total_age, prev_total_age, int(n))
 
