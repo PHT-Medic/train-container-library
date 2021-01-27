@@ -3,6 +3,7 @@ run tests:
   image: python:3
   script:
     - pip install pytest pytest-cov -r requirements.txt
+    - pip install .
     - pytest --cov=train_lib/ tests/
     - coverage xml
   artifacts:
