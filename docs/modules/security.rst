@@ -30,6 +30,7 @@ provided in the train configuration .json file and stored in the image. Before i
 
 
 .. image:: ../assets/security-protocol.png
+    :width: 500 px
 
 .. autoclass:: train_lib.security.SecurityProtocol.SecurityProtocol
     :members:
