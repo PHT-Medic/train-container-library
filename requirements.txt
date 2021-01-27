@@ -7,8 +7,4 @@ docker
 pandas
 python-dotenv
 fhirpy
-threaded
-scikit-learn
-matplotlib
-seaborn
 pika
