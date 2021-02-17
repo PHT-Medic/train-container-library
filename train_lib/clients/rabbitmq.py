@@ -26,7 +26,7 @@ class Consumer(object):
     """
     EXCHANGE = 'pht'
     EXCHANGE_TYPE = 'topic'
-    QUEUE = 'main'
+    QUEUE = ''
     ROUTING_KEY = '*'
 
     def __init__(self, amqp_url: str, queue: str = None, auto_reconnect=False, routing_key: str = None):
@@ -211,7 +211,7 @@ class Consumer(object):
         """
         LOGGER.info('Declaring queue %s', queue_name)
         cb = functools.partial(self.on_queue_declareok, userdata=queue_name)
-        self._channel.queue_declare(queue=queue_name, callback=cb, durable=True)
+        self._channel.queue_declare(queue=queue_name, callback=cb, durable=False, auto_delete=True)
 
     def on_queue_declareok(self, _unused_frame, userdata):
         """Method invoked by pika when the Queue.Declare RPC call made in
