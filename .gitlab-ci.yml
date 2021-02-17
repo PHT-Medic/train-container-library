@@ -4,7 +4,7 @@ run tests:
   script:
     - pip install pytest pytest-cov -r requirements.txt
     - pip install .
-    - pytest --cov=train_lib/ tests/
+    - pytest --cov=train_lib/
     - coverage xml
   artifacts:
     reports:
