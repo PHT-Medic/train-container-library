@@ -54,13 +54,16 @@ class SecurityProtocol:
             print("Extracting files from image...")
             # Get the content of the immutable files from the image as ByteObjects
             immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
-            self.validate_immutable_files(files=immutable_files, immutable_file_names=file_names,
-                                          )
+
+            # TODO get all files in the directory and verify that no files have been added
+            self.validate_immutable_files(
+                files=immutable_files,
+                immutable_file_names=file_names,
+                ordered_file_list=self.key_manager.get_security_param("immutable_file_list"))
             if not self._is_first_station_on_route():
                 self.verify_digital_signature()
                 file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id,
                                                                             private_key_path=private_key_path))
-                # TODO check this
                 # Decrypt all previously encrypted files
                 mutable_files, mf_members, mf_dir = files_from_archive(extract_archive(img, mutable_dir))
                 decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)

@@ -20,10 +20,8 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binar
     if binary_files:
         if immutable_file_names:
             for f in ordered_file_list:
-                print(f"Hashing File: {f}")
                 index = immutable_file_names.index(f)
                 data = immutable_files[index].read()
-                print(data)
                 digest.update(data)
         else:
             for file in immutable_files:
