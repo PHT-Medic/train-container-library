@@ -51,14 +51,19 @@ def files_from_archive(tar_archive: tarfile.TarFile):
     """
 
     file_members = []
+    # Find the actual files in the archive
     for member in tar_archive.getmembers():
-        if member.isreg():  # skip if the TarInfo is not files
+        if member.isreg():  # extract the actual files from the archive
             file_members.append(member)
 
     files = []
+    file_names = []
     for file_member in file_members:
         files.append(tar_archive.extractfile(file_member))
-    return files, file_members, tar_archive.getmembers()
+        # Extract the file names without the top level directory from the file members
+        file_names.append("/".join(file_member.name.split("/")[1:]))
+
+    return files, file_names
 
 
 def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:

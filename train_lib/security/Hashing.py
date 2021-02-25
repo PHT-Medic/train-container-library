@@ -4,7 +4,8 @@ from typing import List, Union, BinaryIO
 import os
 
 
-def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binary_files=False):
+def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binary_files=False,
+                         ordered_file_list: list = None, immutable_file_names: List[str] = None):
     """
     Calculates the hash of all immutable files in the train, A, R, Q as well as the
     :param binary_files: boolean parameter indicating whether the files are binary files or file paths
@@ -13,13 +14,22 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binar
     :param immutable_files:
     :return: byte object representing the hash of all files
     """
+
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     digest.update(user_id.encode())
     if binary_files:
-        for file in immutable_files:
-            digest.update(file.read())
+        if immutable_file_names:
+            for f in ordered_file_list:
+                print(f"Hashing File: {f}")
+                index = immutable_file_names.index(f)
+                data = immutable_files[index].read()
+                print(data)
+                digest.update(data)
+        else:
+            for file in immutable_files:
+                digest.update(file.read())
     else:
-        for file in immutable_files:
+        for file in ordered_file_list:
             with open(file, "rb") as f:
                 digest.update(f.read())
     digest.update(session_id)

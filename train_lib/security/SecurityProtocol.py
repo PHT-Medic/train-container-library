@@ -53,8 +53,9 @@ class SecurityProtocol:
         if img and private_key_path:
             print("Extracting files from image...")
             # Get the content of the immutable files from the image as ByteObjects
-            immutable_files = files_from_archive(extract_archive(img, immutable_dir))[0]
-            self.validate_immutable_files(files=immutable_files)
+            immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
+            self.validate_immutable_files(files=immutable_files, immutable_file_names=file_names,
+                                          )
             if not self._is_first_station_on_route():
                 self.verify_digital_signature()
                 file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id,
@@ -306,7 +307,8 @@ class SecurityProtocol:
         self.key_manager.save_keyfile()
         print("Success")
 
-    def validate_immutable_files(self, train_dir: str = None, files: list = None):
+    def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
+                                 immutable_file_names: List[str] = None):
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
 
@@ -324,12 +326,15 @@ class SecurityProtocol:
             immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
 
             current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
-                                                bytes.fromhex(self.key_manager.get_security_param("session_id")))
+                                                bytes.fromhex(self.key_manager.get_security_param("session_id")),
+                                                )
         elif files:
             current_hash = hash_immutable_files(files,
                                                 str(self.key_manager.get_security_param("user_id")),
                                                 bytes.fromhex(self.key_manager.get_security_param("session_id")),
-                                                binary_files=True
+                                                binary_files=True,
+                                                ordered_file_list=ordered_file_list,
+                                                immutable_file_names=immutable_file_names
                                                 )
         print("e_h", e_h)
         print("file hash", current_hash)

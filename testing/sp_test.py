@@ -9,6 +9,7 @@ from tarfile import TarInfo
 from timeit import default_timer as timer
 import time
 from dotenv import find_dotenv, load_dotenv
+from train_lib.security.Hashing import hash_immutable_files
 
 IMG = "harbor.personalhealthtrain.de/pht_incoming/22:base"
 
@@ -70,4 +71,35 @@ def update_config_with_correct_signature():
 
 if __name__ == '__main__':
     # update_config_with_correct_signature()
-    main()
+    # main()
+    sp = SecurityProtocol(station_id="1", config={})
+    train_dir = "./final_train"
+    # files = sp._parse_files(train_dir)
+    # print(files)
+
+    file_order = ["final_train/auto_augment.py", "final_train/central_entrypoint.py", "final_train/entrypoint.py",
+                  "final_train/eval.py", "final_train/models.py", "final_train/test.py", "final_train/train.py",
+                  "final_train/utils.py", "final_train/__init__.py", "final_train/pc_cfgs/example.py",
+                  "final_train/pc_cfgs/__init__.py", "final_train/cfgs/effb6_central_multigpu.py"]
+
+    session_id = "7ba497dbcb48111f22b406d4a026f6d22c1e71f52d49ac980ac897882124d6f4f6cb5dba326670b960278d6fbdb7369f49a2c2d20580c62c6740c0b5849d9e29"
+    # files_hash = hash_immutable_files(
+    #     immutable_files=files,
+    #     user_id="3",
+    #     session_id=bytes.fromhex(session_id),
+    #     binary_files=False,
+    #     ordered_file_list=file_order)
+    #
+    # print("File hash", files_hash.hex())
+    #
+    archive = extract_archive(img="360be6e2e92a", extract_path="/opt/pht_train")
+    # print(archive.getmembers())
+
+    archive_files, names = files_from_archive(archive)
+    file_info = zip(archive_files, names)
+    for f in file_info:
+        print(f)
+    file_hash = hash_immutable_files(archive_files, user_id="3", session_id=bytes.fromhex(session_id),
+                                     binary_files=True, ordered_file_list=file_order,
+                                     immutable_file_names=names)
+    print(file_hash.hex())
