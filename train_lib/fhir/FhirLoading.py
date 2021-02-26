@@ -7,6 +7,8 @@ from pathlib import Path
 from fhirpy import AsyncFHIRClient
 from fhirpy.base.searchset import Raw
 
+import asyncio
+
 
 async def genome_query(query):
     dotenv.load_dotenv()
@@ -79,9 +81,8 @@ async def isic_query(query):
 
     # Search for patients
     resources_p = client.resources('Patient')  # Return lazy search set
-    resources_p = resources_p.search(link__other='ISIC-station_'+str(query))
-    patients =  resources_p.fetch_all()  # Returns list of AsyncFHIRResource
-
+    resources_p = resources_p.search(link__other='ISIC-'+str(query))
+    patients = await resources_p.fetch_all()  # Returns list of AsyncFHIRResource
 
     for entry in patients:
         patient = entry.serialize()
@@ -97,8 +98,7 @@ async def isic_query(query):
     for id in patients_data:
         resources_m = client.resources('Media')
         resources_m = resources_m.search(subject__reference='Patient/' + id[0])
-        medias =  resources_m.fetch_all()
-
+        medias = await resources_m.fetch_all()
 
         for entry in medias:
             media = entry.serialize()
@@ -239,5 +239,17 @@ async def gen_search_query(query_list, lst_output, media):
     return final_df
 
 
+if __name__ == '__main__':
+    query = "station_3"
+    print(query)
 
+    # loop = asyncio.get_event_loop()
+    #pat_df = loop.run_until_complete(genome_query(query))
+
+    #pat_df = loop.run_until_complete(isic_query(query))
+    with open('./server_patients_s1.pkl', 'rb') as results_file:
+        pat_df = pickle.load(file=results_file)
+
+    #pat_df.to_pickle('./server_patients_s3.pkl')
+    print(pat_df)
 
