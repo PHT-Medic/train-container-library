@@ -15,7 +15,10 @@ RUN apt-get update -yqq && \
     mv /tmp/nextflow /usr/local/bin/ && \
     chmod 555 /usr/local/bin/nextflow && \
     useradd -u 1000 -s /bin/bash -m nextflow && \
-    mkdir -m777 /opt/pht_results && \
+    mkdir /opt/pht_results && \
+    mkdir /opt/pht_train && \
+    chown -R nextflow /opt/pht_results && \
+    chown -R nextflow /opt/pht_train && \
     rm -rf \
         /var/lib/apt/lists/* \
         /tmp/* \
@@ -33,9 +36,9 @@ RUN pip install --no-cache-dir /tmp/train-container-library/ && \
 # copy execeution scripts and set entrypoint
 COPY ./scripts/security_protocol.py /opt/security/security_protocol.py
 COPY ./scripts/entrypoint.sh /opt/entrypoint.sh
-ENTRYPOINT ["sh", "/opt/entrypoint.sh"]
+ENTRYPOINT ["sh", "/opt/entrypoint.sh"]dock
 
 USER nextflow
+COPY ./scripts/custom_nextflow.config /opt/custom_nextflow.config
 RUN nextflow pull nf-core/hlatyping -r 1.2.0
 ENV NXF_OFFLINE=TRUE
-

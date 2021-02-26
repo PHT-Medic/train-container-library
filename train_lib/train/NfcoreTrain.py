@@ -15,6 +15,7 @@ class Train:
         """
         self.results = results
         self.query = query
+        self.key_manager = KeyManager(train_config='/opt/train_config.json')
 
     def load_results(self):
         """
@@ -28,7 +29,7 @@ class Train:
             with open('/opt/pht_results/' + self.results, 'rb') as results_file:
                 return pickle.load(file=results_file)
         except Exception:
-            return {'analysis': {}, 'discovery': {}}
+            return {'analysis': {}, 'discovery': {}, 'exec': []}
 
     def save_results(self, results):
         """
@@ -48,7 +49,7 @@ class Train:
         :return:
         """
         try:
-            with open('/opt/pht_results/' + self.query, 'r') as queries:
+            with open('/opt/pht_train/' + self.query, 'r') as queries:
                 return json.load(queries)
         except Exception:
             return {'1': 'Station1',
@@ -61,7 +62,7 @@ class Train:
         :param query:
         :return:
         """
-        with open('/opt/pht_results/' + self.query, 'w') as queries:
+        with open('/opt/pht_train/' + self.query, 'w') as queries:
             return json.dump(query, queries)
 
     def get_user_pk(self):
@@ -81,9 +82,10 @@ class Train:
             print("Previous secure addition empty")
             prev_result = None
         try:
-            n = KeyManager.get_security_param(param="user_he_key")
-        except Exception:
-            print("Empty string - use default n")
+            n = self.key_manager.get_security_param(param="user_he_key")
+        except Exception as e:
+            print("Cannot load users he_key - use default n")
+            print(e)
             n = 261846875800526071848173346729411495257
 
         return secure_addition(local_result, prev_result, int(n))
