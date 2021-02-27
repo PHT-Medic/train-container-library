@@ -68,7 +68,8 @@ def files_from_archive(tar_archive: tarfile.TarFile):
 
 def result_files_from_archive(tar_archive: tarfile.TarFile):
     """
-    Extracts only the actual files from the given tarfile
+    Extracts the result files from the given archive returning the files as well as the director structure contained
+    in the tar archive for later reconstruction
 
     :param tar_archive: the tar archive from which to extract the files
     :return: List of file object extracted from the tar archive
@@ -102,7 +103,6 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     file_obj.seek(0)
     tar = tarfile.open(mode="r", fileobj=file_obj)
     return tar
-
 
 def add_archive(img: str, archive: BytesIO, path: str):
     """
