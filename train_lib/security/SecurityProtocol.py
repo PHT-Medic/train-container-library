@@ -113,7 +113,7 @@ class SecurityProtocol:
         if img and private_key_path:
             print(f"Executing post-run protocol - target image: {img} \n")
             # Get the mutable files and tar archive structure
-            mutable_files, mf_members, mf_dir = files_from_archive(extract_archive(img, mutable_dir))
+            mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
             # Run the post run protocol
             encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path)
             results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
@@ -226,10 +226,11 @@ class SecurityProtocol:
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
 
-        # Add the updated members to a new archive
+        # Create directory structure
         for member in archive_members:
             if member not in file_members:
                 tar.addfile(member)
+        # Add the updated members to a new archive
         for i, file_member in enumerate(file_members):
             file_size = updated_files[i].getbuffer().nbytes
             updated_files[i].seek(0)

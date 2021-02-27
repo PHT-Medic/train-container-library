@@ -66,6 +66,25 @@ def files_from_archive(tar_archive: tarfile.TarFile):
     return files, file_names
 
 
+def result_files_from_archive(tar_archive: tarfile.TarFile):
+    """
+    Extracts only the actual files from the given tarfile
+
+    :param tar_archive: the tar archive from which to extract the files
+    :return: List of file object extracted from the tar archive
+    """
+
+    file_members = []
+    for member in tar_archive.getmembers():
+        if member.isreg():  # skip if the TarInfo is not files
+            file_members.append(member)
+
+    files = []
+    for file_member in file_members:
+        files.append(tar_archive.extractfile(file_member))
+    return files, file_members, tar_archive.getmembers()
+
+
 def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     """
     Extracts a file or folder at the given path from the given docker image
