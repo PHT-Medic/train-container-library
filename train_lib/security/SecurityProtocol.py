@@ -67,7 +67,7 @@ class SecurityProtocol:
                 file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id,
                                                                             private_key_path=private_key_path))
                 # Decrypt all previously encrypted files
-                mutable_files, mf_members, mf_dir = files_from_archive(extract_archive(img, mutable_dir))
+                mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
                 decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
                 self.validate_previous_results(files=decrypted_files)
                 archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
