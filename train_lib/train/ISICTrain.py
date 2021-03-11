@@ -1,7 +1,7 @@
 import json
 import pickle
 import os
-import io
+import scipy.io as sio
 import pandas as pd
 import shutil
 from glob import glob
@@ -174,16 +174,15 @@ class Train:
         plt.tight_layout()
         plt.savefig('/opt/pht_results/discovery.png')
 
-
     def station_to_dict(self, station_path):
         # TODO: Assumes epochs of first CV! If first CV only one with that amount of epochs ignores complete rest!
-        pathlist = glob(station_path + '/**/progression_valInd.mat')
+        pathlist = glob(station_path + '/**progression_valInd.mat')
         # print(list(pathlist))
         paths = []
         station_dict = {}
         cv_counts = 0
         for path in pathlist:
-            mat = io.loadmat(path)
+            mat = sio.loadmat(path)
             cv_counts += 1
             for k, v in mat.items():
                 if k in COLOR_DICT.keys():
@@ -419,6 +418,10 @@ class Train:
         shutil.move(src=src_file, dst=dst_file)
         return True
 
+    def copy_file(self, src_file, dst_file):
+        shutil.copy(src=src_file, dst=dst_file)
+        return True
+
     def create_stat_res_dirs(self, station):
         os.mkdir('/opt/pht_results/res_' + str(station))
         return True
@@ -433,7 +436,7 @@ class Train:
             if nested['BestF1'] > max_val:
                 max_val = nested['BestF1']
                 res[key] = max_val
-        print('Best CV performance in fold {}'.format(list(res)[-1]))
+        print('Best CV performance in fold {} (index 0-4)'.format(list(res)[-1]))
         return list(res)[-1]
 
     def clean_up(self, exec_dir):
