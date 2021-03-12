@@ -51,6 +51,7 @@ class SecurityProtocol:
         print("Executing pre-run protocol...")
         # Execute the protocol with directly passed files and the instances config file
         if img and private_key_path:
+            print(self.key_manager.config)
             print("Extracting files from image...")
             # Get the content of the immutable files from the image as ByteObjects
             immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
