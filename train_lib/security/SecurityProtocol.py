@@ -54,6 +54,7 @@ class SecurityProtocol:
             print("Extracting files from image...")
             # Get the content of the immutable files from the image as ByteObjects
             immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
+            print(file_names)
 
             # Check that no files have been added or removed
             assert len(immutable_files) == len(self.key_manager.get_security_param("immutable_file_list"))

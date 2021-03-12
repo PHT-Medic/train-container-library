@@ -46,9 +46,9 @@ if __name__ == '__main__':
     #     files += [os.path.join(dir_path, file) for file in file_names]
     # # hash = hash_immutable_files(files, "1", session_id)
 
-    train_hash = bytes.fromhex("80d5bf69cf47d08c39b95bac0736c3273d8fce804a1baaeaee25905c238b00d81fbe7d62ef6b6e91db3fb034abe61ec292f999ad1f15cfef0a95ac198029f689")
+    train_hash = bytes.fromhex("646398d44c334f1fc49ce6e44995238449b42532941e471adeae226ba3a332d42798a60f6980efe7f530aed14cfc0f71dc926ecaebb6318eb977fe8a2ef6d9c7")
     print("Hash: ", train_hash.hex())
-    with open("../test/keys/user_private_key.pem", "rb") as pk:
+    with open("./keys/user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,
                                                          backend=default_backend())
         sig = private_key.sign(train_hash,
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                                utils.Prehashed(hashes.SHA512())
                                )
         print("Signature: ", sig.hex())
-    with open("../test/keys/user_public_key.pem", "rb") as pk:
+    with open("./keys/user_public_key.pem", "rb") as pk:
         pk_pem = pk.read().hex()
         public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(bytes.fromhex(pk_pem),
                                                                          backend=default_backend())
@@ -67,3 +67,4 @@ if __name__ == '__main__':
                       train_hash,
                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
                       utils.Prehashed(hashes.SHA512()))
+

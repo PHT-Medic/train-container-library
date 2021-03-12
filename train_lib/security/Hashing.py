@@ -17,6 +17,9 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binar
 
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     digest.update(user_id.encode())
+
+    print(immutable_file_names)
+    print(ordered_file_list)
     if binary_files:
         if immutable_file_names:
             for f in ordered_file_list:
