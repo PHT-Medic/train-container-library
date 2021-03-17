@@ -4,7 +4,7 @@ LABEL maintainer="marius.herr@uni-tuebingen.de"
 
 ### install requirements
 WORKDIR /opt/pht_train
-COPY ./requirements.txt /tmp/requirements.txt
+COPY ./requirements_slim.txt /tmp/requirements.txt
 RUN apt-get update -yqq && \
     apt-get dist-upgrade -yqq && \
     pip install --no-cache-dir -r /tmp/requirements.txt
