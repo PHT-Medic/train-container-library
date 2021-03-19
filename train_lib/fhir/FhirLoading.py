@@ -134,6 +134,7 @@ async def gen_search_query(query_list, lst_output, media):
 
     patients_dat = []
     media_dat = []
+    sequence_dat = []
     df_col_names = []
     pat_param_lst = []
 
@@ -183,7 +184,10 @@ async def gen_search_query(query_list, lst_output, media):
                 pat_value_lst.append(param)
                 if i not in df_col_names: df_col_names.append(i)
             except:
-                continue
+                if i == "assigner":
+                    param = patient['identifier'][i]['reference']
+                    pat_value_lst.append(param)
+                    if i not in df_col_names: df_col_names.append(i)
         patients_dat.append(pat_value_lst)
 
     # print(patients_dat)
@@ -192,6 +196,37 @@ async def gen_search_query(query_list, lst_output, media):
 
     if media == "False":
         return patients_df
+    elif media == "MolSeq":
+        for id in patients_dat:
+            resources_s = client.resources('MolecularSequence')
+            resources_s = resources_s.search(patient__reference='Patient/' + id[0])
+            sequences = await resources_s.fetch_all()
+
+            for entry in sequences:
+                sequence = entry.serialize()
+                sequence_value_lst = []
+                for i in lst_output:
+                    try:
+                        param = sequence[i]
+                        sequence_value_lst.append(param)
+                        if i not in df_col_names: df_col_names.append(i)
+                    except:
+                        if i == "reference":
+                            param = sequence['patient'][i]
+                            sequence_value_lst.append(param)
+                            if i not in df_col_names: df_col_names.append(i)
+                        if i == "observedAllele":
+                            param = sequence['variant'][i]
+                            sequence_value_lst.append(param)
+                            if i not in df_col_names: df_col_names.append(i)
+                        continue
+                sequence_dat.append(sequence_value_lst)
+
+                # print(media_dat)
+                seq_df = pd.DataFrame(media_dat, columns=df_col_names)
+
+                final_df = pd.merge(patients_df, seq_df, on="id", how='inner')
+                return final_df
 
     for id in patients_dat:
         resources_m = client.resources('Media')
