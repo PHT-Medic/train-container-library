@@ -16,7 +16,7 @@ class Train:
         self.data_path = data_path
         self.results = results
         self.query = query
-        self.key_manager = KeyManager(train_config='/opt/train_config.json')
+        #self.key_manager = KeyManager(train_config='/opt/train_config.json')
 
     def _load_model(self):
         with open(self.encoded_model, 'rb') as model_file:
@@ -55,11 +55,11 @@ class Train:
         except Exception as e:
             print(e)
             data = {
-                        "query_lst": [["link", "NF-CORE-Station1"],
-                                      ["link", "NF-CORE-Station2"],
-                                      ["link", "NF-CORE-Station3"]],
-                        "output_param_list": ["id", "gender", "birthDate"],
-                        "media": "False"
+                        "query_lst": [["link", "HIVdemo_LMU,HIVdemo_TUM,HIVdemo_UKT", "birthdate", "le1970-01-01"],
+                                        ["link", "HIVdemo_LMU,HIVdemo_TUM,HIVdemo_UKT", "birthdate", "gt1970-01-01", "birthdate", "le2000-01-01"],
+                                        ["link", "HIVdemo_LMU,HIVdemo_TUM,HIVdemo_UKT", "birthdate", "gt2000-01-01"]],
+                        "output_param_list": ["id", "gender", "birthDate", "link", "observedAllele", "observedSeq"],
+                        "media": "MolSeq"
                     }
             print("Error in query - use hardcoded query!")
             query_lst = data['query_lst']
@@ -75,6 +75,7 @@ class Train:
         with open('/opt/' + self.query, 'w') as queries:
             return json.dump(query_file, queries, indent=4)
 
+    """
     def secure_addition_avg(self, total_age, num_pat):
         result = self._load_results()
         try:
@@ -98,4 +99,4 @@ class Train:
         result['discovery']['secure_num_pat'] = secure_addition(num_pat, prev_num_pat, int(n))
         result['discovery']['secure_total_age'] = secure_addition(total_age, prev_total_age, int(n))
 
-        return result
+        return result"""
