@@ -10,13 +10,11 @@ from train_lib.security.HomomorphicAddition import secure_addition
 from train_lib.security.KeyManager import KeyManager
 
 class Train:
-    def __init__(self, model=None, data_path=None, results=None, query=None):
+    def __init__(self, model=None, results=None, query=None):
         # Model and results encoded with Pickle
         self.encoded_model = model
-        self.data_path = data_path
         self.results = results
         self.query = query
-        #self.key_manager = KeyManager(train_config='/opt/train_config.json')
 
     def _load_model(self):
         with open(self.encoded_model, 'rb') as model_file:
@@ -75,28 +73,104 @@ class Train:
         with open('/opt/' + self.query, 'w') as queries:
             return json.dump(query_file, queries, indent=4)
 
-    """
-    def secure_addition_avg(self, total_age, num_pat):
-        result = self._load_results()
-        try:
-            prev_num_pat = result['discovery']['secure_num_pat']
-            prev_total_age = result['discovery']['secure_total_age']
+    def _flatten(self, l):
+        return [item for sublist in l for item in sublist]
 
-            print("Previous secure addition value total number patients:\n"
-                  "{}\nand total age\n{}".format(prev_num_pat, prev_total_age))
-        except KeyError:
-            print("Previous secure addition empty")
-            prev_num_pat = None
-            prev_total_age = None
-        try:
-            n = self.key_manager.get_security_param(param="user_he_key")
-            print('Using he key from user in train config {}'.format(n))
-        except Exception as e:
-            print(e)
-            print("Errors: no users HE key - use default n")
+    def load_sequences(self, patients, class_labels):
+        _RESIDUES = [
+            'A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V', '-'
+        ]
 
-            n = 26186875800526071848173346729411495257
-        result['discovery']['secure_num_pat'] = secure_addition(num_pat, prev_num_pat, int(n))
-        result['discovery']['secure_total_age'] = secure_addition(total_age, prev_total_age, int(n))
+        _RESIDUE_ENCODING = {
+            residue: (index * [0]) + [1] + (len(_RESIDUES) - index - 1) * [0] for index, residue in enumerate(_RESIDUES)
+        }
 
-        return result"""
+        x = []
+        y = []
+
+        feature_space_dimension = None
+
+        for index, row in patients.iterrows():
+            label = 'CXCR4' if len(row["observedAllele"]) > 4 else row["observedAllele"]
+            seq = row["observedSeq"]
+            seq_encoded = self._flatten(_RESIDUE_ENCODING[residue] for residue in seq)
+            seq_encoded_len = len(seq_encoded)
+
+            if feature_space_dimension is None:
+                feature_space_dimension = seq_encoded_len
+            elif feature_space_dimension != seq_encoded_len:
+                raise ValueError('Inconsistent feature length: {} vs. {}'.format(
+                    feature_space_dimension, seq_encoded_len))
+            x.append(seq_encoded)
+            y.append(class_labels[label])
+        return x, y
+
+    def plot_results(self, results):
+        # figure 1 sample sizes and test size
+        num_stations = len(results.items()) + 1  # for all samples
+
+        # data to plot
+        train_sam = []
+        test_sam = []
+        acc = []
+
+        for i in results.items():
+            test_sam.append(i[1]['test_samples'])
+            train_sam.append(i[1]['training_samples'])
+            acc.append(i[1]['acc_total'])
+
+        # append total column
+        train_sam.append(sum(train_sam))
+        test_sam.append(sum(test_sam))
+
+        # create plot
+        plt.figure(1)
+        index = np.arange(num_stations)
+        bar_width = 0.5
+        opacity = 0.8
+
+        p1 = plt.bar(index, train_sam, bar_width, alpha=opacity, color='deepskyblue', label='train')
+        p2 = plt.bar(index, test_sam, bar_width, bottom=train_sam, alpha=opacity, color='coral', label='test')
+
+        plt.xlabel('Stations')
+        plt.ylabel('Samples')
+        plt.title('Samples per Station')
+
+        station_labels = list(range(1, len(results) + 1))
+        station_labels = [str(x) for x in station_labels]
+        station_labels.append('All')
+
+        # print(p1, p2)
+        # print(p1[0], p2[0])
+
+        plt.xticks(index, station_labels)
+        plt.legend((p1[0], p2[0]), ('train', 'test'))
+        plt.legend()
+
+        plt.tight_layout()
+
+        if not os.path.isdir("/opt/pht_results/"):
+            os.mkdir("/opt/pht_results/")
+
+        plt.savefig('/opt/pht_results/analysis_1.png')
+        plt.show()
+
+        # figure 2 acc over stations
+        plt.figure(2)
+        index = np.arange(num_stations)
+        p3 = plt.plot(acc, 'ro')
+
+        plt.xlabel('Stations')
+        plt.ylabel('Accuracy [%]')
+        plt.title('Accuracy over stations')
+
+        station_labels = list(range(1, len(results) + 1))
+        station_labels = [str(x) for x in station_labels]
+
+        plt.xticks(np.arange(num_stations - 1), station_labels)
+        plt.legend('Accuracy')
+        plt.legend()
+
+        plt.tight_layout()
+        plt.savefig('/opt/pht_results/analysis_2.png')
+        plt.show()
