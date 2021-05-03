@@ -384,21 +384,21 @@ class SecurityProtocol:
         if results_hash != bytes.fromhex(prev_results_hash):
             raise ValidationError("The previously hashed results do not match the stored ones")
 
-    def sign_digital_signature(self, pk: RSAPrivateKey):
+    def sign_digital_signature(self, sk: RSAPrivateKey):
         """
         Update the digital signature of the train after successful execution of the train.
         If there is no previous signature present creates a signature based on the session id, otherwise the
         signature of the previous station is loaded, signed using the current stations private key and appended to
         the list of signatures stored in the train.
 
-        :param pk: private key of the currently running station
+        :param sk: private key of the currently running station
         """
         ds = self.key_manager.get_security_param("digital_signature")
         hasher = hashes.Hash(hashes.SHA512(), default_backend())
         if ds is None:
             hasher.update(bytes.fromhex(self.key_manager.get_security_param("session_id")))
             digest = hasher.finalize()
-            sig = pk.sign(digest,
+            sig = sk.sign(digest,
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                       salt_length=padding.PSS.MAX_LENGTH),
                           utils.Prehashed(hashes.SHA512())
@@ -409,7 +409,7 @@ class SecurityProtocol:
             # TODO do we need to add the session key here?
             hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
             digest = hasher.finalize()
-            sig = pk.sign(digest,
+            sig = sk.sign(digest,
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                       salt_length=padding.PSS.MAX_LENGTH),
                           utils.Prehashed(hashes.SHA512())

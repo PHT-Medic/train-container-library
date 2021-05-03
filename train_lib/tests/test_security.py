@@ -91,3 +91,25 @@ def test_decryption_fails_with_wrong_key():
     with pytest.raises(InvalidToken):
         decrypted_files = file_encryptor_2.decrypt_files(encrypted_files, binary_files=True)
 
+
+def test_hashing():
+    files1 = [BytesIO(os.urandom(7328)), BytesIO(os.urandom(3321)), BytesIO(os.urandom(4251))]
+    files2 = [BytesIO(os.urandom(328)), BytesIO(os.urandom(3321)), BytesIO(os.urandom(4251))]
+
+    session_id = os.urandom(64)
+    user_id = "test"
+
+    hash = hash_immutable_files(files1, user_id=user_id, session_id=session_id, binary_files=True)
+    hash_files_changed = hash_immutable_files(files2, user_id=user_id, session_id=session_id, binary_files=True)
+
+    assert hash != hash_files_changed
+
+
+
+
+
+
+
+
+
+
