@@ -7,3 +7,5 @@ pandas
 python-dotenv
 fhirpy
 pika
+setuptools
+pytest
