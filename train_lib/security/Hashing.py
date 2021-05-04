@@ -4,7 +4,8 @@ from typing import List, Union, BinaryIO
 import os
 
 
-def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binary_files=False,
+def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user_id: str, session_id: bytes,
+                         binary_files=False,
                          ordered_file_list: list = None, immutable_file_names: List[str] = None):
     """
     Calculates the hash of all immutable files in the train, A, R, Q as well as the
@@ -16,7 +17,7 @@ def hash_immutable_files(immutable_files, user_id: str, session_id: bytes, binar
     """
 
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
-    digest.update(user_id.encode())
+    digest.update(user_id.encode("utf-8"))
 
     if binary_files:
         if immutable_file_names:
