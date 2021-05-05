@@ -29,11 +29,13 @@ class SecurityProtocol:
 
     """
 
-    def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None):
+    def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None,
+                 docker_client = None):
         self.station_id = station_id
         self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
         self.train_dir = train_dir
+        self.docker_client = docker_client
         # self.redis = redis.Redis(decode_responses=True)
 
     def pre_run_protocol(self, img: str = None, private_key_path: str = None, immutable_dir: str = "/opt/pht_train",
@@ -191,7 +193,7 @@ class SecurityProtocol:
         # TODO check how many layers are added - improve this to use one container access
         # If a config path is given update the train config inside the container
         print(img)
-        client = docker.from_env()
+        client = self.docker_client if self.docker_client else docker.from_env()
         base_image = img.split(":")[0] + ":" + "base"
         container = client.containers.create(base_image)
 

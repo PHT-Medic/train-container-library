@@ -20,6 +20,17 @@ from train_lib.security.SecurityErrors import ValidationError
 
 
 @pytest.fixture
+def docker_client():
+    try:
+        client = docker.from_env()
+
+    except Exception:
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+
+    return client
+
+
+@pytest.fixture
 def key_pairs():
     # Create private keys
     station_1_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -202,7 +213,7 @@ def train_file_archive(train_files):
 
 
 @pytest.fixture
-def test_train_image(train_config, train_file_archive):
+def test_train_image(train_config, train_file_archive, docker_client):
     # TODO test if image exists otherwise build it and pass the identifier to the test functions
 
     docker_file_obj = BytesIO(
@@ -214,7 +225,7 @@ def test_train_image(train_config, train_file_archive):
         """.encode("utf-8")
     )
 
-    client = docker.from_env()
+    client = docker_client
     image, build_logs = client.images.build(fileobj=docker_file_obj, tag="sp-test", rm=True, pull=True)
 
     # Create the train_config archive
@@ -255,7 +266,7 @@ def test_extract_train_config(test_train_image, train_files):
     assert config["immutable_file_list"] == file_names
 
 
-def test_pre_run_protocol(test_train_image, tmpdir, key_pairs):
+def test_pre_run_protocol(test_train_image, tmpdir, key_pairs, docker_client):
     config = extract_train_config(test_train_image)
 
     # Check if any station can execute the pre run protocol on the raw image
@@ -268,7 +279,7 @@ def test_pre_run_protocol(test_train_image, tmpdir, key_pairs):
         "STATION_PRIVATE_KEY_PATH": str(p1)
     }
     with mock.patch.dict(os.environ, environment_dict_station_1):
-        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         sp.pre_run_protocol(img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
         # check that the session id cannot be changed
@@ -276,7 +287,7 @@ def test_pre_run_protocol(test_train_image, tmpdir, key_pairs):
         changed_config_session_key["session_id"] = os.urandom(64).hex()
 
         with pytest.raises(ValidationError):
-            sp = SecurityProtocol(os.getenv("STATION_ID"), config=changed_config_session_key)
+            sp = SecurityProtocol(os.getenv("STATION_ID"), config=changed_config_session_key, docker_client=docker_client)
             sp.pre_run_protocol(img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
         # check that you can not change the file list
@@ -284,18 +295,17 @@ def test_pre_run_protocol(test_train_image, tmpdir, key_pairs):
         changed_config_file_list["immutable_file_list"] = ["file_1_test.py", "r_script.r", "query.json"]
 
         with pytest.raises(AssertionError):
-            sp = SecurityProtocol(os.getenv("STATION_ID"), config=changed_config_file_list)
+            sp = SecurityProtocol(os.getenv("STATION_ID"), config=changed_config_file_list, docker_client=docker_client)
             sp.pre_run_protocol(img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
-
 
         # TODO check against changed files in the image
 
 
-def test_post_run_protocol(test_train_image, tmpdir, key_pairs):
+def test_post_run_protocol(test_train_image, tmpdir, key_pairs, docker_client):
     config = extract_train_config(test_train_image)
 
     # Execute the image
-    client = docker.from_env()
+    client = docker_client
     container = client.containers.run(image=test_train_image + ":latest", detach=True)
     exit_code = container.wait()["StatusCode"]
 
@@ -314,7 +324,7 @@ def test_post_run_protocol(test_train_image, tmpdir, key_pairs):
     }
     print(p3.read())
     with mock.patch.dict(os.environ, environment_dict_station_3):
-        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         print(os.getenv("STATION_PRIVATE_KEY_PATH"))
         sp.post_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
@@ -330,7 +340,7 @@ def test_post_run_protocol(test_train_image, tmpdir, key_pairs):
         "STATION_PRIVATE_KEY_PATH": str(p1)
     }
     with mock.patch.dict(os.environ, environment_dict_station_1):
-        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         sp.pre_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
     # Ensure that it does not work with a different private key
@@ -350,11 +360,12 @@ def test_post_run_protocol(test_train_image, tmpdir, key_pairs):
         "STATION_PRIVATE_KEY_PATH": str(p_wrong_key)
     }
     with mock.patch.dict(os.environ, environment_dict_wrong_sk):
-        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         print(os.getenv("STATION_PRIVATE_KEY_PATH"))
 
         with pytest.raises(ValueError):
-            sp.pre_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
+            sp.pre_run_protocol(img=test_train_image + ":latest",
+                                private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
     # TODO check against changed results files
     # TODO check against forged signature
