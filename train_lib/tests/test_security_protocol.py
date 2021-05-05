@@ -13,10 +13,10 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
 from cryptography.hazmat.primitives import serialization, hashes
 
-
 from train_lib.security.Hashing import hash_immutable_files, hash_results
 from train_lib.docker_util.docker_ops import extract_train_config
 from train_lib.security.SecurityProtocol import SecurityProtocol
+from train_lib.security.SecurityErrors import ValidationError
 
 
 @pytest.fixture
@@ -240,37 +240,125 @@ def test_train_image(train_config, train_file_archive):
     container.put_archive("/opt/pht_train", train_file_archive)
 
     container.commit("sp-test", tag="latest")
+    container.commit("sp-test", tag="base")
 
     return "sp-test"
 
 
-def test_extract_train_config(test_train_image):
+def test_extract_train_config(test_train_image, train_files):
+    file_names, files = train_files
     config = extract_train_config(test_train_image)
 
     assert config
     assert type(config) == dict
 
+    assert config["immutable_file_list"] == file_names
+
 
 def test_pre_run_protocol(test_train_image, tmpdir, key_pairs):
     config = extract_train_config(test_train_image)
-    p = tmpdir.join("station_private_key.pem")
-    p.write(bytes.fromhex(key_pairs["station_1"]["public_key"]))
 
-    environment_dict = {
+    # Check if any station can execute the pre run protocol on the raw image
+    p1 = tmpdir.join("station_1_private_key.pem")
+    p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
+
+    # set up temporary env vars
+    environment_dict_station_1 = {
         "STATION_ID": "station_1",
-        "STATION_PRIVATE_KEY_PATH": str(p)
+        "STATION_PRIVATE_KEY_PATH": str(p1)
     }
-    with mock.patch.dict(os.environ, environment_dict):
+    with mock.patch.dict(os.environ, environment_dict_station_1):
         sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
-        print(os.getenv("STATION_PRIVATE_KEY_PATH"))
         sp.pre_run_protocol(img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
+        # check that the session id cannot be changed
+        changed_config_session_key = config.copy()
+        changed_config_session_key["session_id"] = os.urandom(64).hex()
+
+        with pytest.raises(ValidationError):
+            sp = SecurityProtocol(os.getenv("STATION_ID"), config=changed_config_session_key)
+            sp.pre_run_protocol(img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
+
+        # check that you can not change the file list
+        changed_config_file_list = config.copy()
+        changed_config_file_list["immutable_file_list"] = ["file_1_test.py", "r_script.r", "query.json"]
+
+        with pytest.raises(AssertionError):
+            sp = SecurityProtocol(os.getenv("STATION_ID"), config=changed_config_file_list)
+            sp.pre_run_protocol(img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
 
+        # TODO check against changed files in the image
 
 
-def test_post_run_protocol():
-    pass
+def test_post_run_protocol(test_train_image, tmpdir, key_pairs):
+    config = extract_train_config(test_train_image)
+
+    # Execute the image
+    client = docker.from_env()
+    container = client.containers.run(image=test_train_image + ":latest", detach=True)
+    exit_code = container.wait()["StatusCode"]
+
+    assert exit_code == 0
+
+    container.commit(test_train_image)
+
+    # Perform post run protocol
+
+    p3 = tmpdir.join("station_3_private_key.pem")
+    p3.write(bytes.fromhex(key_pairs["station_3"]["private_key"]))
+
+    environment_dict_station_3 = {
+        "STATION_ID": "station_3",
+        "STATION_PRIVATE_KEY_PATH": str(p3)
+    }
+    print(p3.read())
+    with mock.patch.dict(os.environ, environment_dict_station_3):
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        print(os.getenv("STATION_PRIVATE_KEY_PATH"))
+        sp.post_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
+
+    config = extract_train_config(test_train_image)
+
+    # Check that the pre-run protocol works for the next station
+    p1 = tmpdir.join("station_1_private_key.pem")
+    p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
+
+    # set up temporary env vars
+    environment_dict_station_1 = {
+        "STATION_ID": "station_1",
+        "STATION_PRIVATE_KEY_PATH": str(p1)
+    }
+    with mock.patch.dict(os.environ, environment_dict_station_1):
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        sp.pre_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
+
+    # Ensure that it does not work with a different private key
+    # generate a new private key
+    unregistered_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    p_wrong_key = tmpdir.join("unregistered_private_key.pem")
+    p_wrong_key.write(unregistered_sk)
+
+    assert unregistered_sk not in [bytes.fromhex(key_pairs[f"station_{s}"]["private_key"]) for s in range(1, 4)]
+
+    environment_dict_wrong_sk = {
+        "STATION_ID": "station_3",
+        "STATION_PRIVATE_KEY_PATH": str(p_wrong_key)
+    }
+    with mock.patch.dict(os.environ, environment_dict_wrong_sk):
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config)
+        print(os.getenv("STATION_PRIVATE_KEY_PATH"))
+
+        with pytest.raises(ValueError):
+            sp.pre_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
+
+    # TODO check against changed results files
+    # TODO check against forged signature
+    # TODO check against wrong results hash
 
 
 def test_multi_execution_protocol():

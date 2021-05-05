@@ -190,6 +190,7 @@ class SecurityProtocol:
         """
         # TODO check how many layers are added - improve this to use one container access
         # If a config path is given update the train config inside the container
+        print(img)
         client = docker.from_env()
         base_image = img.split(":")[0] + ":" + "base"
         container = client.containers.create(base_image)
