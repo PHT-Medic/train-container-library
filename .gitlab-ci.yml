@@ -1,3 +1,9 @@
+default:
+  image: python:3.8.10-slim-buster
+  services:
+    - docker:dind
+
+
 run tests:
   stage: test
   image: python:3
