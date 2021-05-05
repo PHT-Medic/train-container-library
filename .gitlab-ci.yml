@@ -11,7 +11,4 @@ run tests:
     - pip install pytest pytest-cov -r requirements.txt
     - pip install .
     - pytest --cov=train_lib/
-    - coverage xml
-  artifacts:
-    reports:
-      cobertura: coverage.xml
+
