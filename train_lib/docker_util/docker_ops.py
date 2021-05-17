@@ -124,10 +124,3 @@ def add_archive(img: str, archive: BytesIO, path: str):
     data.commit(repository=repository, tag=tag)
     data.wait()
     data.remove()
-
-
-if __name__ == '__main__':
-    IMG = "harbor.personalhealthtrain.de/pht_incoming/tb_sp_test:base"
-    DIR = "/opt/pht_train"
-
-    # config = extract_train_config(IMG)

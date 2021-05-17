@@ -11,6 +11,7 @@ from typing import Union
 import time
 from tarfile import TarInfo
 import docker
+import logging
 
 
 class SecurityProtocol:
@@ -50,14 +51,12 @@ class SecurityProtocol:
         :param mutable_dir:
         :return:
         """
-        print("Executing pre-run protocol...")
+        logging.info("Executing pre-run protocol...")
         # Execute the protocol with directly passed files and the instances config file
         if img and private_key_path:
-            print(self.key_manager.config)
-            print("Extracting files from image...")
+            logging.info("Extracting files from image...")
             # Get the content of the immutable files from the image as ByteObjects
             immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
-            print(file_names)
 
             # Check that no files have been added or removed
             assert len(immutable_files) == len(self.key_manager.get_security_param("immutable_file_list"))
@@ -75,11 +74,11 @@ class SecurityProtocol:
                 decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
                 self.validate_previous_results(files=decrypted_files)
                 archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
-                print("Adding decrypted files to image")
+                logging.info("Adding decrypted files to image")
                 # print(archive.name)
                 self._update_image(img, archive, results_path="/opt")
 
-            print("Success")
+            logging.info("Pre-run protocol success")
             return
         # Execute the protocol parsing the files from the given train and results directories
         elif self.results_dir and self.train_dir:
@@ -96,7 +95,7 @@ class SecurityProtocol:
                 file_encryptor.decrypt_files(files)
                 self.validate_previous_results()
 
-            print("Success")
+            logging.info("Pre-run protocol success")
             return
         else:
             raise ValueError("Neither instance variables for  train and results directories nor the the mutable files"
@@ -115,7 +114,7 @@ class SecurityProtocol:
         """
         # execute the post run station side extracting the relevant files from the image
         if img and private_key_path:
-            print(f"Executing post-run protocol - target image: {img} \n")
+            logging.info(f"Executing post-run protocol - target image: {img} \n")
             # Get the mutable files and tar archive structure
             mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
             # Run the post run protocol
@@ -125,10 +124,10 @@ class SecurityProtocol:
 
             # update the container with the encrypted files
             self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
-            print(f"Successfully executed post run protocol on img: {img}")
+            logging.info(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
         else:
-            print("Executing post-run protocol: \n")
+            logging.info("Executing post-run protocol: \n")
             self._post_run_in_container()
 
     def _post_run_outside_container(self, mutable_files: List[BytesIO], private_key_path: str) -> List[BytesIO]:
@@ -142,13 +141,13 @@ class SecurityProtocol:
         :param private_key_path: path to private key used to sign the results
         :return:
         """
-        print("prev results hash", self.key_manager.get_security_param("e_d"))
+        logging.info(f"prev results hash {self.key_manager.get_security_param('e_d')}", )
         # Update the hash value of the mutable files
         e_d = hash_results(result_files=mutable_files,
                            session_id=bytes.fromhex(self.key_manager.get_security_param("session_id")),
                            binary_files=True)
         self.key_manager.set_security_param("e_d", e_d.hex())
-        print("new results hash", self.key_manager.get_security_param("e_d"))
+        logging.info(f"new results hash: {self.key_manager.get_security_param('e_d')}")
 
         # Load the local private key and sign the hash of the results files
         sk = self.key_manager.load_private_key(key_path=private_key_path)
@@ -191,22 +190,21 @@ class SecurityProtocol:
         :return:
         """
         # If a config path is given update the train config inside the container
-        print(img)
         client = self.docker_client if self.docker_client else docker.from_env()
         base_image = img.split(":")[0] + ":" + "base"
         container = client.containers.create(base_image)
 
         if config_path:
-            print("Updating train config")
+            logging.info("Updating train config")
             config_archive = self._make_train_config_archive()
             config_archive.seek(0)
             # add_archive(img, config_archive, config_path)
             container.put_archive(config_path, config_archive)
         # add the updated results archive
-        print("Adding encrypted result files")
+        logging.info("Adding encrypted result files")
         container.put_archive(results_path, results_archive)
         # add_archive(img, results_archive, results_path)
-        print("Updating user key file ")
+        logging.info("Updating user key file ")
         user_key = self._make_user_key()
         # add user key to opt directory
         # add_archive(img, user_key, "/opt")
@@ -274,7 +272,6 @@ class SecurityProtocol:
         data = BytesIO(bytes.fromhex(self.key_manager.get_security_param("user_encrypted_sym_key")))
         info = TarInfo(name="user_sym_key.key")
         info.size = data.getbuffer().nbytes
-        print(info.size)
         info.mtime = time.time()
         tar.addfile(info, data)
         tar.close()
@@ -315,7 +312,7 @@ class SecurityProtocol:
             self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
 
         self.key_manager.save_keyfile()
-        print("Success")
+        logging.info("Post-protocol success")
 
     def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
                                  immutable_file_names: List[str] = None):
@@ -346,8 +343,8 @@ class SecurityProtocol:
                                                 ordered_file_list=ordered_file_list,
                                                 immutable_file_names=immutable_file_names
                                                 )
-        print("e_h", e_h)
-        print("file hash", current_hash)
+        logging.info(f"e_h: {e_h}")
+        logging.info(f"file hash: {current_hash}")
         if e_h != current_hash:
             raise ValidationError("Immutable Files have changed")
         # Verify that the hash value corresponds with the signature
@@ -453,10 +450,10 @@ class SecurityProtocol:
         :return: Tuple consisting of lists of paths for the different file types
         """
         files = list()
-        print("Detecting files...", end=" ")
+        logging.info("Detecting files...")
         for (dir_path, dir_names, file_names) in os.walk(target_dir):
             files += [os.path.join(dir_path, file) for file in file_names]
-        print(f"Found {len(files)} Files")
+        logging.info(f"Found {len(files)} Files")
         return files
 
     def _is_last_station_on_route(self):

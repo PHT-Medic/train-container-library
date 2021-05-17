@@ -2,6 +2,7 @@ from io import BytesIO
 
 from cryptography.fernet import Fernet
 from typing import List, Union, BinaryIO
+import logging
 
 
 class FileEncryptor:
@@ -17,43 +18,43 @@ class FileEncryptor:
         Decrypt the given files using symmetric encryption
         :return:
         """
-        print("Encrypting files..")
+        logging.info("Encrypting files..")
         if binary_files:
             encr_files = []
             for i, file in enumerate(files):
-                print(f"file {i + 1}/{len(files)}...", end="")
+                logging.info(f"file {i + 1}/{len(files)}...")
                 # Encrypt the files and convert them to bytes io file objects
                 data = file.read()
                 encr_files.append(BytesIO(self.fernet.encrypt(data)))
-                print("Done")
+                logging.info("Done")
             return encr_files
 
         for i, file in enumerate(files):
-            print(f"File {i + 1}/{len(files)}...", end="")
+            logging.info(f"File {i + 1}/{len(files)}...")
             with open(file, "rb") as f:
                 encr_file = self.fernet.encrypt(f.read())
             with open(file, "wb") as ef:
                 ef.write(encr_file)
-            print("Done")
+            logging.info("Done")
 
     def decrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False):
         """
         Decrypt the given files using symmetric encryption
         :return:
         """
-        print("Decrypting files..")
+        logging.info("Decrypting files..")
         if binary_files:
             decr_files = []
             for i, file in enumerate(files):
-                print(f"file {i + 1}/{len(files)}...", end="")
+                logging.info(f"file {i + 1}/{len(files)}...")
                 data = self.fernet.decrypt(file.read())
                 decr_files.append(BytesIO(data))
-                print("Done")
+                logging.info("Done")
             return decr_files
         for i, file in enumerate(files):
-            print(f"File {i + 1}/{len(files)}...", end="")
+            logging.info(f"File {i + 1}/{len(files)}...")
             with open(file, "rb") as f:
                 decr_file = self.fernet.decrypt(f.read())
             with open(file, "wb") as ef:
                 ef.write(decr_file)
-            print("Done")
+            logging.info("Done")
