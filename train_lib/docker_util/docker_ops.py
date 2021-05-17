@@ -104,6 +104,7 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     tar = tarfile.open(mode="r", fileobj=file_obj)
     return tar
 
+
 def add_archive(img: str, archive: BytesIO, path: str):
     """
     Adds a given tar archive to a given docker image at the specified path

@@ -141,7 +141,6 @@ class KeyManager:
         :param env_key: environment variable containing a hex string representing the station private key
         :return: a private key object either rsa or ec
         """
-        # TODO get user/station key from station config via airflow
 
         if env_key and key_path:
             raise ValueError(f"Multiple private Key locations specified: \n {env_key} \n {key_path}")

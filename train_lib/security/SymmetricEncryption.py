@@ -29,7 +29,7 @@ class FileEncryptor:
             return encr_files
 
         for i, file in enumerate(files):
-            print(f"File {i+1}/{len(files)}...", end="")
+            print(f"File {i + 1}/{len(files)}...", end="")
             with open(file, "rb") as f:
                 encr_file = self.fernet.encrypt(f.read())
             with open(file, "wb") as ef:
@@ -43,7 +43,6 @@ class FileEncryptor:
         """
         print("Decrypting files..")
         if binary_files:
-            # TODO evaluate memory consumption
             decr_files = []
             for i, file in enumerate(files):
                 print(f"file {i + 1}/{len(files)}...", end="")

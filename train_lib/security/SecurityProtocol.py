@@ -190,7 +190,6 @@ class SecurityProtocol:
         :param config_path: path to write the updated train_config.json
         :return:
         """
-        # TODO check how many layers are added - improve this to use one container access
         # If a config path is given update the train config inside the container
         print(img)
         client = self.docker_client if self.docker_client else docker.from_env()
@@ -212,7 +211,7 @@ class SecurityProtocol:
         # add user key to opt directory
         # add_archive(img, user_key, "/opt")
         container.put_archive("/opt", user_key)
-        # Tag container as latest TODO check this
+        # Tag container as latest
         repo, tag = img.split(":")
         container.commit(repository=repo, tag=tag)
         container.wait()
@@ -409,7 +408,6 @@ class SecurityProtocol:
             ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
             self.key_manager.set_security_param("digital_signature", ds)
         else:
-            # TODO do we need to add the session key here?
             hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
             digest = hasher.finalize()
             sig = sk.sign(digest,

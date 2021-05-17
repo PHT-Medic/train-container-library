@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pht-train-container-library",
-    version="0.1",
+    version="1.0",
     author="Michael Graf",
     author_email="",
     description="PHT train container library",
@@ -19,7 +19,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.7',
-    # TODO specify versions
     install_requires=[
         "cryptography",
         "requests",

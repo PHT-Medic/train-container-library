@@ -9,10 +9,10 @@ from dotenv import load_dotenv, find_dotenv
 import os
 import logging
 
-
 UI_TRAIN_API = "http://pht-ui.personalhealthtrain.de/api/pht/trains/"
 
 LOGGER = logging.getLogger(__name__)
+
 
 class PHTClient:
     """
@@ -82,7 +82,6 @@ class PHTClient:
         else:
             archive = self._get_tar_archive_from_stream(endpoint, token=token)
 
-
         return archive
 
     def _get_tar_archive_from_stream(self, endpoint: str, params: dict = None,
@@ -110,7 +109,6 @@ class PHTClient:
             file_obj.seek(0)
         return file_obj
 
-    # TODO align key storage format
     def get_user_pk(self, user_id):
         """
         Get the public key associated with the given user_id from vault storage
@@ -169,13 +167,11 @@ class PHTClient:
         return headers
 
 
-
-
-
 if __name__ == '__main__':
     load_dotenv(find_dotenv())
     ampq_url = "amqp://pht:start123@193.196.20.19:5672/"
-    pht_client = PHTClient(UI_TRAIN_API, ampq_url=ampq_url, vault_url=os.getenv("vault_url"), vault_token=os.getenv("vault_token"))
+    pht_client = PHTClient(UI_TRAIN_API, ampq_url=ampq_url, vault_url=os.getenv("vault_url"),
+                           vault_token=os.getenv("vault_token"))
     tar_url = 'https://pypi.python.org/packages/source/x/xlrd/xlrd-0.9.4.tar.gz'
     # archive = pht_client._get_tar_archive_from_stream(tar_url, external_endpoint=True)
     # print(archive)
