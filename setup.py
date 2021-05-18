@@ -7,7 +7,7 @@ setuptools.setup(
     name="pht-train-container-library",
     version="1.0",
     author="Michael Graf",
-    author_email="",
+    author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -18,6 +18,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    keywords=['PHT', 'security', 'encryption'],
     python_requires='>=3.7',
     install_requires=[
         "cryptography",
