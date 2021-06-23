@@ -13,7 +13,7 @@ class FileEncryptor:
     def __init__(self, key: bytes):
         self.fernet = Fernet(key)
 
-    def encrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False):
+    def encrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False) -> Union[List[BytesIO], None]:
         """
         Decrypt the given files using symmetric encryption
         :return:
@@ -37,7 +37,7 @@ class FileEncryptor:
                 ef.write(encr_file)
             logging.info("Done")
 
-    def decrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False):
+    def decrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False) -> Union[List[BytesIO], None]:
         """
         Decrypt the given files using symmetric encryption
         :return:

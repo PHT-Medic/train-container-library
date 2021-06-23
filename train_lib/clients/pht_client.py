@@ -76,7 +76,7 @@ class PHTClient:
         :param train_id:
         :return:
         """
-        endpoint = train_id + "/tar"
+        endpoint = f"trains/{train_id}/files/download"
         if not token:
             archive = self._get_tar_archive_from_stream(endpoint)
         else:
@@ -102,11 +102,14 @@ class PHTClient:
             url = self.api_url + endpoint
         headers = self._create_api_headers(token)
         with requests.get(url, params=params, headers=headers, stream=True) as r:
-            r.raise_for_status()
-            file_obj = BytesIO()
-            for chunk in r.iter_content():
-                file_obj.write(chunk)
-            file_obj.seek(0)
+            try:
+                r.raise_for_status()
+                file_obj = BytesIO()
+                for chunk in r.iter_content():
+                    file_obj.write(chunk)
+                file_obj.seek(0)
+            except:
+                pass
         return file_obj
 
     def get_user_pk(self, user_id):
@@ -169,7 +172,7 @@ class PHTClient:
 
 if __name__ == '__main__':
     load_dotenv(find_dotenv())
-    ampq_url = "amqp://pht:start123@193.196.20.19:5672/"
+    ampq_url = os.getenv("AMPQ_URL")
     pht_client = PHTClient(UI_TRAIN_API, ampq_url=ampq_url, vault_url=os.getenv("vault_url"),
                            vault_token=os.getenv("vault_token"))
     tar_url = 'https://pypi.python.org/packages/source/x/xlrd/xlrd-0.9.4.tar.gz'

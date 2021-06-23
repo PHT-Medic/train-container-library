@@ -37,7 +37,6 @@ def extract_train_config(img: str, config_path: str = "/opt/train_config.json") 
     config_archive = extract_archive(img, config_path)
     config_file = config_archive.extractfile("train_config.json")
     data = config_file.read()
-    print(data)
     train_config = json.loads(data)
     return train_config
 
