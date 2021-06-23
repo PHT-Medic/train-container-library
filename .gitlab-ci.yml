@@ -1,6 +1,8 @@
-image: python:latest
+image: docker:19.03.12
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
+services:
+  - docker:19.03.12-dind
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -17,7 +19,8 @@ cache:
 
 before_script:
   - python -V  # Print out python version for debugging
-  - pip install virtualenv
+  - sudo apt-get install python3.8
+  - pip3 install virtualenv
   - virtualenv venv
   - source venv/bin/activate
 
@@ -38,15 +41,15 @@ run:
     paths:
       - dist/*.whl
 
-pages:
-  script:
-    - pip install sphinx sphinx-rtd-theme
-    - cd docs ; make html
-    - mv build/html/ ../public/
-  artifacts:
-    paths:
-      - public
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+#pages:
+#  script:
+#    - pip install sphinx sphinx-rtd-theme
+#    - cd docs ; make html
+#    - mv build/html/ ../public/
+#  artifacts:
+#    paths:
+#      - public
+#  rules:
+#    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 
