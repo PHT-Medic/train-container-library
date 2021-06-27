@@ -31,7 +31,7 @@ class SecurityProtocol:
     """
 
     def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None,
-                 docker_client = None):
+                 docker_client=None):
         self.station_id = station_id
         self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
