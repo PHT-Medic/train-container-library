@@ -1,56 +1,10 @@
-image: docker:19.03.12
-# Change pip's cache directory to be inside the project directory since we can
-# only cache local items.
+image: docker:latest
+
 services:
-  - docker:19.03.12-dind
-
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-
-# Pip's cache doesn't store the python packages
-# https://pip.pypa.io/en/stable/reference/pip_install/#caching
-#
-# If you want to also cache the installed packages, you have to install
-# them in a virtualenv and cache it as well.
-cache:
-  paths:
-    - .cache/pip
-    - venv/
-
-before_script:
-  
-  - apt-get install python3.8
-  - python -V  # Print out python version for debugging
-  - pip3 install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
+  - docker:dind
 
 test:
+  stage: build
   script:
-    - pip3 install .
-    - pip3 install -r requirements.txt
-    - pip3 install tox flake8 pytest # you can also use tox
-    # - tox -e py36,flake8
-    - pytest train_lib
-run:
-  script:
-    - python3 setup.py bdist_wheel
-    # an alternative approach is to install and run:
-    - pip3 install dist/*
-    # run the command here
-  artifacts:
-    paths:
-      - dist/*.whl
-
-#pages:
-#  script:
-#    - pip install sphinx sphinx-rtd-theme
-#    - cd docs ; make html
-#    - mv build/html/ ../public/
-#  artifacts:
-#    paths:
-#      - public
-#  rules:
-#    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-
+    - docker build -t test -f docker_files/Dockerfile_slim
+    - docker run test pytest train_lib
