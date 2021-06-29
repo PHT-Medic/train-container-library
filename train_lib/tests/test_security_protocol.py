@@ -392,7 +392,6 @@ def test_user_signature_verification_pre_run(test_train_image, tmpdir, key_pairs
 
 
 def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir, key_pairs, station_id=3):
-
     init_config = extract_train_config(test_train_image)
     # Execute the image
     client = docker_client
@@ -409,7 +408,7 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
         p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
 
         environment_dict_station_1 = {
-            "STATION_ID": "station_3",
+            "STATION_ID": "station_1",
             "STATION_PRIVATE_KEY_PATH": str(p1)
         }
         with mock.patch.dict(os.environ, environment_dict_station_1):
@@ -421,7 +420,7 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
         p2.write(bytes.fromhex(key_pairs["station_2"]["private_key"]))
 
         environment_dict_station_2 = {
-            "STATION_ID": "station_3",
+            "STATION_ID": "station_2",
             "STATION_PRIVATE_KEY_PATH": str(p2)
         }
         with mock.patch.dict(os.environ, environment_dict_station_2):
@@ -439,7 +438,8 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
         }
         with mock.patch.dict(os.environ, environment_dict_station_3):
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=init_config, docker_client=docker_client)
-            sp.post_run_protocol(img=test_train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
+            sp.post_run_protocol(img=test_train_image + ":latest",
+                                 private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
 
 def test_post_run_protocol(test_train_image, tmpdir, key_pairs, docker_client):
@@ -622,7 +622,40 @@ def test_pre_run_protocol_wrong_results_hash(test_train_image, tmpdir, key_pairs
 
 
 def test_multi_execution_protocol(test_train_image, tmpdir, key_pairs, docker_client):
+    # Execute image and post run protocol for first station
     execute_image_and_post_run_protocol(test_train_image=test_train_image, docker_client=docker_client, tmpdir=tmpdir,
                                         key_pairs=key_pairs)
 
+    # Second station
 
+    execute_image_and_post_run_protocol(test_train_image=test_train_image, docker_client=docker_client, tmpdir=tmpdir,
+                                        key_pairs=key_pairs, station_id=1)
+
+    config = extract_train_config(test_train_image)
+
+    # Check that the signature has been correctly updated
+    assert len(config["digital_signature"]) == 2
+
+    assert config["digital_signature"][-1]["station"] == "station_1"
+
+    execute_image_and_post_run_protocol(test_train_image=test_train_image, docker_client=docker_client, tmpdir=tmpdir,
+                                        key_pairs=key_pairs, station_id=2)
+
+    config = extract_train_config(test_train_image)
+
+    assert len(config["digital_signature"]) == 3
+
+
+    # check that the pre run protocol works after multiple executions
+
+    p1 = tmpdir.join("station_1_private_key.pem")
+    p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
+    # set up temporary env vars
+    environment_dict_station_1 = {
+        "STATION_ID": "station_1",
+        "STATION_PRIVATE_KEY_PATH": str(p1)
+    }
+    with mock.patch.dict(os.environ, environment_dict_station_1):
+        sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
+        sp.pre_run_protocol(img=test_train_image + ":latest",
+                            private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
