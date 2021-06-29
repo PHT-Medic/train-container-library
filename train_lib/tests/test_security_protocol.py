@@ -645,7 +645,6 @@ def test_multi_execution_protocol(test_train_image, tmpdir, key_pairs, docker_cl
 
     assert len(config["digital_signature"]) == 3
 
-
     # check that the pre run protocol works after multiple executions
 
     p1 = tmpdir.join("station_1_private_key.pem")
