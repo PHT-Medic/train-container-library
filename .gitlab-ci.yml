@@ -7,4 +7,4 @@ test:
   stage: build
   script:
     - docker build -t test -f docker_files/Dockerfile_slim .
-    - docker run test pytest train_lib
+    - docker run test pytest /tmp/train-container-library/train_lib
