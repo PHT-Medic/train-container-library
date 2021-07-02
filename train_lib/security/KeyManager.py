@@ -171,3 +171,4 @@ class KeyManager:
         public_key = serialization.load_pem_public_key(bytes.fromhex(key),
                                                        backend=default_backend())
         return public_key
+

@@ -1,0 +1,14 @@
+cryptography
+requests
+threaded
+python-dotenv
+redis
+docker
+pandas
+fhirpy
+scikit-learn
+matplotlib
+seaborn
+pathlib
+asyncio
+numpy
