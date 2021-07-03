@@ -9,3 +9,4 @@ fhirpy
 pika
 setuptools
 pytest
+httpx

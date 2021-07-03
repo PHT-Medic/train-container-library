@@ -1,0 +1,16 @@
+{
+  "query": {
+    "resource": "Patient",
+    "parameters": [
+      {
+        "variable": "gender",
+        "condition": "male"
+      }
+    ]
+
+  },
+  "data": {
+    "output_format": "csv",
+    "variables": ["Age"]
+  }
+}

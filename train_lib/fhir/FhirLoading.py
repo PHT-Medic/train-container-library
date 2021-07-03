@@ -81,7 +81,7 @@ async def isic_query(query):
 
     # Search for patients
     resources_p = client.resources('Patient')  # Return lazy search set
-    resources_p = resources_p.search(link__other='ISIC-'+str(query))
+    resources_p = resources_p.search(link__other='ISIC-' + str(query))
     patients = await resources_p.fetch_all()  # Returns list of AsyncFHIRResource
 
     for entry in patients:
@@ -91,7 +91,7 @@ async def isic_query(query):
         birthDate = patient['birthDate']
         patients_data.append([id, gender, birthDate])
 
-    #print(len(patients_data))
+    # print(len(patients_data))
 
     patients_df = pd.DataFrame(patients_data, columns=["patientId", "gender", "birthDate"])
 
@@ -112,7 +112,7 @@ async def isic_query(query):
             genome = media['note'][0]['text']
             media_data.append([id, reference, bodySite, url_path, genome])
 
-    #print(len(media_data))
+    # print(len(media_data))
 
     media_df = pd.DataFrame(media_data, columns=["patientId", "reference", "bodySite", "img_url", "note"])
 
@@ -140,11 +140,14 @@ async def gen_search_query(query_list, lst_output, media):
 
     if len(lst_output) == 0:
         resources_p = client.resources('Patient')
-        if len(query_list) == 2: resources_p = resources_p.search(Raw(**{query_list[0]: query_list[1]}))
-        if len(query_list) == 4: resources_p = resources_p.search(
-            Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3]}))
-        if len(query_list) == 6: resources_p = resources_p.search(
-            Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3], query_list[4]: query_list[5]}))
+        if len(query_list) == 2:
+            resources_p = resources_p.search(Raw(**{query_list[0]: query_list[1]}))
+        if len(query_list) == 4:
+            resources_p = resources_p.search(
+                Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3]}))
+        if len(query_list) == 6:
+            resources_p = resources_p.search(
+                Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3], query_list[4]: query_list[5]}))
         patients = await resources_p.limit(10).fetch()
 
         patient = patients[0].serialize()
@@ -170,9 +173,14 @@ async def gen_search_query(query_list, lst_output, media):
             return pat_param_lst
 
     resources_p = client.resources('Patient')
-    if len(query_list) == 2: resources_p = resources_p.search(Raw(**{query_list[0] : query_list[1]}))
-    if len(query_list) == 4: resources_p = resources_p.search(Raw(**{query_list[0] : query_list[1], query_list[2] : query_list[3]}))
-    if len(query_list) == 6: resources_p = resources_p.search(Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3], query_list[4] : query_list[5]}))
+    if len(query_list) == 2:
+        resources_p = resources_p.search(Raw(**{query_list[0]: query_list[1]}))
+    if len(query_list) == 4:
+        resources_p = resources_p.search(
+            Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3]}))
+    if len(query_list) == 6:
+        resources_p = resources_p.search(
+            Raw(**{query_list[0]: query_list[1], query_list[2]: query_list[3], query_list[4]: query_list[5]}))
     patients = await resources_p.fetch_all()
 
     for entry in patients:
@@ -246,7 +254,7 @@ async def gen_search_query(query_list, lst_output, media):
                         param = media['subject'][i]
                         media_value_lst.append(param)
                         if i not in df_col_names: df_col_names.append(i)
-                    if i =="bodySite":
+                    if i == "bodySite":
                         try:
                             param = media[i]['text']
                         except:
@@ -279,12 +287,11 @@ if __name__ == '__main__':
     print(query)
 
     # loop = asyncio.get_event_loop()
-    #pat_df = loop.run_until_complete(genome_query(query))
+    # pat_df = loop.run_until_complete(genome_query(query))
 
-    #pat_df = loop.run_until_complete(isic_query(query))
+    # pat_df = loop.run_until_complete(isic_query(query))
     with open('./server_patients_s1.pkl', 'rb') as results_file:
         pat_df = pickle.load(file=results_file)
 
-    #pat_df.to_pickle('./server_patients_s3.pkl')
+    # pat_df.to_pickle('./server_patients_s3.pkl')
     print(pat_df)
-
