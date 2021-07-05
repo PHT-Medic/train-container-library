@@ -8,6 +8,7 @@ from tarfile import TarFile
 from dotenv import load_dotenv, find_dotenv
 import os
 import logging
+import base64
 
 UI_TRAIN_API = "http://pht-ui.personalhealthtrain.de/api/pht/trains/"
 
@@ -69,7 +70,7 @@ class PHTClient:
         LOGGER.info(" [x] Sent %r" % json_message)
         connection.close()
 
-    def get_train_files_archive(self, train_id: str, token=None):
+    def get_train_files_archive(self, train_id: str, token: str = None, client_id: str = None):
         """
         Get the tar archive containing files for building a train from the UI api
 
@@ -80,12 +81,13 @@ class PHTClient:
         if not token:
             archive = self._get_tar_archive_from_stream(endpoint)
         else:
-            archive = self._get_tar_archive_from_stream(endpoint, token=token)
+            archive = self._get_tar_archive_from_stream(endpoint, token=token, client_id=client_id)
 
         return archive
 
     def _get_tar_archive_from_stream(self, endpoint: str, params: dict = None,
-                                     external_endpoint: bool = False, token: str = None) -> TarFile:
+                                     external_endpoint: bool = False, token: str = None,
+                                     client_id: str = None) -> TarFile:
         """
         Read a stream of tar data from the given endpoint and return an in memory BytesIO object containing the data
 
@@ -100,7 +102,7 @@ class PHTClient:
             url = endpoint
         else:
             url = self.api_url + endpoint
-        headers = self._create_api_headers(token)
+        headers = self._create_api_headers(api_token=token, client_id=client_id)
         with requests.get(url, params=params, headers=headers, stream=True) as r:
             try:
                 r.raise_for_status()
@@ -165,8 +167,10 @@ class PHTClient:
         self.headers = self._create_api_headers(api_token)
         self.vault_headers = {"X-Vault-Token": vault_token}
 
-    def _create_api_headers(self, api_token):
-        headers = {"Authorization": f"Bearer {api_token}"}
+    def _create_api_headers(self, api_token: str, client_id: str):
+        auth_string = f"{client_id}:{api_token}"
+        auth_string = base64.encodestring(auth_string.encode("utf-8"))
+        headers = {"Authorization": f"Basic {auth_string}"}
         return headers
 
 

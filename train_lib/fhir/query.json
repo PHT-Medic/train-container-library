@@ -7,10 +7,13 @@
         "condition": "male"
       }
     ]
-
   },
   "data": {
     "output_format": "csv",
-    "variables": ["Age"]
+    "variables": [
+      "id",
+      "birthDate",
+      "gender"
+    ]
   }
 }

@@ -2,6 +2,8 @@ from typing import Union, List
 from io import BytesIO
 import os
 import json
+
+import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv, find_dotenv
@@ -25,37 +27,74 @@ class PHTFhirClient:
         if not self.server_url:
             raise ValueError("No FHIR server address available")
 
-    def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None, query: dict = None):
-        query_file_content = self.read_query_file(query_file)
+    async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None, query: dict = None):
+
+        if query and query_file:
+            raise ValueError("Only specifiy one of query file or query")
+
+        if query:
+            query_file_content = query
+        else:
+            query_file_content = self.read_query_file(query_file)
+        # Generate url query string and generate auth (basic)
         url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
-        query_results = self._get_query_results_from_api(url=url, auth=auth)
+        selected_variables = query_file_content["data"]["variables"]
 
-        result = self.parse_query_results(query_results)
+        query_results = await self._get_query_results_from_api(url=url, auth=auth, selected_variables=selected_variables)
 
-        return result
+        # result = self.parse_query_results(query_results, selected_variables=selected_variables)
 
-    def _get_query_results_from_api(self, url: str, auth: HTTPBasicAuth) -> List[dict]:
+        return query_results
+
+    async def _get_query_results_from_api(self, url: str, auth: HTTPBasicAuth,
+                                          selected_variables: List[str] = None) -> List[dict]:
         # TODO token based auth
 
-
         responses = []
-        response = requests.get(url=url, auth=auth).json()
-        responses.append(response)
-        while True:
-            ic("Getting next")
+        dfs = []
 
-            next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
-            if not next_page:
-                break
-            response = requests.get(url=next_page["url"], auth=auth).json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url=url, auth=auth)
+            response = response.json()
             responses.append(response)
+
+            while True:
+                ic("Getting next")
+                df = self._process_fhir_response(response)
+                dfs.append(df)
+                next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
+                if not next_page:
+                    break
+                response = await client.get(url=next_page["url"], auth=auth)
+                response = response.json()
+                responses.append(response)
 
         ic("Finished")
         return responses
 
-    def parse_query_results(self, query_results):
+    def _process_fhir_response(self, response: dict, selected_variables: List[str] = None):
 
+        if selected_variables:
+            pass
+
+        return response
+
+    def parse_query_results(self, query_results: List[dict], selected_variables: List[str] = None):
+
+        entries = []
+        for page in query_results:
+            for entry in page["entry"]:
+                series_entry = pd.Series(entry["resource"])[selected_variables]
+                entries.append(series_entry)
+
+        ic(entries[0])
+        full_df = pd.concat(entries, axis=1)
+        full_df = full_df.T
+        print(full_df.info())
+        return full_df
+
+    def _parse_entries(self, entries: List[dict]):
         pass
 
     def read_query_file(self, file: Union[str, os.PathLike, BytesIO]) -> dict:
@@ -94,5 +133,8 @@ if __name__ == '__main__':
     load_dotenv(find_dotenv())
     print("Server", os.getenv("FHIR_SERVER_URL"))
     fhir_client = PHTFhirClient()
-    result = fhir_client.execute_query(query_file=query_json_path)
+    loop = asyncio.get_event_loop()
+
+    result = loop.run_until_complete(fhir_client.execute_query(query_file=query_json_path))
+    ic(result)
     # query_dict = fhir_client.execute_query(query_file=query_json_path)
