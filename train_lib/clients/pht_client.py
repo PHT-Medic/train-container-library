@@ -10,8 +10,6 @@ import os
 import logging
 import base64
 
-UI_TRAIN_API = "http://pht-ui.personalhealthtrain.de/api/pht/trains/"
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -77,7 +75,7 @@ class PHTClient:
         :param train_id:
         :return:
         """
-        endpoint = f"trains/{train_id}/files/download"
+        endpoint = f"{train_id}/files/download"
         if not token:
             archive = self._get_tar_archive_from_stream(endpoint)
         else:
@@ -104,14 +102,12 @@ class PHTClient:
             url = self.api_url + endpoint
         headers = self._create_api_headers(api_token=token, client_id=client_id)
         with requests.get(url, params=params, headers=headers, stream=True) as r:
-            try:
-                r.raise_for_status()
-                file_obj = BytesIO()
-                for chunk in r.iter_content():
-                    file_obj.write(chunk)
-                file_obj.seek(0)
-            except:
-                pass
+            r.raise_for_status()
+            file_obj = BytesIO()
+            for chunk in r.iter_content():
+                file_obj.write(chunk)
+            file_obj.seek(0)
+
         return file_obj
 
     def get_user_pk(self, user_id):
@@ -167,9 +163,9 @@ class PHTClient:
         self.headers = self._create_api_headers(api_token)
         self.vault_headers = {"X-Vault-Token": vault_token}
 
-    def _create_api_headers(self, api_token: str, client_id: str):
+    def _create_api_headers(self, api_token: str, client_id: str = "TRAIN_BUILDER"):
         auth_string = f"{client_id}:{api_token}"
-        auth_string = base64.encodestring(auth_string.encode("utf-8"))
+        auth_string = base64.b64encode(auth_string.encode("utf-8")).decode()
         headers = {"Authorization": f"Basic {auth_string}"}
         return headers
 
@@ -177,10 +173,15 @@ class PHTClient:
 if __name__ == '__main__':
     load_dotenv(find_dotenv())
     ampq_url = os.getenv("AMPQ_URL")
-    pht_client = PHTClient(UI_TRAIN_API, ampq_url=ampq_url, vault_url=os.getenv("vault_url"),
+    pht_client = PHTClient(api_url=os.getenv("UI_TRAIN_API"), ampq_url=ampq_url, vault_url=os.getenv("vault_url"),
                            vault_token=os.getenv("vault_token"))
     tar_url = 'https://pypi.python.org/packages/source/x/xlrd/xlrd-0.9.4.tar.gz'
     # archive = pht_client._get_tar_archive_from_stream(tar_url, external_endpoint=True)
     # print(archive)
-    print(pht_client.vault_headers)
     print(pht_client.get_station_pk(2))
+    tb_client_id = "17a05c10-194f-4734-b09a-7c5e1ab0a4ef"
+    tb_client_secret = "fc5c14a6ccdc02a85fc698344124b36182ca5366858188e74c9676a6bbd41efe0d2223a7fc6d290d"
+    train_id = "77fcbb98-b63a-403d-92d3-e172ecc7370f"
+
+    files = pht_client.get_train_files_archive(train_id=train_id, token=tb_client_secret, client_id=tb_client_id)
+

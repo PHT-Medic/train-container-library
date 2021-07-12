@@ -41,44 +41,67 @@ class PHTFhirClient:
         auth = self._generate_auth()
         selected_variables = query_file_content["data"]["variables"]
 
-        query_results = await self._get_query_results_from_api(url=url, auth=auth, selected_variables=selected_variables)
+        query_results = await self._get_query_results_from_api(url=url, auth=auth,
+                                                               selected_variables=selected_variables)
 
         # result = self.parse_query_results(query_results, selected_variables=selected_variables)
+
+        # TODO store results in selected format
 
         return query_results
 
     async def _get_query_results_from_api(self, url: str, auth: HTTPBasicAuth,
-                                          selected_variables: List[str] = None) -> List[dict]:
+                                          selected_variables: List[str] = None, k_anonimity: int = 5) -> pd.DataFrame:
         # TODO token based auth
 
-        responses = []
+        # responses = []
         dfs = []
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(url=url, auth=auth)
+            task = asyncio.create_task(client.get(url=url, auth=auth))
+            response = await task
             response = response.json()
-            responses.append(response)
+            # responses.append(response)
+
+            # Assert that the response contains at least 5 entries
+
+            assert len(response["entry"]) >= k_anonimity
 
             while True:
-                ic("Getting next")
-                df = self._process_fhir_response(response)
-                dfs.append(df)
+                ic("Getting next page")
                 next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
-                if not next_page:
+                if next_page:
+                    # Schedule a new task for new page
+                    task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
+                    # Process the previous response
+                    df = self._process_fhir_response(response, selected_variables=selected_variables)
+                    dfs.append(df)
+                    response = await task
+                    response = response.json()
+                    # responses.append(response)
+
+                else:
+                    df = self._process_fhir_response(response, selected_variables=selected_variables)
+                    dfs.append(df)
                     break
-                response = await client.get(url=next_page["url"], auth=auth)
-                response = response.json()
-                responses.append(response)
 
         ic("Finished")
-        return responses
+        result = pd.concat(dfs)
+        return result
 
     def _process_fhir_response(self, response: dict, selected_variables: List[str] = None):
 
+        entries = []
         if selected_variables:
-            pass
+            for entry in response["entry"]:
+                series_entry = pd.Series(entry["resource"])[selected_variables]
+                entries.append(series_entry)
 
-        return response
+            df = pd.concat(entries, axis=1)
+            df = df.T
+
+            return df
+        return response["entry"]
 
     def parse_query_results(self, query_results: List[dict], selected_variables: List[str] = None):
 
@@ -88,7 +111,6 @@ class PHTFhirClient:
                 series_entry = pd.Series(entry["resource"])[selected_variables]
                 entries.append(series_entry)
 
-        ic(entries[0])
         full_df = pd.concat(entries, axis=1)
         full_df = full_df.T
         print(full_df.info())

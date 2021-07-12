@@ -11,7 +11,5 @@ COPY ./README.md /tmp/train-container-library/README.md
 RUN pip install --no-cache-dir /tmp/train-container-library/ && \
     rm -rf /tmp
 
-# copy execeution scripts and set entrypoint
-COPY ./scripts/security_protocol.py /opt/security/security_protocol.py
 COPY ./scripts/entrypoint.sh /opt/entrypoint.sh
 ENTRYPOINT ["sh", "/opt/entrypoint.sh"]
