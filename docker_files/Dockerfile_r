@@ -1,7 +1,7 @@
 # credit https://github.com/civisanalytics/datascience-r
 
 FROM rocker/verse
-MAINTAINER support@civisanalytics.com
+MAINTAINER michael.graf@uni-tuebingen.de
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update -y --no-install-recommends && \
     apt-get install -y --no-install-recommends \
