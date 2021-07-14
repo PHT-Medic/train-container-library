@@ -1,4 +1,6 @@
-FROM  nvidia/cuda:10.1-cudnn7-runtime-ubuntu18.04 as base
+FROM nvidia/cuda:11.2.0-cudnn8-runtime-ubuntu20.04 as base
+
+MAINTAINER michael.graf@uni-tuebingen.de
 WORKDIR /
 # Install Python and its tools
 # TODO install newer python3 version and set as default
@@ -8,20 +10,21 @@ RUN apt update && apt install -y --no-install-recommends \
     python3-dev \
     python3-pip \
     python3-setuptools && \
-    pip3 -q install pip --upgrade && \
-    # Install deep learning libraries
-    pip3 install \
+    pip3 -q install pip --upgrade # && \
+    # Create python symlink for python 3
+#    ln -s /usr/bin/python3 /usr/bin/python && \
+#    ln -s /usr/bin/pip3 /usr/bin/pip
+# Install deep learning libraries
+RUN pip3 install \
     # Numpy and Pandas are required a-priori
     numpy pandas \
     # PyTorch with CUDA 10.1 support and Torchvision
-    torch==1.7.0+cu101 torchvision==0.8.1+cu101 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html \
+    torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio===0.9.0 -f https://download.pytorch.org/whl/torch_stable.html \
     # Upgraded version of Tensorboard with more features
     tensorboardX \
     # tensorflow
-    tensorflow && \
-    # Create python symlink for python 3
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    ln -s /usr/bin/pip3 /usr/bin/pip
+    tensorflow
+
 WORKDIR /opt/pht_train
 COPY ./requirements.txt /tmp/requirements.txt
 RUN apt-get update -yqq && \
@@ -35,10 +38,6 @@ COPY ./README.md /tmp/train-container-library/README.md
 RUN pip install --no-cache-dir /tmp/train-container-library/ && \
     rm -rf /tmp
 
-# copy execeution scripts and set entrypoint
-COPY ./scripts/security_protocol.py /opt/security/security_protocol.py
-COPY ./scripts/entrypoint.sh /opt/entrypoint.sh
-ENTRYPOINT ["sh", "/opt/entrypoint.sh"]
 
 
 
