@@ -10,6 +10,7 @@ from dotenv import load_dotenv, find_dotenv
 from icecream import ic
 import httpx
 import asyncio
+import fhir_k_anonymity
 
 
 class PHTFhirClient:
@@ -46,6 +47,9 @@ class PHTFhirClient:
 
         # result = self.parse_query_results(query_results, selected_variables=selected_variables)
 
+        output_format = query_file_content["data"]["output_format"]
+        if output_format == "csv":
+            query_results.to_csv("query_results.csv", index=False)
         # TODO store results in selected format
 
         return query_results
@@ -61,7 +65,6 @@ class PHTFhirClient:
             task = asyncio.create_task(client.get(url=url, auth=auth))
             response = await task
             response = response.json()
-            # responses.append(response)
 
             # Assert that the response contains at least 5 entries
 
@@ -151,12 +154,14 @@ class PHTFhirClient:
 
 
 if __name__ == '__main__':
-    query_json_path = "../fhir/query.json"
+    query_json_path = "query.json"
     load_dotenv(find_dotenv())
     print("Server", os.getenv("FHIR_SERVER_URL"))
     fhir_client = PHTFhirClient()
     loop = asyncio.get_event_loop()
 
     result = loop.run_until_complete(fhir_client.execute_query(query_file=query_json_path))
+
+    print(fhir_k_anonymity.is_k_anonymized(result))
     ic(result)
     # query_dict = fhir_client.execute_query(query_file=query_json_path)
