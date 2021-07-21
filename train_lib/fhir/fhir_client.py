@@ -55,21 +55,15 @@ class PHTFhirClient:
         return query_results
 
     async def _get_query_results_from_api(self, url: str, auth: HTTPBasicAuth,
-                                          selected_variables: List[str] = None, k_anonimity: int = 5) -> pd.DataFrame:
+                                          selected_variables: List[str] = None, k_anonymity: int = 5) -> pd.DataFrame:
         # TODO token based auth
-
-        # responses = []
         dfs = []
 
         async with httpx.AsyncClient() as client:
             task = asyncio.create_task(client.get(url=url, auth=auth))
             response = await task
             response = response.json()
-
-            # Assert that the response contains at least 5 entries
-
-            assert len(response["entry"]) >= k_anonimity
-
+            #  Process all the pages contained in the response
             while True:
                 ic("Getting next page")
                 next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
@@ -81,7 +75,6 @@ class PHTFhirClient:
                     dfs.append(df)
                     response = await task
                     response = response.json()
-                    # responses.append(response)
 
                 else:
                     df = self._process_fhir_response(response, selected_variables=selected_variables)
@@ -90,7 +83,19 @@ class PHTFhirClient:
 
         ic("Finished")
         result = pd.concat(dfs)
-        return result
+
+        # Check if the returned results satisfy k-anonymity
+        if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
+            return result
+
+        # Attempt to generalize the dataframe
+        else:
+            anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
+            if anon_df:
+                return anon_df
+            else:
+                raise PermissionError(
+                    f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
 
     def _process_fhir_response(self, response: dict, selected_variables: List[str] = None):
 
