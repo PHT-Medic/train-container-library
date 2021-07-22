@@ -18,7 +18,7 @@ def is_k_anonymized(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
 
 
 def anonymize(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
-    anon_df = pd.DataFrame(columns=df.columns)
+    anon_df = df.copy()
 
     # If id cols are given anonymize those otherwise use all columns
     for col in id_cols if id_cols else df.columns:
@@ -32,7 +32,10 @@ def anonymize(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
             # TODO categorical/string variable handling
             anon_df[col] = df[col]
 
-    if is_k_anonymized(anon_df):
+        else:
+            anon_df[col] = anon_df[col]
+
+    if is_k_anonymized(anon_df, k=k):
         return anon_df
 
     else:

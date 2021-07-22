@@ -100,18 +100,21 @@ class PHTFhirClient:
     def _process_fhir_response(self, response: dict, selected_variables: List[str] = None):
 
         entries = []
-        if selected_variables:
-            for entry in response["entry"]:
+
+        for entry in response["entry"]:
+            if selected_variables:
                 series_entry = pd.Series(entry["resource"])[selected_variables]
-                entries.append(series_entry)
+            else:
+                series_entry = pd.Series(entry["resource"])
+            entries.append(series_entry)
 
-            df = pd.concat(entries, axis=1)
-            df = df.T
+        df = pd.concat(entries, axis=1)
+        df = df.T
 
-            return df
-        return response["entry"]
+        return df
 
-    def parse_query_results(self, query_results: List[dict], selected_variables: List[str] = None):
+    @staticmethod
+    def parse_query_results(query_results: List[dict], selected_variables: List[str] = None):
 
         entries = []
         for page in query_results:
@@ -127,7 +130,8 @@ class PHTFhirClient:
     def _parse_entries(self, entries: List[dict]):
         pass
 
-    def read_query_file(self, file: Union[str, os.PathLike, BytesIO]) -> dict:
+    @staticmethod
+    def read_query_file(file: Union[str, os.PathLike, BytesIO]) -> dict:
         if type(file) == BytesIO:
             query_file = file.read()
         else:
@@ -143,8 +147,9 @@ class PHTFhirClient:
 
         url += query["resource"] + "?"
 
-        for parameter in query["parameters"]:
-            url += f"{parameter['variable']}={parameter['condition']}"
+        if query["parameters"]:
+            for parameter in query["parameters"]:
+                url += f"{parameter['variable']}={parameter['condition']}"
 
         url = url + f"&_format=[{return_format}]&_count={limit}"
 
