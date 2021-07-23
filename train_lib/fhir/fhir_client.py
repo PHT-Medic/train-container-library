@@ -60,6 +60,7 @@ class PHTFhirClient:
         dfs = []
 
         async with httpx.AsyncClient() as client:
+            ic(url)
             task = asyncio.create_task(client.get(url=url, auth=auth))
             response = await task
             response = response.json()
@@ -86,8 +87,10 @@ class PHTFhirClient:
                     break
 
         ic("Finished")
-        result = pd.concat(dfs)
-
+        if dfs:
+            result = pd.concat(dfs)
+        else:
+            raise ValueError("No Results matched the given query.")
         # Check if the returned results satisfy k-anonymity
         if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
             return result
@@ -132,9 +135,6 @@ class PHTFhirClient:
         print(full_df.info())
         return full_df
 
-    def _parse_entries(self, entries: List[dict]):
-        pass
-
     @staticmethod
     def read_query_file(file: Union[str, os.PathLike, BytesIO]) -> dict:
         if type(file) == BytesIO:
@@ -155,11 +155,17 @@ class PHTFhirClient:
 
         url += query["resource"] + "?"
 
+        # if there are query parameters given append them after the resource
         if query.get("parameters", None):
             for parameter in query["parameters"]:
                 url += f"{parameter['variable']}={parameter['condition']}"
 
-        url = url + f"&_format=[{return_format}]&_count={limit}"
+            # add format parameters
+            url = url + f"&_format=[{return_format}]&_count={limit}"
+
+        # Only add format parameters
+        else:
+            url = url + f"_format=[{return_format}]&_count={limit}"
 
         return url
 
