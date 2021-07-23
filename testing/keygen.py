@@ -37,7 +37,10 @@ def sign(rsa_private_key: rsa.RSAPrivateKey, digest: bytes):
 
 if __name__ == '__main__':
     generate_user_key_pair()
-
+    with open("../../airflow-rest-api/Stations Keys/S_1_sk.pem", "rb") as pk:
+        private_key = serialization.load_pem_private_key(pk.read(), password=None,
+                                                         backend=default_backend())
+        print(private_key)
     # Generate simulated values for hashes
     # session_id = bytes.fromhex("da5b1de1025815cf4f2f7adfd6009ef5e516db6b15c2e895833b761ade7a3c1be0dd2e46aac70fb88f557963f628d9c2ece3e6597dcd50788cc9fde3d10b8a3b")
     # files = list()

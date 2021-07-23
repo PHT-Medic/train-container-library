@@ -2,15 +2,17 @@ from typing import Union, List
 from io import BytesIO
 import os
 import json
-
 import pandas as pd
-import requests
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv, find_dotenv
 from icecream import ic
 import httpx
 import asyncio
+from fhir.resources.patient import Patient
+from fhir.resources.media import Media
+
 import fhir_k_anonymity
+
 
 
 class PHTFhirClient:
@@ -67,23 +69,25 @@ class PHTFhirClient:
             #  Process all the pages contained in the response
             while True:
                 # TODO improve this
-                ic("Getting next page")
                 if response.get("link", None):
                     next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
                 else:
                     break
                 if next_page:
+                    ic("Getting next page")
                     # Schedule a new task for new page
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
                     # Process the previous response
                     df = self._process_fhir_response(response, selected_variables=selected_variables)
-                    dfs.append(df)
+                    if df:
+                        dfs.append(df)
                     response = await task
                     response = response.json()
 
                 else:
                     df = self._process_fhir_response(response, selected_variables=selected_variables)
-                    dfs.append(df)
+                    if df:
+                        dfs.append(df)
                     break
 
         ic("Finished")
@@ -109,17 +113,20 @@ class PHTFhirClient:
 
         entries = []
 
-        for entry in response["entry"]:
-            if selected_variables:
-                series_entry = pd.Series(entry["resource"])[selected_variables]
-            else:
-                series_entry = pd.Series(entry["resource"])
-            entries.append(series_entry)
+        if response.get("entry", None):
+            for entry in response["entry"]:
+                if selected_variables:
+                    series_entry = pd.Series(entry["resource"])[selected_variables]
+                else:
+                    series_entry = pd.Series(entry["resource"])
+                entries.append(series_entry)
 
-        df = pd.concat(entries, axis=1)
-        df = df.T
+            df = pd.concat(entries, axis=1)
+            df = df.T
 
-        return df
+            return df
+        else:
+            return None
 
     @staticmethod
     def parse_query_results(query_results: List[dict], selected_variables: List[str] = None):
