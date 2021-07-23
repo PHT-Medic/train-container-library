@@ -40,7 +40,7 @@ class PHTFhirClient:
         # Generate url query string and generate auth (basic)
         url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
-        selected_variables = query_file_content["data"]["variables"]
+        selected_variables = query_file_content["data"].get("variables", None)
 
         query_results = await self._get_query_results_from_api(url=url, auth=auth,
                                                                selected_variables=selected_variables)
@@ -65,8 +65,12 @@ class PHTFhirClient:
             response = response.json()
             #  Process all the pages contained in the response
             while True:
+                # TODO improve this
                 ic("Getting next page")
-                next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
+                if response.get("link", None):
+                    next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
+                else:
+                    break
                 if next_page:
                     # Schedule a new task for new page
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
@@ -97,7 +101,8 @@ class PHTFhirClient:
                 raise PermissionError(
                     f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
 
-    def _process_fhir_response(self, response: dict, selected_variables: List[str] = None):
+    @staticmethod
+    def _process_fhir_response(response: dict, selected_variables: List[str] = None):
 
         entries = []
 
@@ -145,9 +150,12 @@ class PHTFhirClient:
         if self.server_type == "ibm":
             url += "/fhir-server/api/v4/"
 
+        elif self.server_type in ["blaze", "hapi"]:
+            url += "/fhir/"
+
         url += query["resource"] + "?"
 
-        if query["parameters"]:
+        if query.get("parameters", None):
             for parameter in query["parameters"]:
                 url += f"{parameter['variable']}={parameter['condition']}"
 
