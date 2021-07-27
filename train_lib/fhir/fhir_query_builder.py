@@ -1,14 +1,28 @@
 import os
-from typing import Union
+from typing import Union, List
 import json
+from io import BytesIO
 
 
-def build_query_string(query_json: Union[str, os.PathLike, bytes]):
-    query_dict = load_query_file(query_json)
+def build_query_string(query_dict: dict) -> str:
+    query_string = ""
+    query_string += query_dict["resource"] + "?"
+
+    # check if there are search parameters given for the main resource
+    if query_dict.get("parameters", None):
+        # generate the url string for the main resources parameters
+        query_string += process_main_resource_parameters(query_dict["parameters"])
+    return query_string
 
 
-def process_json_query(query_dict: dict) -> str:
-    pass
+def process_main_resource_parameters(resource_params: List[dict]) -> str:
+    param_search_string = ""
+    for i, parameter in enumerate(resource_params):
+        param_search_string += f"{parameter['variable']}={parameter['condition']}"
+        if i < len(resource_params) - 1:
+            param_search_string += "&"
+
+    return param_search_string
 
 
 def load_query_file(query_json: Union[str, os.PathLike, bytes]) -> dict:

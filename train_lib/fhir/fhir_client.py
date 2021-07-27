@@ -9,8 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 from icecream import ic
 import httpx
 import asyncio
-from fhir.resources.patient import Patient
-from fhir.resources.media import Media
+from fhir_query_builder import build_query_string
 
 import fhir_k_anonymity
 
