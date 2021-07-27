@@ -33,7 +33,7 @@ class PHTFhirClient:
     async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None, query: dict = None):
 
         if query and query_file:
-            raise ValueError("Only specifiy one of query file or query")
+            raise ValueError("Only specify one of query file or query")
 
         if query:
             query_file_content = query
@@ -168,7 +168,6 @@ class PHTFhirClient:
 
             # add format parameters
             url = url + f"&_format=[{return_format}]&_count={limit}"
-
         # Only add format parameters
         else:
             url = url + f"_format=[{return_format}]&_count={limit}"
