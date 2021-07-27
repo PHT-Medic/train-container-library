@@ -4,6 +4,7 @@ import os
 import json
 import pandas as pd
 from requests.auth import HTTPBasicAuth
+import requests
 from dotenv import load_dotenv, find_dotenv
 from icecream import ic
 import httpx
@@ -12,7 +13,6 @@ from fhir.resources.patient import Patient
 from fhir.resources.media import Media
 
 import fhir_k_anonymity
-
 
 
 class PHTFhirClient:
@@ -176,12 +176,20 @@ class PHTFhirClient:
 
         return url
 
-    def _generate_auth(self) -> HTTPBasicAuth:
+    def _generate_auth(self) -> requests.auth.AuthBase:
         if self.username and self.password:
             return HTTPBasicAuth(username=self.username, password=self.password)
-        else:
-            # TODO token based auth
-            pass
+        elif self.token:
+            return BearerAuth(token=self.token)
+
+
+class BearerAuth(requests.auth.AuthBase):
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, r):
+        r.headers["authorization"] = "Bearer " + self.token
+        return r
 
 
 if __name__ == '__main__':
