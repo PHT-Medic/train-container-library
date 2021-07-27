@@ -305,11 +305,10 @@ class SecurityProtocol:
         file_encryptor.encrypt_files(files)
         self.key_manager.set_security_param("encrypted_key", self.key_manager.encrypt_symmetric_key(new_sym_key))
         # at the last station encrypt the symmetric key using the rsa public key of the user
-        if self._is_last_station_on_route():
-            user_public_key = self.key_manager.load_public_key(
-                self.key_manager.get_security_param("rsa_user_public_key"))
-            user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
-            self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
+        user_public_key = self.key_manager.load_public_key(
+            self.key_manager.get_security_param("rsa_user_public_key"))
+        user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
+        self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
 
         self.key_manager.save_keyfile()
         logging.info("Post-protocol success")
@@ -455,10 +454,6 @@ class SecurityProtocol:
             files += [os.path.join(dir_path, file) for file in file_names]
         logging.info(f"Found {len(files)} Files")
         return files
-
-    def _is_last_station_on_route(self):
-        # TODO how to check for last station
-        return True
 
     def _previous_station_id(self):
         """

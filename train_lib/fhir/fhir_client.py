@@ -52,13 +52,12 @@ class PHTFhirClient:
         output_format = query_file_content["data"]["output_format"]
         if output_format == "csv":
             query_results.to_csv("query_results.csv", index=False)
-        # TODO store results in selected format
+        # TODO add more output formats
 
         return query_results
 
     async def _get_query_results_from_api(self, url: str, auth: HTTPBasicAuth,
                                           selected_variables: List[str] = None, k_anonymity: int = 5) -> pd.DataFrame:
-        # TODO token based auth
         dfs = []
 
         async with httpx.AsyncClient() as client:
@@ -181,6 +180,8 @@ class PHTFhirClient:
             return HTTPBasicAuth(username=self.username, password=self.password)
         elif self.token:
             return BearerAuth(token=self.token)
+
+        # TODO request token from id provider if configured
 
 
 class BearerAuth(requests.auth.AuthBase):
