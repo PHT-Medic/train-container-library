@@ -38,8 +38,12 @@ class PHTFhirClient:
             query_file_content = query
         else:
             query_file_content = self.read_query_file(query_file)
+
         # Generate url query string and generate auth (basic)
-        url = self._generate_url(query_file_content["query"])
+        if query_file_content.get("query_string", None):
+            url = self._generate_url(query_string=query_file_content["query_string"])
+        else:
+            url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
         selected_variables = query_file_content["data"].get("variables", None)
 
@@ -68,7 +72,7 @@ class PHTFhirClient:
             while True:
                 # TODO improve this
                 if response.get("link", None):
-                    next_page = next((link for link in response["link"] if link["relation"] == "next"), None)
+                    next_page = next((link for link in response["link"] if link["relation "] == "next"), None)
                 else:
                     break
                 if next_page:
@@ -150,7 +154,7 @@ class PHTFhirClient:
         query_file = json.loads(query_file)
         return query_file
 
-    def _generate_url(self, query: dict, return_format="json", limit=1000):
+    def _generate_url(self, query: dict = None, query_string: str = None, return_format="json", limit=1000):
         url = self.server_url
         if self.server_type == "ibm":
             url += "/fhir-server/api/v4/"
@@ -158,7 +162,14 @@ class PHTFhirClient:
         elif self.server_type in ["blaze", "hapi"]:
             url += "/fhir/"
 
-        url += build_query_string(query_dict=query)
+        if query:
+            url += build_query_string(query_dict=query)
+        elif query_string:
+            url += query_string
+        else:
+            raise ValueError("Either query dictionary or string need to be given")
+        # add formatting info
+        url += f"&_format={return_format}&_limit={limit}"
 
         return url
 
