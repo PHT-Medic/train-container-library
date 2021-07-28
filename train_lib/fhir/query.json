@@ -5,6 +5,10 @@
       {
         "variable": "gender",
         "condition": "male"
+      },
+      {
+        "variable": "birthdate",
+        "condition": "sa1980-08-12"
       }
     ],
     "has": [
