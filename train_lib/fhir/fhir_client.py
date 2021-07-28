@@ -158,28 +158,16 @@ class PHTFhirClient:
         elif self.server_type in ["blaze", "hapi"]:
             url += "/fhir/"
 
-        url += query["resource"] + "?"
-
-        # if there are query parameters given append them after the resource
-        if query.get("parameters", None):
-            for parameter in query["parameters"]:
-                url += f"{parameter['variable']}={parameter['condition']}"
-
-            # add format parameters
-            url = url + f"&_format=[{return_format}]&_count={limit}"
-        # Only add format parameters
-        else:
-            url = url + f"_format=[{return_format}]&_count={limit}"
+        url += build_query_string(query_dict=query)
 
         return url
 
     def _generate_auth(self) -> requests.auth.AuthBase:
         if self.username and self.password:
             return HTTPBasicAuth(username=self.username, password=self.password)
+        # TODO request token from id provider if configured
         elif self.token:
             return BearerAuth(token=self.token)
-
-        # TODO request token from id provider if configured
 
 
 class BearerAuth(requests.auth.AuthBase):
