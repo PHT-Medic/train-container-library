@@ -1,10 +1,16 @@
 import os
 from typing import Union, List
 import json
-from io import BytesIO
 
 
 def build_query_string(query_dict: dict) -> str:
+    """
+    Builds a valid query string to perform a get request against a fhir server based on the given dictionary
+    containing the definition of a fhir query in json format.
+
+    :param query_dict: dictionary defining fhir search parameters
+    :return:
+    """
     query_string = query_dict["resource"] + "?"
 
     # check if there are search parameters given for the main resource
@@ -22,9 +28,17 @@ def build_query_string(query_dict: dict) -> str:
 
 
 def process_main_resource_parameters(resource_params: List[dict]) -> str:
+    """
+    Build the query parameters to be applied directly to queried fhir resource.
+    :param resource_params: List of dictionary containing the name of the parameter to search and the search condition
+    :return: part of
+    """
     param_search_string = ""
     for i, parameter in enumerate(resource_params):
-        param_search_string += f"{parameter['variable']}={parameter['condition']}"
+        if isinstance(parameter["condition"], list):
+            param_search_string += f"{parameter['variable']}={','.join(parameter['condition'])}"
+        else:
+            param_search_string += f"{parameter['variable']}={parameter['condition']}"
         # dont add an additional & at the end
         if i < len(resource_params) - 1:
             param_search_string += "&"
@@ -33,6 +47,14 @@ def process_main_resource_parameters(resource_params: List[dict]) -> str:
 
 
 def process_reverse_chain_params(resource: str, reverse_chains: List[dict]) -> str:
+    """
+    Creates a query string based on the given reverse chain parameters for the queried resource (querying based on
+    other resources that refer to the resource.
+    :param resource: the main resource on which to query references
+    :param reverse_chains: list of reverse chain resources and parameters
+    :return: query string to use in fhir search
+    """
+
     resource_prop = resource.lower()
     reverse_chain_string = ""
     # add all the resources given as reverse chain parameters to the query url
@@ -76,5 +98,5 @@ def load_query_file(query_json: Union[str, os.PathLike, bytes]) -> dict:
 
 if __name__ == '__main__':
     query_file = load_query_file("query.json")
-    query_string = build_query_string(query_file["query"])
-    print(query_string)
+    query_str = build_query_string(query_file["query"])
+    print(query_str)

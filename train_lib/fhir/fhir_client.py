@@ -17,6 +17,15 @@ import fhir_k_anonymity
 class PHTFhirClient:
     def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
                  server_type: str = "ibm"):
+        """
+        Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
+
+        :param server_url: base url of the FHIR server to execute the query against
+        :param username: username for use in basic auth authentication against the fhir server
+        :param password: password for use in basic auth
+        :param token: token to use for authenticating against a FHIR server using a bearer token
+        :param server_type: the type of the server one of ["blaze", "hapi", "ibm"]
+        """
         self.server_url = server_url if server_url else os.getenv("FHIR_SERVER_URL")
         self.username = username if username else os.getenv("FHIR_USER")
         self.password = password if password else os.getenv("FHIR_PW")
@@ -29,8 +38,16 @@ class PHTFhirClient:
         if not self.server_url:
             raise ValueError("No FHIR server address available")
 
-    async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None, query: dict = None):
-
+    async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None,
+                            query: dict = None) -> pd.DataFrame:
+        """
+        Asynchronously build the query string and execute it against the given fhir server either based on a query.json
+        file or based on a dictionary containing the query file content.
+        :param query_file: definition of the query given in json format either a string, a path to a file or in memory
+        file object
+        :param query: dictionary containing query definition
+        :return:
+        """
         if query and query_file:
             raise ValueError("Only specify one of query file or query")
 
@@ -50,8 +67,6 @@ class PHTFhirClient:
         query_results = await self._get_query_results_from_api(url=url, auth=auth,
                                                                selected_variables=selected_variables)
 
-        # result = self.parse_query_results(query_results, selected_variables=selected_variables)
-
         output_format = query_file_content["data"]["output_format"]
         if output_format == "csv":
             query_results.to_csv("query_results.csv", index=False)
@@ -59,8 +74,20 @@ class PHTFhirClient:
 
         return query_results
 
-    async def _get_query_results_from_api(self, url: str, auth: HTTPBasicAuth,
+    async def _get_query_results_from_api(self, url: str, auth: requests.auth.AuthBase = None,
                                           selected_variables: List[str] = None, k_anonymity: int = 5) -> pd.DataFrame:
+        """
+        Executes the query against the server based on the create FHIR search URL query.
+        Checks if the results conform to the k-anonymity settings and attempts to generalize to make them k-anon
+        conform.
+
+        :param url: the full url to query, containing the fhir search definition based on the query file
+        :param auth: auth that will be supplied to request performed against the server. Can either be basic auth or
+        bearer token based authentication
+        :param selected_variables: the variables that will be parsed from the results
+        :param k_anonymity: k parameter for k-anonymity, that the results will be validated against
+        :return: Dataframe containing the selected variables
+        """
         dfs = []
 
         async with httpx.AsyncClient() as client:
@@ -111,8 +138,15 @@ class PHTFhirClient:
                     f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
 
     @staticmethod
-    def _process_fhir_response(response: dict, selected_variables: List[str] = None):
+    def _process_fhir_response(response: dict, selected_variables: List[str] = None) -> Union[pd.DataFrame, None]:
+        """
+        Parses the fhir response into a dataframe. If selected variables are given only these are parsed from the
+        response and returned
 
+        :param response: the response data to the query from a fhir server
+        :param selected_variables: list variable names to parse from the response
+        :return:
+        """
         entries = []
 
         if response.get("entry", None):
@@ -131,21 +165,12 @@ class PHTFhirClient:
             return None
 
     @staticmethod
-    def parse_query_results(query_results: List[dict], selected_variables: List[str] = None):
-
-        entries = []
-        for page in query_results:
-            for entry in page["entry"]:
-                series_entry = pd.Series(entry["resource"])[selected_variables]
-                entries.append(series_entry)
-
-        full_df = pd.concat(entries, axis=1)
-        full_df = full_df.T
-        print(full_df.info())
-        return full_df
-
-    @staticmethod
     def read_query_file(file: Union[str, os.PathLike, BytesIO]) -> dict:
+        """
+        Reads the content of a query.json file either given as a path or as in memory file object
+        :param file: path to file or in memory file object to parse
+        :return: dictionary representation of the query.json file
+        """
         if type(file) == BytesIO:
             query_file = file.read()
         else:
@@ -155,6 +180,16 @@ class PHTFhirClient:
         return query_file
 
     def _generate_url(self, query: dict = None, query_string: str = None, return_format="json", limit=1000):
+        """
+        Generates the fhir search url to request from the server based. Either based on a previously given query string
+        or based on a dictionary containing the query definition in the query.json file.
+
+        :param query: dictionary containing the content of the query definition in the query.json file
+        :param query_string: Predefined Fhir url query string to append to base server url
+        :param return_format: the format in which the server should return the data.
+        :param limit: the max number of entries in a paginated response
+        :return: url string to perform a request against a fhir server with
+        """
         url = self.server_url
         if self.server_type == "ibm":
             url += "/fhir-server/api/v4/"
@@ -168,12 +203,18 @@ class PHTFhirClient:
             url += query_string
         else:
             raise ValueError("Either query dictionary or string need to be given")
-        # add formatting info
+        # add formatting configuration
         url += f"&_format={return_format}&_limit={limit}"
 
         return url
 
     def _generate_auth(self) -> requests.auth.AuthBase:
+        """
+        Generate authoriation for the request to be sent to server. Either based on a given bearer token or using basic
+        auth with username and password.
+
+        :return: Auth object to pass to a requests call.
+        """
         if self.username and self.password:
             return HTTPBasicAuth(username=self.username, password=self.password)
         # TODO request token from id provider if configured

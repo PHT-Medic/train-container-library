@@ -6,6 +6,14 @@ from icecream import ic
 
 
 def is_k_anonymized(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
+    """
+    Checks if a dataframe satisfies k-anonymity for the given k. If id_cols is given only these columns are checked
+    :param df: dataframe to check for k-anonymity
+    :param k: the number samples that need to have the same values
+    :param id_cols: optional subset of columns in the dataframe that are exclusively checked for k-anonymity
+    :return: boolean indicating wether the dataframe satisfies k-anonymity
+    """
+
     for index, row in df.iterrows():
         if id_cols:
             query = ' & '.join([f'{col} == "{row[col]}"' for col in id_cols])
@@ -17,9 +25,16 @@ def is_k_anonymized(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
     return True
 
 
-def anonymize(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
-    anon_df = df.copy()
+def anonymize(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None) -> pd.DataFrame:
+    """
+    Attempts to generalize the given dataframe to make it k-anonymized
 
+    :param df: dataframe to check
+    :param k:
+    :param id_cols: optional parameter specifying a subset of columns in the dataframe to generalize
+    :return:
+    """
+    anon_df = df.copy()
     # If id cols are given anonymize those otherwise use all columns
     for col in id_cols if id_cols else df.columns:
         if is_datetime(df[col]):
