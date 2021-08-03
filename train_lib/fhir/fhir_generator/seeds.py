@@ -1,5 +1,0 @@
-
-
-
-
-first_names = {}

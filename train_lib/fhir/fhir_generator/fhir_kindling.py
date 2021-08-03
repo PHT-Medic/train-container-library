@@ -29,5 +29,3 @@ def _generate_patient(age_range: Union[Tuple[int, int], Tuple[pendulum.DateTime,
 
 
 
-if __name__ == '__main__':
-    pprint(Patient.schema()["properties"])
