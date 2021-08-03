@@ -14,20 +14,23 @@ import random
 
 class PatientGenerator(FhirResourceGenerator):
 
-    def __init__(self, n: int,
+    def __init__(self, n: int, fhir_server: str = None, fhir_user: str = None, fhir_pw: str = None,
+                 fhir_token: str = None,
                  age_range: Tuple[DateTime, DateTime] = None,
                  gender_distribution: Tuple[float, float, float, float] = None):
-        super().__init__(n, resource_type="Patient")
+        super().__init__(n, fhir_server=fhir_server, fhir_user=fhir_user, fhir_pw=fhir_pw, fhir_token=fhir_token,
+                         resource_type="Patient")
         self.age_range = age_range
         self.gender_distribution = gender_distribution
         self.birthdate_range = None
 
-    def generate(self) -> List[Patient]:
+    def generate(self, upload: bool = False) -> List[Patient]:
         patients = []
         names = self._generate_patient_names(self.n)
         for i in range(self.n):
             patient_dict = self._generate_patient_data(name=names[i])
             patients.append(Patient(**patient_dict))
+        self.resources = patients
         return patients
 
     def _generate_patient_data(self, name: Tuple[str, str]) -> dict:
