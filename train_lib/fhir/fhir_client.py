@@ -32,9 +32,11 @@ class PHTFhirClient:
         self.token = token if token else os.getenv("FHIR_TOKEN")
         self.server_type = server_type
 
+        # Check for correct initialization based on env vars or constructor parameters
+        if not (self.username and self.password) and self.token:
+            raise ValueError("Only one of username:pw or token auth can be selected")
         if not (self.username and self.password) or self.token:
             raise ValueError("Insufficient login information, either token or username and password need to be set.")
-
         if not self.server_url:
             raise ValueError("No FHIR server address available")
 

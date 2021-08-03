@@ -6,27 +6,6 @@ import json
 import docker
 
 
-def update_archive(img: str, path: str, mode="encrypt"):
-    """
-    Updates an archive result files located at path using the given mode.
-    Either encrypts or decrypts an archive extracted from the given image and replaces it with a copy of the archive
-    containing the same files either decrypted or encrypted
-
-    :param img:
-    :param path:
-    :param mode:
-    :return:
-    """
-
-    files, file_members, all_members = files_from_archive(extract_archive(img, path))
-    if mode == "encrypt":
-        pass
-    elif mode == "decrypt":
-        pass
-    else:
-        raise ValueError(f"Unrecognized update mode: {mode}")
-
-
 def extract_train_config(img: str, config_path: str = "/opt/train_config.json") -> dict:
     """
     Extract the train configuration json from the specified image and return it as a dictionary
@@ -39,6 +18,20 @@ def extract_train_config(img: str, config_path: str = "/opt/train_config.json") 
     data = config_file.read()
     train_config = json.loads(data)
     return train_config
+
+
+def extract_query_json(img: str, query_file_path: str = "/opt/pht-train/query.json") -> dict:
+    """
+    Extract query.json file from the specified image and return it as a dictionary
+    :param img: docker image identifier
+    :param query_file_path: path of the query file inside the image
+    :return: dictionary containing the  security values stored inside the train:config.json
+    """
+    config_archive = extract_archive(img, query_file_path)
+    query_file = config_archive.extractfile("query.json")
+    data = query_file.read()
+    query_dict = json.loads(data)
+    return query_dict
 
 
 def files_from_archive(tar_archive: tarfile.TarFile):

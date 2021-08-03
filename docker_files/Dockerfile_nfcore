@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir /tmp/train-container-library/ && \
 # copy execeution scripts and set entrypoint
 COPY ./scripts/security_protocol.py /opt/security/security_protocol.py
 COPY ./scripts/entrypoint.sh /opt/entrypoint.sh
-ENTRYPOINT ["sh", "/opt/entrypoint.sh"]dock
+ENTRYPOINT ["sh", "/opt/entrypoint.sh"]
 
 USER nextflow
 COPY ./scripts/custom_nextflow.config /opt/custom_nextflow.config

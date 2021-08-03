@@ -11,3 +11,4 @@ pika
 setuptools
 pytest
 httpx
+pendulum
