@@ -32,6 +32,7 @@ class PHTFhirClient:
         self.password = password if password else os.getenv("FHIR_PW")
         self.token = token if token else os.getenv("FHIR_TOKEN")
         self.server_type = server_type
+        self.output_format = None
 
         # Check for correct initialization based on env vars or constructor parameters
         if not (self.username and self.password) and self.token:
@@ -59,6 +60,9 @@ class PHTFhirClient:
         else:
             query_file_content = self.read_query_file(query_file)
 
+        # set the output format
+        self.output_format = query_file_content["data"]["output_format"]
+
         # Generate url query string and generate auth (basic)
         if query_file_content.get("query_string", None):
             url = self._generate_url(query_string=query_file_content["query_string"])
@@ -70,8 +74,7 @@ class PHTFhirClient:
         query_results = await self._get_query_results_from_api(url=url, auth=auth,
                                                                selected_variables=selected_variables)
 
-        output_format = query_file_content["data"]["output_format"]
-        if output_format == "csv":
+        if self.output_format == "csv":
             query_results.to_csv("query_results.csv", index=False)
         # TODO add more output formats
 
@@ -91,7 +94,7 @@ class PHTFhirClient:
         :param k_anonymity: k parameter for k-anonymity, that the results will be validated against
         :return: Dataframe containing the selected variables
         """
-        dfs = []
+        data = []
 
         async with httpx.AsyncClient() as client:
             ic(url)
@@ -110,35 +113,48 @@ class PHTFhirClient:
                     # Schedule a new task for new page
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
                     # Process the previous response
-                    df = self._process_fhir_response(response, selected_variables=selected_variables)
-                    if df:
-                        dfs.append(df)
+                    response_data = self._process_fhir_response(response, selected_variables=selected_variables)
+                    if data:
+                        data.append(response_data)
                     response = await task
                     response = response.json()
 
                 else:
-                    df = self._process_fhir_response(response, selected_variables=selected_variables)
-                    if df:
-                        dfs.append(df)
+                    response_data = self._process_fhir_response(response, selected_variables=selected_variables)
+                    if response_data:
+                        data.append(data)
                     break
 
         ic("Finished")
-        if dfs:
-            result = pd.concat(dfs)
+        if data:
+            if self.output_format != "raw":
+                result = pd.concat(data)
+            else:
+                result = []
+                map(result.extend, data)
         else:
             raise ValueError("No Results matched the given query.")
-        # Check if the returned results satisfy k-anonymity
-        if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
+
+        # it's not possible to check raw output for k-anonymity so only check parsed responses
+        if self.output_format != "raw":
+
+            # Check if the returned results satisfy k-anonymity
+            if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
+                return result
+
+            # Attempt to generalize the dataframe
+            else:
+                anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
+                if anon_df:
+                    return anon_df
+                else:
+                    raise PermissionError(
+                        f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
+        else:
             return result
 
-        # Attempt to generalize the dataframe
-        else:
-            anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
-            if anon_df:
-                return anon_df
-            else:
-                raise PermissionError(
-                    f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
+    def upload_resource_or_bundle(self, resource = None, bundle=None):
+        pass
 
     @staticmethod
     def _process_fhir_response(response: dict, selected_variables: List[str] = None) -> Union[pd.DataFrame, None]:
