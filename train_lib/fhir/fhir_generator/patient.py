@@ -1,23 +1,19 @@
-import requests
-
+from dotenv import load_dotenv, find_dotenv
 from resource_generator import FhirResourceGenerator
 from typing import Union, Tuple, List
 from fhir.resources.patient import Patient
 from fhir.resources.humanname import HumanName
-from datetime import datetime, timedelta
 from pendulum import DateTime
 import pendulum
 import pandas as pd
-
-from fhir.resources import fhirtypes
-from pprint import pprint
 import random
 
 
 class PatientGenerator(FhirResourceGenerator):
 
-    def __init__(self, n: int, fhir_server: str = None, fhir_user: str = None, fhir_pw: str = None,
-                 fhir_token: str = None,
+    def __init__(self,
+                 n: int,
+                 fhir_server: str = None, fhir_user: str = None, fhir_pw: str = None, fhir_token: str = None,
                  age_range: Tuple[DateTime, DateTime] = None,
                  gender_distribution: Tuple[float, float, float, float] = None):
         super().__init__(n, fhir_server=fhir_server, fhir_user=fhir_user, fhir_pw=fhir_pw, fhir_token=fhir_token,
@@ -30,16 +26,13 @@ class PatientGenerator(FhirResourceGenerator):
         patients = []
         names = self._generate_patient_names(self.n)
         for i in range(self.n):
-            patient_dict = self._generate_patient_data(name=names[i])
-            patients.append(Patient(**patient_dict))
+            patient = self._generate_patient_data(name=names[i])
+            patients.append(patient)
         self.resources = patients
-
-        if upload:
-            bundle = self.make_bundle()
-
+        super().generate(upload)
         return patients
 
-    def _generate_patient_data(self, name: Tuple[str, str]) -> dict:
+    def _generate_patient_data(self, name: Tuple[str, str]) -> Patient:
         gender = random.choices(
             ["male", "female", "other", "unknown"],
             weights=self.gender_distribution if self.gender_distribution else [0.45, 0.45, 0.1, 0.0], k=1)[0]
@@ -53,7 +46,7 @@ class PatientGenerator(FhirResourceGenerator):
             "birthDate": birthdate
         }
 
-        return patient_dict
+        return Patient(**patient_dict)
 
     @staticmethod
     def _generate_patient_names(n: int):
@@ -70,13 +63,12 @@ class PatientGenerator(FhirResourceGenerator):
         return names
 
     def _generate_birthdate(self):
-
         if not self.birthdate_range:
             if self.age_range:
                 youngest = self.age_range[0].to_date_string()
                 oldest = self.age_range[1].to_date_string()
             else:
-                # generate random birthdates from 18-101 years old
+                # generate age range from 18-101 years old
                 now = pendulum.now()
                 youngest = pd.to_datetime((now - pendulum.duration(years=18)).to_date_string())
                 oldest = pd.to_datetime((now - pendulum.duration(years=101)).to_date_string())
@@ -89,9 +81,6 @@ class PatientGenerator(FhirResourceGenerator):
 
 if __name__ == '__main__':
     # pprint(Patient.schema()["properties"])
-    pg = PatientGenerator(n=10)
-    patients = pg.generate()
-    bundle = pg.make_bundle()
-    headers = {"Content-Type": "application/fhir+json"}
-    r = requests.post(url="http://127.0.0.1:8080/fhir?_format=json", data=bundle.json(), headers=headers)
-    print(r.json())
+    load_dotenv(find_dotenv())
+    pg = PatientGenerator(n=10, fhir_server="http://127.0.0.1:8080")
+    patients = pg.generate(upload=True)

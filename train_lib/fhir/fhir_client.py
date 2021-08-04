@@ -9,7 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 from icecream import ic
 import httpx
 import asyncio
-
+from fhir.resources.bundle import Bundle
 
 from train_lib.fhir.fhir_query_builder import build_query_string
 from train_lib.fhir import fhir_k_anonymity
@@ -17,7 +17,7 @@ from train_lib.fhir import fhir_k_anonymity
 
 class PHTFhirClient:
     def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
-                 server_type: str = "ibm"):
+                 server_type: str = None, disable_auth: bool = False):
         """
         Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
 
@@ -31,13 +31,13 @@ class PHTFhirClient:
         self.username = username if username else os.getenv("FHIR_USER")
         self.password = password if password else os.getenv("FHIR_PW")
         self.token = token if token else os.getenv("FHIR_TOKEN")
-        self.server_type = server_type
+        self.server_type = server_type if server_type else os.getenv("FHIR_SERVER_TYPE")
         self.output_format = None
 
         # Check for correct initialization based on env vars or constructor parameters
         if not (self.username and self.password) and self.token:
             raise ValueError("Only one of username:pw or token auth can be selected")
-        if not (self.username and self.password) or self.token:
+        if not ((self.username and self.password) or self.token) and disable_auth:
             raise ValueError("Insufficient login information, either token or username and password need to be set.")
         if not self.server_url:
             raise ValueError("No FHIR server address available")
@@ -153,8 +153,29 @@ class PHTFhirClient:
         else:
             return result
 
-    def upload_resource_or_bundle(self, resource = None, bundle=None):
-        pass
+    def upload_resource_or_bundle(self, resource=None, bundle: Bundle = None):
+        auth = self._generate_auth()
+        api_url = self._generate_api_url()
+        print(api_url)
+        if bundle:
+            self.upload_bundle(bundle=bundle, api_url=api_url, auth=auth)
+        if resource:
+            # TODO upload single resource
+            pass
+
+    def upload_bundle(self, bundle: Bundle, api_url: str, auth: requests.auth.AuthBase):
+        headers = self._generate_bundle_headers()
+
+        r = requests.post(api_url, auth=auth, data=bundle.json(), headers=headers)
+        r.raise_for_status()
+
+    def _generate_bundle_headers(self):
+        headers = {}
+        if self.server_type == "blaze":
+            headers["Content-Type"] = "application/fhir+json"
+
+        # todo figure out if other servers require custom headers for bundle upload
+        return headers
 
     @staticmethod
     def _process_fhir_response(response: dict, selected_variables: List[str] = None) -> Union[pd.DataFrame, None]:
@@ -209,13 +230,7 @@ class PHTFhirClient:
         :param limit: the max number of entries in a paginated response
         :return: url string to perform a request against a fhir server with
         """
-        url = self.server_url
-        if self.server_type == "ibm":
-            url += "/fhir-server/api/v4/"
-
-        elif self.server_type in ["blaze", "hapi"]:
-            url += "/fhir/"
-
+        url = self._generate_api_url()
         if query:
             url += build_query_string(query_dict=query)
         elif query_string:
@@ -224,6 +239,19 @@ class PHTFhirClient:
             raise ValueError("Either query dictionary or string need to be given")
         # add formatting configuration
         url += f"&_format={return_format}&_limit={limit}"
+
+        return url
+
+    def _generate_api_url(self) -> str:
+        url = self.server_url
+        if self.server_type == "ibm":
+            url += "/fhir-server/api/v4"
+
+        elif self.server_type in ["blaze", "hapi"]:
+            url += "/fhir"
+
+        else:
+            raise ValueError(f"Unsupported FHIR server: {self.server_type}")
 
         return url
 
