@@ -156,7 +156,6 @@ class PHTFhirClient:
     def upload_resource_or_bundle(self, resource=None, bundle: Bundle = None):
         auth = self._generate_auth()
         api_url = self._generate_api_url()
-        print(api_url)
         if bundle:
             self.upload_bundle(bundle=bundle, api_url=api_url, auth=auth)
         if resource:
@@ -230,7 +229,7 @@ class PHTFhirClient:
         :param limit: the max number of entries in a paginated response
         :return: url string to perform a request against a fhir server with
         """
-        url = self._generate_api_url()
+        url = self._generate_api_url() + "/"
         if query:
             url += build_query_string(query_dict=query)
         elif query_string:
@@ -251,7 +250,7 @@ class PHTFhirClient:
             url += "/fhir"
 
         else:
-            raise ValueError(f"Unsupported FHIR server: {self.server_type}")
+            raise ValueError(f"Unsupported FHIR server type: {self.server_type}")
 
         return url
 
