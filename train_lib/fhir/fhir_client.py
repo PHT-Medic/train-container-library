@@ -9,9 +9,10 @@ from dotenv import load_dotenv, find_dotenv
 from icecream import ic
 import httpx
 import asyncio
-from fhir_query_builder import build_query_string
 
-import fhir_k_anonymity
+
+from train_lib.fhir.fhir_query_builder import build_query_string
+from train_lib.fhir import fhir_k_anonymity
 
 
 class PHTFhirClient:

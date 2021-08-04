@@ -1,3 +1,5 @@
+import requests
+
 from resource_generator import FhirResourceGenerator
 from typing import Union, Tuple, List
 from fhir.resources.patient import Patient
@@ -19,7 +21,7 @@ class PatientGenerator(FhirResourceGenerator):
                  age_range: Tuple[DateTime, DateTime] = None,
                  gender_distribution: Tuple[float, float, float, float] = None):
         super().__init__(n, fhir_server=fhir_server, fhir_user=fhir_user, fhir_pw=fhir_pw, fhir_token=fhir_token,
-                         resource_type="Patient")
+                         resource_type=Patient)
         self.age_range = age_range
         self.gender_distribution = gender_distribution
         self.birthdate_range = None
@@ -31,6 +33,10 @@ class PatientGenerator(FhirResourceGenerator):
             patient_dict = self._generate_patient_data(name=names[i])
             patients.append(Patient(**patient_dict))
         self.resources = patients
+
+        if upload:
+            bundle = self.make_bundle()
+
         return patients
 
     def _generate_patient_data(self, name: Tuple[str, str]) -> dict:
@@ -84,4 +90,8 @@ class PatientGenerator(FhirResourceGenerator):
 if __name__ == '__main__':
     # pprint(Patient.schema()["properties"])
     pg = PatientGenerator(n=10)
-    print(pg.generate())
+    patients = pg.generate()
+    bundle = pg.make_bundle()
+    headers = {"Content-Type": "application/fhir+json"}
+    r = requests.post(url="http://127.0.0.1:8080/fhir?_format=json", data=bundle.json(), headers=headers)
+    print(r.json())
