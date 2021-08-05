@@ -101,6 +101,11 @@ class PHTFhirClient:
             task = asyncio.create_task(client.get(url=url, auth=auth))
             response = await task
             response = response.json()
+
+            # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
+            if response["total"] < k_anonymity:
+                raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
+
             #  Process all the pages contained in the response
             while True:
                 # TODO improve this
@@ -157,12 +162,12 @@ class PHTFhirClient:
         auth = self._generate_auth()
         api_url = self._generate_api_url()
         if bundle:
-            self.upload_bundle(bundle=bundle, api_url=api_url, auth=auth)
+            self._upload_bundle(bundle=bundle, api_url=api_url, auth=auth)
         if resource:
             # TODO upload single resource
             pass
 
-    def upload_bundle(self, bundle: Bundle, api_url: str, auth: requests.auth.AuthBase):
+    def _upload_bundle(self, bundle: Bundle, api_url: str, auth: requests.auth.AuthBase):
         headers = self._generate_bundle_headers()
 
         r = requests.post(api_url, auth=auth, data=bundle.json(), headers=headers)
