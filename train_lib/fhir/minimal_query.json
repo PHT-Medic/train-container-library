@@ -1,0 +1,24 @@
+{
+  "query": {
+    "resource": "Patient",
+    "parameters": [
+      {
+        "variable": "gender",
+        "condition": "male"
+      },
+      {
+        "variable": "birthdate",
+        "condition": "gt1980-08-12"
+      }
+    ]
+  },
+  "data": {
+    "output_format": "csv",
+    "filename": "patient_ages.csv",
+    "variables": [
+      "id",
+      "birthDate",
+      "gender"
+    ]
+  }
+}
