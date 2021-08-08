@@ -35,6 +35,7 @@ setuptools.setup(
         "pytest",
         "httpx",
         "pendulum",
-        "GitPython"
+        "GitPython",
+        "icecream"
     ]
 )
