@@ -13,3 +13,4 @@ pytest
 httpx
 pendulum
 GitPython
+loguru

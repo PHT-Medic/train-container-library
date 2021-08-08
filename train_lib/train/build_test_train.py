@@ -5,11 +5,12 @@ import docker
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPrivateKey
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-
 from uuid import uuid4
+from loguru import logger
+import tarfile
 
 
-def build_test_train(master_img: str = "harbor.pht.medic.uni-tuebingen.de/pht_master/master:slim",
+def build_test_train(master_img: str = "harbor-pht.tada5hi.net/master/python/ubuntu",
                      executable: str = "python",
                      train_image_name: str = None,
                      train_files: List[Union[BytesIO, str]] = None,
@@ -28,6 +29,8 @@ def build_test_train(master_img: str = "harbor.pht.medic.uni-tuebingen.de/pht_ma
     if not train_image_name:
         train_image_name = f"test_train/{uuid4()}"
 
+    logger.info("Building test train image: {}", train_image_name)
+
     train_img = build_train_image(client=client, docker_file=docker_file, train_files=train_files, train_dir=train_dir,
                                   train_image_name=train_image_name, private_key=private_key,
                                   user_private_key=user_private_key, security_protocol=security_protocol)
@@ -44,25 +47,52 @@ def build_train_image(client: docker.DockerClient,
                       ):
     img, build_logs = client.images.build(fileobj=docker_file, tag=train_image_name, rm=True, pull=True)
 
+    container = client.containers.create(img)
+    _add_train_files(container, train_files, train_dir)
+
     if security_protocol:
         config = _make_train_config(private_key, user_private_key)
 
+    container.commit(repository=train_image_name, tag="latest")
+    container.wait()
+    container.remove()
+    logger.info("Built test train image: {}", str(img))
     return img
 
 
-def _add_train_files(img, train_files: List[Union[BytesIO, str]] = None, train_dir: Union[str, os.PathLike] = None):
-    pass
+def _add_train_files(container, train_files: List[Union[BytesIO, str]] = None, train_dir: Union[str, os.PathLike] = None):
+
+    if train_files and train_dir:
+        raise ValueError("Only one of train_files or train_dir can be set.")
+
+    if train_dir:
+        _add_train_dir_to_img(container, train_dir)
+    if train_files:
+        _add_list_of_files_to_image(container, train_files)
+
+
+def _add_train_dir_to_img(container, train_dir: Union[str, os.PathLike] = None):
+    train_archive = BytesIO()
+    with tarfile.open(fileobj=train_archive, mode="w") as tar:
+        tar.add(train_dir, arcname=os.path.basename(train_dir))
+
+    train_archive.seek(0)
+
+    container.put_archive("/opt/pht_train/", train_archive)
+
+
+def _add_list_of_files_to_image(img, train_files: List[Union[BytesIO, str]] = None):
+    raise NotImplementedError()
 
 
 def _make_train_config(private_key: Union[str, os.PathLike, BytesIO, RSAPrivateKey],
                        user_private_key: Union[str, os.PathLike, BytesIO, RSAPrivateKey]):
     if not private_key:
         # todo generate new private/public key and save/print it
-        pass
+        user_sk, user_pk = _generate_key_pair(output_format="hex")
 
     if not user_private_key:
-        # todo generate new private key and
-        pass
+        user_sk, user_pk = _generate_key_pair(output_format="hex")
 
 
 def _generate_key_pair(output_format: str = "pem"):
@@ -95,7 +125,7 @@ def _make_docker_file(master_img: str, executable: str, entrypoint_file: str = N
         f"""
         FROM {master_img}
         
-        RUN mkdir /opt/pht_results && mkdir /opt/pht_results && chmod -R 755 /opt/pht_train
+        RUN mkdir /opt/pht_results && mkdir /opt/pht_train && chmod -R 755 /opt/pht_train
         CMD ["{executable}", "{entrypoint_file}"]
         """.encode("utf-8")
     )
@@ -104,4 +134,4 @@ def _make_docker_file(master_img: str, executable: str, entrypoint_file: str = N
 
 
 if __name__ == '__main__':
-    build_test_train()
+    build_test_train(train_dir="../train", entrypoint_file="/opt/pht_train/train/FHIRAverageAgeTrain.py")
