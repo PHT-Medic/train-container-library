@@ -183,7 +183,7 @@ class PHTFhirClient:
 
     def health_check(self):
 
-        api_url = self._generate_api_url() + "/$healthcheck"
+        api_url = self._generate_api_url() + "/metadata"
         auth = self._generate_auth()
 
         r = requests.get(api_url, auth=auth)
@@ -296,10 +296,13 @@ if __name__ == '__main__':
     load_dotenv(find_dotenv())
     print("Server", os.getenv("FHIR_SERVER_URL"))
     fhir_client = PHTFhirClient()
-    loop = asyncio.get_event_loop()
+    fhir_client.health_check()
 
-    result = loop.run_until_complete(fhir_client.execute_query(query_file=query_json_path))
 
-    print(fhir_k_anonymity.is_k_anonymized(result))
-    ic(result)
+    # loop = asyncio.get_event_loop()
+    #
+    # result = loop.run_until_complete(fhir_client.execute_query(query_file=query_json_path))
+    #
+    # print(fhir_k_anonymity.is_k_anonymized(result))
+    # ic(result)
     # query_dict = fhir_client.execute_query(query_file=query_json_path)
