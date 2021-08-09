@@ -108,7 +108,7 @@ class PHTFhirClient:
 
             #  Process all the pages contained in the response
             while True:
-                # TODO improve this
+                # todo improve this
                 if response.get("link", None):
                     next_page = next((link for link in response["link"] if link["relation "] == "next"), None)
                 else:
@@ -180,6 +180,15 @@ class PHTFhirClient:
 
         # todo figure out if other servers require custom headers for bundle upload
         return headers
+
+    def health_check(self):
+
+        api_url = self._generate_api_url() + "/$healthcheck"
+        auth = self._generate_auth()
+
+        r = requests.get(api_url, auth=auth)
+        r.raise_for_status()
+
 
     @staticmethod
     def _process_fhir_response(response: dict, selected_variables: List[str] = None) -> Union[pd.DataFrame, None]:
