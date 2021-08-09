@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pht-train-container-library",
-    version="1.0",
+    version="0.9.0",
     author="Michael Graf",
     author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
@@ -18,7 +18,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    keywords=['PHT', 'security', 'encryption'],
+    keywords=['PHT', 'security', 'encryption', 'personalhealthtrain'],
     python_requires='>=3.7',
     install_requires=[
         "cryptography",
@@ -30,6 +30,12 @@ setuptools.setup(
         "pandas",
         "python-dotenv",
         "fhirpy",
-        "pika"
+        "pika",
+        "loguru",
+        "pytest",
+        "httpx",
+        "pendulum",
+        "GitPython",
+        "icecream"
     ]
 )
