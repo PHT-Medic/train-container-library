@@ -161,6 +161,7 @@ class PHTFhirClient:
     def upload_resource_or_bundle(self, resource=None, bundle: Bundle = None):
         auth = self._generate_auth()
         api_url = self._generate_api_url()
+        print(api_url)
         if bundle:
             self._upload_bundle(bundle=bundle, api_url=api_url, auth=auth)
         if resource:
@@ -169,7 +170,7 @@ class PHTFhirClient:
 
     def _upload_bundle(self, bundle: Bundle, api_url: str, auth: requests.auth.AuthBase):
         headers = self._generate_bundle_headers()
-
+        print(api_url)
         r = requests.post(api_url, auth=auth, data=bundle.json(), headers=headers)
         r.raise_for_status()
 
@@ -178,7 +179,10 @@ class PHTFhirClient:
         if self.server_type == "blaze":
             headers["Content-Type"] = "application/fhir+json"
 
-        # todo figure out if other servers require custom headers for bundle upload
+        else:
+            # todo figure out if other servers require custom headers for bundle upload
+            headers["Content-Type"] = "application/fhir+json"
+
         return headers
 
     def health_check(self):
@@ -188,7 +192,6 @@ class PHTFhirClient:
 
         r = requests.get(api_url, auth=auth)
         r.raise_for_status()
-
 
     @staticmethod
     def _process_fhir_response(response: dict, selected_variables: List[str] = None) -> Union[pd.DataFrame, None]:
@@ -297,7 +300,6 @@ if __name__ == '__main__':
     print("Server", os.getenv("FHIR_SERVER_URL"))
     fhir_client = PHTFhirClient()
     fhir_client.health_check()
-
 
     # loop = asyncio.get_event_loop()
     #

@@ -82,5 +82,5 @@ class PatientGenerator(FhirResourceGenerator):
 if __name__ == '__main__':
     # pprint(Patient.schema()["properties"])
     load_dotenv(find_dotenv())
-    pg = PatientGenerator(n=10, fhir_server="http://127.0.0.1:8080")
+    pg = PatientGenerator(n=100)
     patients = pg.generate(upload=True)

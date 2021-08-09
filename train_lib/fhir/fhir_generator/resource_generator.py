@@ -15,7 +15,7 @@ class FhirResourceGenerator:
         self.fhir_token = fhir_token if fhir_token else os.getenv("FHIR_TOKEN")
         self.fhir_pw = fhir_pw if fhir_pw else os.getenv("FHIR_PW")
         self.fhir_user = fhir_user if fhir_user else os.getenv("FHIR_USER")
-        self.fhir_server = fhir_server if fhir_server else os.getenv("FHIR_API_URL")
+        self.fhir_server = fhir_server if fhir_server else os.getenv("FHIR_SERVER_URL")
         self.n = n
         self.resource_type = resource_type
         self.resources = resources
