@@ -13,6 +13,7 @@ from fhir.resources.bundle import Bundle
 
 from train_lib.fhir.fhir_query_builder import build_query_string
 from train_lib.fhir import fhir_k_anonymity
+from itertools import chain
 
 
 class PHTFhirClient:
@@ -102,6 +103,7 @@ class PHTFhirClient:
             response = await task
             response = response.json()
 
+
             # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
             if response["total"] < k_anonymity:
                 raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
@@ -110,7 +112,7 @@ class PHTFhirClient:
             while True:
                 # todo improve this
                 if response.get("link", None):
-                    next_page = next((link for link in response["link"] if link["relation "] == "next"), None)
+                    next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
                 else:
                     break
                 if next_page:
@@ -119,15 +121,17 @@ class PHTFhirClient:
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
                     # Process the previous response
                     response_data = self._process_fhir_response(response, selected_variables=selected_variables)
-                    if data:
+                    if response_data:
                         data.append(response_data)
                     response = await task
                     response = response.json()
 
                 else:
                     response_data = self._process_fhir_response(response, selected_variables=selected_variables)
-                    if response_data:
-                        data.append(data)
+                    if response_data is None:
+                        pass
+                    else:
+                        data.append(response_data)
                     break
 
         ic("Finished")
@@ -135,8 +139,8 @@ class PHTFhirClient:
             if self.output_format != "raw":
                 result = pd.concat(data)
             else:
-                result = []
-                map(result.extend, data)
+                result = list(chain.from_iterable(data))
+
         else:
             raise ValueError("No Results matched the given query.")
 
@@ -193,8 +197,8 @@ class PHTFhirClient:
         r = requests.get(api_url, auth=auth)
         r.raise_for_status()
 
-    @staticmethod
-    def _process_fhir_response(response: dict, selected_variables: List[str] = None) -> Union[pd.DataFrame, None]:
+    def _process_fhir_response(self, response: dict, selected_variables: List[str] = None) -> \
+            Union[pd.DataFrame, List[dict], None]:
         """
         Parses the fhir response into a dataframe. If selected variables are given only these are parsed from the
         response and returned
@@ -205,20 +209,26 @@ class PHTFhirClient:
         """
         entries = []
 
-        if response.get("entry", None):
-            for entry in response["entry"]:
-                if selected_variables:
-                    series_entry = pd.Series(entry["resource"])[selected_variables]
-                else:
-                    series_entry = pd.Series(entry["resource"])
-                entries.append(series_entry)
+        if self.output_format != "raw":
 
-            df = pd.concat(entries, axis=1)
-            df = df.T
+            if response.get("entry", None):
+                for entry in response["entry"]:
+                    if selected_variables:
+                        series_entry = pd.Series(entry["resource"])[selected_variables]
+                    else:
+                        series_entry = pd.Series(entry["resource"])
+                    entries.append(series_entry)
 
-            return df
+                df = pd.concat(entries, axis=1)
+                df = df.T
+
+                return df
+
+            else:
+                return None
+
         else:
-            return None
+            return response["entry"]
 
     @staticmethod
     def read_query_file(file: Union[str, os.PathLike, BytesIO]) -> dict:
@@ -295,15 +305,16 @@ class BearerAuth(requests.auth.AuthBase):
 
 
 if __name__ == '__main__':
-    query_json_path = "query.json"
+    query_json_path = "minimal_query.json"
     load_dotenv(find_dotenv())
     print("Server", os.getenv("FHIR_SERVER_URL"))
     fhir_client = PHTFhirClient()
     fhir_client.health_check()
 
-    # loop = asyncio.get_event_loop()
-    #
-    # result = loop.run_until_complete(fhir_client.execute_query(query_file=query_json_path))
+    loop = asyncio.get_event_loop()
+
+    result = loop.run_until_complete(fhir_client.execute_query(query_file=query_json_path))
+    print(result)
     #
     # print(fhir_k_anonymity.is_k_anonymized(result))
     # ic(result)

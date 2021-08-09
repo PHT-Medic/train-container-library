@@ -13,7 +13,7 @@
     ]
   },
   "data": {
-    "output_format": "csv",
+    "output_format": "raw",
     "filename": "patient_ages.csv",
     "variables": [
       "id",
