@@ -2,35 +2,44 @@
 ![coverage](https://gitlab.com/PersonalHealthTrain/implementations/germanmii/difuture/train-container-library/badges/master/coverage.svg)
 
 # Train Container Library
+
 Python library for pht-train images/containers.
 
 ## Docker Images
+
 The docker images defined by the Dockerfiles in the `docker` are the master images that need to be used when building
 train images.
 
 ### Available Images
-- `master:slim`: Alpine linux image with python 3.8 and the security protocol installed.
-- `master:buster`: Debian Buster image also with python 3.8 and the security protocol installed
-- `master:dl`: GPU enabled Ubuntu 18.04 image with tensorflow and pytorch and the SP preinstalled
+
+- `master/python:slim`: Alpine linux image with python 3.8 and the security protocol installed.
+- `master/python:ubuntu`: Ubuntu 20.04 image also with python 3.8 and the security protocol installed
+- `master/python:dl`: GPU enabled Ubuntu 18.04 image with tensorflow and pytorch and the SP preinstalled
+- `master/python:ml`: Ubuntu 20.04 image with additional ml libraries (sklearn, pandas, etc) installed
+- `master/r:ml`: Ubuntu 20.04 image with R and r machine learning packages installed
+
 
 ## Security Protocol
+
 The pht security protocol adapted from `docs/Secure_PHT_latest__official.pdf` performs two main tasks:
-1. Before executing a train-image on the local machine, unless the station is the first station on the route, the 
-previous results need to be decrypted and the content of the image needs to be validated based on the configuration of 
-the individual train -> `pre-run`.
-2. After executing the train the updated results need to be encrypted and the train configuration needs to be updated
-to reflect the current state ->`post-run`.
 
+1. Before executing a train-image on the local machine, unless the station is the first station on the route, the
+   previous results need to be decrypted and the content of the image needs to be validated based on the configuration
+   of the individual train -> `pre-run`.
+2. After executing the train the updated results need to be encrypted and the train configuration needs to be updated to
+   reflect the current state ->`post-run`.
 
-To function  the protocol expects two environment variables to be set:
+To function the protocol expects two environment variables to be set:
+
 1. `STATION_ID` String identifier that has public key/s registered with the central service
 2. `RSA_STATON_PRIVATE_KEY` Hex string containing the private key to be used for decryption and signing.
 
-
 ### Pre-run protocol
+
 The pre-run protocol consists of the following steps
+
 1. The hash of the immutable files (train definition) is verified making sure that the executable files did not change
-    during the the train definition.
+   during the the train definition.
 2. The digital signature is verified ensuring the correctness of the results at each stop of the train.
 3. The symmetric key is decrypted using the provided station private key
 4. The mutable files in `/opt/pht_results` are decrypted using the symmetric key obtained in the previous step
