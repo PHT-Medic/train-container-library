@@ -36,6 +36,7 @@ setuptools.setup(
         "httpx",
         "pendulum",
         "GitPython",
-        "icecream"
+        "icecream",
+        "fhir.resources"
     ]
 )
