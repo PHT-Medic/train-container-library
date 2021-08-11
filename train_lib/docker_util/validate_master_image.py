@@ -17,26 +17,16 @@ def validate_train_image(train_img: str, master_image: str):
     # img_history = client.history(img)
     # base_image_history = client.history(base_image)
     # compare_image_histories(img_history, base_image_history)
-    _compare_image_file_system(master_image, train_img)
-
-
-def compare_image_histories(img_history, base_image_history):
-    ic(img_history)
-    ic(base_image_history)
-    for event in img_history:
-        if event not in base_image_history:
-            print(event)
+    status, message = _compare_image_file_system(master_image, train_img)
+    print(message)
+    assert status == 1
 
 
 def _compare_image_file_system(master_image_name: str, submission_image_name: str):
-    # TODO check if the correct images get loaded
     container_diff_args = ["container-diff", "diff", f"daemon://{master_image_name}",
                            f"daemon://{submission_image_name}", "--type=file"]
     output = subprocess.run(container_diff_args, capture_output=True)
-    print(output)
     file_system_diff = output.stdout.decode().splitlines()
-
-    print(file_system_diff)
     valid, msg = _validate_file_system_changes(file_system_diff)
     if valid:
         return 0, "No file system anomalies detected"
@@ -104,11 +94,29 @@ def _validate_added_file(file: str) -> Tuple[bool, str]:
     :return: whether the file is correctly located or not
     """
     path = file.split(" ")[0]
+    valid = False
+
+    print(f"Validate called with file: {file}")
+    if not file:
+        return True, path
+
+
     if len(path) > 1:
-        if path.split("/")[1:3] != ["opt", "pht_train"]:
-            print(f"Invalid File location found: {path}")
-            return False, path
-    return True, path
+        path_dir = path.split("/")[1:]
+
+        if path_dir[0] == "opt":
+
+            if path_dir[1] == "pht_results":
+                valid = True
+            if path_dir[1] == "pht_train":
+                valid = True
+
+            if path_dir[1] == "train_config.json":
+                valid = True
+    if not valid:
+        print(f"Invalid file detected: {path}")
+
+    return valid, path
 
 
 if __name__ == '__main__':
