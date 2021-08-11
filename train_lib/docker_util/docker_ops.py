@@ -13,14 +13,14 @@ def extract_train_config(img: str, config_path: str = "/opt/train_config.json") 
     :param config_path: path of the config file inside the image
     :return: dictionary containing the  security values stored inside the train:config.json
     """
-    config_archive = extract_archive(img, config_path)
-    config_file = config_archive.extractfile("train_config.json")
-    data = config_file.read()
-    train_config = json.loads(data)
+    with extract_archive(img, config_path) as config_archive:
+        config_file = config_archive.extractfile("train_config.json")
+        data = config_file.read()
+        train_config = json.loads(data)
     return train_config
 
 
-def extract_query_json(img: str, query_file_path: str = "/opt/pht-train/query.json") -> dict:
+def extract_query_json(img: str, query_file_path: str = "/opt/pht_train/query.json") -> dict:
     """
     Extract query.json file from the specified image and return it as a dictionary
     :param img: docker image identifier

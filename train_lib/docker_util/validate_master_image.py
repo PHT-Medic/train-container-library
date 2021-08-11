@@ -8,15 +8,6 @@ from icecream import ic
 
 
 def validate_train_image(train_img: str, master_image: str):
-    client = docker.APIClient()
-    # pprint(client.inspect_image(img))
-
-    # pprint(client.history(img))
-    # print(type(client.history(img)))
-
-    # img_history = client.history(img)
-    # base_image_history = client.history(base_image)
-    # compare_image_histories(img_history, base_image_history)
     status, message = _compare_image_file_system(master_image, train_img)
     print(message)
     assert status == 1
