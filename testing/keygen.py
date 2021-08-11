@@ -36,11 +36,11 @@ def sign(rsa_private_key: rsa.RSAPrivateKey, digest: bytes):
 
 
 if __name__ == '__main__':
-    generate_user_key_pair()
-    with open("../../airflow-rest-api/Stations Keys/S_1_sk.pem", "rb") as pk:
-        private_key = serialization.load_pem_private_key(pk.read(), password=None,
-                                                         backend=default_backend())
-        print(private_key)
+    # generate_user_key_pair()
+    # with open("../../airflow-rest-api/Stations Keys/S_1_sk.pem", "rb") as pk:
+    #     private_key = serialization.load_pem_private_key(pk.read(), password=None,
+    #                                                      backend=default_backend())
+    #     print(private_key)
     # Generate simulated values for hashes
     # session_id = bytes.fromhex("da5b1de1025815cf4f2f7adfd6009ef5e516db6b15c2e895833b761ade7a3c1be0dd2e46aac70fb88f557963f628d9c2ece3e6597dcd50788cc9fde3d10b8a3b")
     # files = list()
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     #     files += [os.path.join(dir_path, file) for file in file_names]
     # # hash = hash_immutable_files(files, "1", session_id)
 
-    train_hash = bytes.fromhex("a02524ba6c28c4668184fe5a09b228f402872cf29ac598ee8dd08aa415c3e3297f25c13a7644f32624595fbdc7008851a768b7acf9f365d33d7cbd7050400dc1")
+    train_hash = bytes.fromhex("ab006bc2d5d5c6027cedd2a164a78367ab7091da36cd321006b1c495f18e9642006c2eff26ce47077108117fe61372dd96b1675f3bea7d1bab200cbfc326c84f")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,
