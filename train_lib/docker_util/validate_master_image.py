@@ -10,7 +10,7 @@ from icecream import ic
 def validate_train_image(train_img: str, master_image: str):
     status, message = _compare_image_file_system(master_image, train_img)
     print(message)
-    assert status == 1
+    assert status == 0
 
 
 def _compare_image_file_system(master_image_name: str, submission_image_name: str):
