@@ -6,10 +6,10 @@ import pandas as pd
 from requests.auth import HTTPBasicAuth
 import requests
 from dotenv import load_dotenv, find_dotenv
-from icecream import ic
 import httpx
 import asyncio
 from fhir.resources.bundle import Bundle
+from loguru import logger
 
 from train_lib.fhir.fhir_query_builder import build_query_string
 from train_lib.fhir import fhir_k_anonymity
@@ -18,7 +18,7 @@ from itertools import chain
 
 class PHTFhirClient:
     def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
-                 server_type: str = None, disable_auth: bool = False):
+                 fhir_server_type: str = None, disable_auth: bool = False):
         """
         Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
 
@@ -26,14 +26,15 @@ class PHTFhirClient:
         :param username: username for use in basic auth authentication against the fhir server
         :param password: password for use in basic auth
         :param token: token to use for authenticating against a FHIR server using a bearer token
-        :param server_type: the type of the server one of ["blaze", "hapi", "ibm"]
+        :param fhir_server_type: the type of the server one of ["blaze", "hapi", "ibm"]
         """
         self.server_url = server_url if server_url else os.getenv("FHIR_SERVER_URL")
         self.username = username if username else os.getenv("FHIR_USER")
         self.password = password if password else os.getenv("FHIR_PW")
         self.token = token if token else os.getenv("FHIR_TOKEN")
-        self.server_type = server_type if server_type else os.getenv("FHIR_SERVER_TYPE")
+        self.fhir_server_type = fhir_server_type if fhir_server_type else os.getenv("FHIR_SERVER_TYPE")
         self.output_format = None
+        self.disable_auth = disable_auth
 
         # Check for correct initialization based on env vars or constructor parameters
         if not (self.username and self.password) and self.token:
@@ -41,7 +42,7 @@ class PHTFhirClient:
         if not ((self.username and self.password) or self.token) and disable_auth:
             raise ValueError("Insufficient login information, either token or username and password need to be set.")
         if not self.server_url:
-            raise ValueError("No FHIR server address available")
+            raise ValueError("No FHIR server address given.")
 
     async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None,
                             query: dict = None) -> pd.DataFrame:
@@ -75,9 +76,8 @@ class PHTFhirClient:
         query_results = await self._get_query_results_from_api(url=url, auth=auth,
                                                                selected_variables=selected_variables)
 
-        if self.output_format == "csv":
-            query_results.to_csv("query_results.csv", index=False)
-        # TODO add more output formats
+        filename = query_file_content["data"]["filename"]
+        self._store_query_results(query_results, filename=filename)
 
         return query_results
 
@@ -98,16 +98,13 @@ class PHTFhirClient:
         data = []
 
         async with httpx.AsyncClient() as client:
-            ic(url)
+            logger.info("Querying server with url: {}", url)
             task = asyncio.create_task(client.get(url=url, auth=auth))
             response = await task
             response = response.json()
-
-
             # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
             if response["total"] < k_anonymity:
                 raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
-
             #  Process all the pages contained in the response
             while True:
                 # todo improve this
@@ -116,7 +113,7 @@ class PHTFhirClient:
                 else:
                     break
                 if next_page:
-                    ic("Getting next page")
+                    logger.info("Getting next page in paginated FHIR response.")
                     # Schedule a new task for new page
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
                     # Process the previous response
@@ -134,9 +131,9 @@ class PHTFhirClient:
                         data.append(response_data)
                     break
 
-        ic("Finished")
         if data:
-            if self.output_format != "raw":
+            logger.info("Aggregating FHIR response")
+            if self.output_format == "csv":
                 result = pd.concat(data)
             else:
                 result = list(chain.from_iterable(data))
@@ -145,12 +142,12 @@ class PHTFhirClient:
             raise ValueError("No Results matched the given query.")
 
         # it's not possible to check raw output for k-anonymity so only check parsed responses
-        if self.output_format != "raw":
+        if self.output_format == "csv":
 
+            logger.info("Checking if the response satisfies k-anonymity with k = {}...", k_anonymity)
             # Check if the returned results satisfy k-anonymity
             if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
                 return result
-
             # Attempt to generalize the dataframe
             else:
                 anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
@@ -160,7 +157,35 @@ class PHTFhirClient:
                     raise PermissionError(
                         f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
         else:
+            logger.info("Returning unvalidated results.")
             return result
+
+    def _store_query_results(self, query_results, filename: str, storage_dir: str = None):
+
+        storage_dir = storage_dir if storage_dir else os.getenv("TRAIN_DATA_DIR")
+
+        if not storage_dir:
+            logger.warning("No storage directory specified, saving results to current working directory.")
+            results_path = filename
+        else:
+            results_path = os.path.join(storage_dir, filename)
+
+        if self.output_format == "csv":
+            if not isinstance(query_results, pd.DataFrame):
+                raise ValueError(
+                    f"Only FHIR responses parsed into a dataframe can be serialized to csv."
+                    f" Results are {type(query_results)}")
+            else:
+                query_results.to_csv(results_path)
+
+        elif self.output_format == "raw":
+            with open(results_path, "w") as results_file:
+                results_file.write(json.dumps(query_results, indent=2))
+
+        else:
+            raise ValueError(f"Unsupported output format: {self.output_format}")
+
+        logger.info("Stored query results in {}", results_path)
 
     def upload_resource_or_bundle(self, resource=None, bundle: Bundle = None):
         auth = self._generate_auth()
@@ -180,7 +205,7 @@ class PHTFhirClient:
 
     def _generate_bundle_headers(self):
         headers = {}
-        if self.server_type == "blaze":
+        if self.fhir_server_type == "blaze":
             headers["Content-Type"] = "application/fhir+json"
 
         else:
@@ -270,14 +295,14 @@ class PHTFhirClient:
 
     def _generate_api_url(self) -> str:
         url = self.server_url
-        if self.server_type == "ibm":
+        if self.fhir_server_type == "ibm":
             url += "/fhir-server/api/v4"
 
-        elif self.server_type in ["blaze", "hapi"]:
+        elif self.fhir_server_type in ["blaze", "hapi"]:
             url += "/fhir"
 
         else:
-            raise ValueError(f"Unsupported FHIR server type: {self.server_type}")
+            raise ValueError(f"Unsupported FHIR server type: {self.fhir_server_type}")
 
         return url
 
