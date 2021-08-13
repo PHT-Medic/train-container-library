@@ -18,14 +18,18 @@ def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user
 
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     digest.update(user_id.encode("utf-8"))
-
+    query_file = None
     if binary_files:
         if immutable_file_names:
             for f in ordered_file_list:
                 # TODO ugly workaround fix this
                 if f[:2] == "./":
                     f = f[2:]
+
                 index = immutable_file_names.index(f)
+                if f == "query.json":
+                    query_file = immutable_files[index].read()
+
                 data = immutable_files[index].read()
                 digest.update(data)
         else:
@@ -37,6 +41,8 @@ def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user
                 digest.update(f.read())
 
     digest.update(session_id)
+    if query_file:
+        digest.update(query_file)
     return digest.finalize()
 
 
