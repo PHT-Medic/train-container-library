@@ -13,8 +13,8 @@
     ]
   },
   "data": {
-    "output_format": "raw",
-    "filename": "patient_ages.json",
+    "output_format": "csv",
+    "filename": "patients.csv",
     "variables": [
       "id",
       "birthDate",

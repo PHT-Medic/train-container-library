@@ -18,7 +18,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    keywords=['PHT', 'security', 'encryption', 'personalhealthtrain'],
+    keywords=['PHT', 'security', 'encryption', 'personalhealthtrain', 'docker'],
     python_requires='>=3.7',
     install_requires=[
         "cryptography",

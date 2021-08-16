@@ -66,10 +66,8 @@ class PHTFhirClient:
         self.output_format = query_file_content["data"]["output_format"]
 
         # Generate url query string and generate auth (basic)
-        if query_file_content.get("query_string", None):
-            url = self._generate_url(query_string=query_file_content["query_string"])
-        else:
-            url = self._generate_url(query_file_content["query"])
+
+        url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
         selected_variables = query_file_content["data"].get("variables", None)
 
@@ -77,7 +75,7 @@ class PHTFhirClient:
                                                                selected_variables=selected_variables)
 
         filename = query_file_content["data"]["filename"]
-        self._store_query_results(query_results, filename=filename)
+        self.store_query_results(query_results, filename=filename)
 
         return query_results
 
@@ -160,7 +158,7 @@ class PHTFhirClient:
             logger.info("Returning unvalidated results.")
             return result
 
-    def _store_query_results(self, query_results, filename: str, storage_dir: str = None):
+    def store_query_results(self, query_results, filename: str, storage_dir: str = None) -> str:
 
         storage_dir = storage_dir if storage_dir else os.getenv("TRAIN_DATA_DIR")
 
@@ -178,7 +176,7 @@ class PHTFhirClient:
             else:
                 query_results.to_csv(results_path)
 
-        elif self.output_format == "raw":
+        elif self.output_format in ["raw", "json"]:
             with open(results_path, "w") as results_file:
                 results_file.write(json.dumps(query_results, indent=2))
 
@@ -186,11 +184,11 @@ class PHTFhirClient:
             raise ValueError(f"Unsupported output format: {self.output_format}")
 
         logger.info("Stored query results in {}", results_path)
+        return results_path
 
     def upload_resource_or_bundle(self, resource=None, bundle: Bundle = None):
         auth = self._generate_auth()
         api_url = self._generate_api_url()
-        print(api_url)
         if bundle:
             self._upload_bundle(bundle=bundle, api_url=api_url, auth=auth)
         if resource:
@@ -199,7 +197,6 @@ class PHTFhirClient:
 
     def _upload_bundle(self, bundle: Bundle, api_url: str, auth: requests.auth.AuthBase):
         headers = self._generate_bundle_headers()
-        print(api_url)
         r = requests.post(api_url, auth=auth, data=bundle.json(), headers=headers)
         r.raise_for_status()
 
@@ -235,7 +232,6 @@ class PHTFhirClient:
         entries = []
 
         if self.output_format != "raw":
-
             if response.get("entry", None):
                 for entry in response["entry"]:
                     if selected_variables:
@@ -248,7 +244,6 @@ class PHTFhirClient:
                 df = df.T
 
                 return df
-
             else:
                 return None
 
@@ -270,7 +265,7 @@ class PHTFhirClient:
         query_file = json.loads(query_file)
         return query_file
 
-    def _generate_url(self, query: dict = None, query_string: str = None, return_format="json", limit=1000):
+    def _generate_url(self, query_file: dict, return_format="json", limit=1000):
         """
         Generates the fhir search url to request from the server based. Either based on a previously given query string
         or based on a dictionary containing the query definition in the query.json file.
@@ -282,10 +277,14 @@ class PHTFhirClient:
         :return: url string to perform a request against a fhir server with
         """
         url = self._generate_api_url() + "/"
-        if query:
+
+        query = query_file["query"]
+        if isinstance(query, dict):
             url += build_query_string(query_dict=query)
-        elif query_string:
-            url += query_string
+        elif isinstance(query, list):
+            url += build_query_string(query_dict=query)
+        elif isinstance(query, str):
+            url += query
         else:
             raise ValueError("Either query dictionary or string need to be given")
         # add formatting configuration
