@@ -18,7 +18,7 @@ from itertools import chain
 
 class PHTFhirClient:
     def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
-                 fhir_server_type: str = None, disable_auth: bool = False):
+                 fhir_server_type: str = None, disable_auth: bool = False, disable_k_anon: bool = False):
         """
         Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
 
@@ -35,6 +35,7 @@ class PHTFhirClient:
         self.fhir_server_type = fhir_server_type if fhir_server_type else os.getenv("FHIR_SERVER_TYPE")
         self.output_format = None
         self.disable_auth = disable_auth
+        self.disable_k_anon = disable_k_anon
 
         # Check for correct initialization based on env vars or constructor parameters
         if not (self.username and self.password) and self.token:
@@ -70,14 +71,78 @@ class PHTFhirClient:
         url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
         selected_variables = query_file_content["data"].get("variables", None)
+        #
+        # query_results = await self._get_query_results_from_api(url=url, auth=auth,
+        #                                                        selected_variables=selected_variables)
 
-        query_results = await self._get_query_results_from_api(url=url, auth=auth,
+        query_results = self._get_query_results_from_api_sync(url=url, auth=auth,
                                                                selected_variables=selected_variables)
 
         filename = query_file_content["data"]["filename"]
         self.store_query_results(query_results, filename=filename)
 
         return query_results
+
+    def _get_query_results_from_api_sync(self, url: str, auth: requests.auth.AuthBase = None,
+                                         selected_variables: List[str] = None, k_anonymity: int = 5):
+        data = []
+        logger.info("Querying server with url: {}", url)
+
+        r = requests.get(url, auth=auth)
+        r.raise_for_status()
+        response = r.json()
+
+        # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
+        if response["total"] < k_anonymity:
+            raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
+
+        data.append(self._process_fhir_response(response, selected_variables=selected_variables))
+
+        while True:
+            if response.get("link", None):
+                next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
+            else:
+                break
+
+            if next_page:
+                logger.info("Getting next page in paginated FHIR response.")
+
+                r = requests.get(url=next_page["url"], auth=self._generate_auth())
+                r.raise_for_status()
+                response = r.json()
+                data.append(self._process_fhir_response(response, selected_variables=selected_variables))
+
+            else:
+                break
+
+        if data:
+            logger.info("Aggregating FHIR response")
+            if self.output_format == "csv":
+                result = pd.concat(data)
+            else:
+                result = list(chain.from_iterable(data))
+
+        else:
+            raise ValueError("No Results matched the given query.")
+
+        # it's not possible to check raw output for k-anonymity so only check parsed responses
+        if self.output_format == "csv" and not self.disable_k_anon:
+
+            logger.info("Checking if the response satisfies k-anonymity with k = {}...", k_anonymity)
+            # Check if the returned results satisfy k-anonymity
+            if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
+                return result
+            # Attempt to generalize the dataframe
+            else:
+                anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
+                if anon_df:
+                    return anon_df
+                else:
+                    raise PermissionError(
+                        f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
+        else:
+            logger.info("Returning unvalidated results.")
+            return result
 
     async def _get_query_results_from_api(self, url: str, auth: requests.auth.AuthBase = None,
                                           selected_variables: List[str] = None, k_anonymity: int = 5) -> pd.DataFrame:
@@ -106,6 +171,7 @@ class PHTFhirClient:
             #  Process all the pages contained in the response
             while True:
                 # todo improve this
+                print(response)
                 if response.get("link", None):
                     next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
                 else:
@@ -113,12 +179,15 @@ class PHTFhirClient:
                 if next_page:
                     logger.info("Getting next page in paginated FHIR response.")
                     # Schedule a new task for new page
-                    task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
+                    print(next_page["url"])
+                    print(str(auth))
+                    task = asyncio.create_task(client.get(url=next_page["url"], auth=self._generate_auth()))
                     # Process the previous response
                     response_data = self._process_fhir_response(response, selected_variables=selected_variables)
                     if response_data is not None:
                         data.append(response_data)
                     response = await task
+                    print(response.text)
                     response = response.json()
 
                 else:
@@ -327,11 +396,11 @@ class BearerAuth(requests.auth.AuthBase):
 
 
 if __name__ == '__main__':
-    query_json_path = "minimal_query.json"
+    query_json_path = "minimal_query_2.json"
     load_dotenv(find_dotenv())
     print("Server", os.getenv("FHIR_SERVER_URL"))
-    fhir_client = PHTFhirClient()
-    fhir_client.health_check()
+    fhir_client = PHTFhirClient(disable_k_anon=True)
+    print(fhir_client.health_check())
 
     loop = asyncio.get_event_loop()
 
