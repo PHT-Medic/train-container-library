@@ -265,7 +265,7 @@ class PHTFhirClient:
         query_file = json.loads(query_file)
         return query_file
 
-    def _generate_url(self, query_file: dict, return_format="json", limit=1000):
+    def _generate_url(self, query: Union[dict, list, str], return_format="json", limit=1000):
         """
         Generates the fhir search url to request from the server based. Either based on a previously given query string
         or based on a dictionary containing the query definition in the query.json file.
@@ -277,8 +277,6 @@ class PHTFhirClient:
         :return: url string to perform a request against a fhir server with
         """
         url = self._generate_api_url() + "/"
-
-        query = query_file["query"]
         if isinstance(query, dict):
             url += build_query_string(query_dict=query)
         elif isinstance(query, list):

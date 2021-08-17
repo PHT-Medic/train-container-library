@@ -10,6 +10,12 @@ Python library for pht-train images/containers.
 The docker images defined by the Dockerfiles in the `docker` are the master images that need to be used when building
 train images.
 
+
+## Tests
+
+Run the tests to validate the security protocol is working as intended. From this projects root directory run 
+`pytest train_lib`
+
 ### Available Images
 
 - `master/python:slim`: Alpine linux image with python 3.8 and the security protocol installed.

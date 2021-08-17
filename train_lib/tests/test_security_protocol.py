@@ -220,9 +220,8 @@ def test_train_image(train_config, train_file_archive, docker_client):
 
     docker_file_obj = BytesIO(
         """
-        FROM harbor.pht.medic.uni-tuebingen.de/pht_master/master:slim
-        
-        RUN mkdir /opt/pht_results
+        FROM harbor-pht.tada5hi.net/master/python/ubuntu:latest
+        RUN mkdir /opt/pht_results && mkdir /opt/pht_train
         CMD ["python", "/opt/pht_train/entrypoint.py"]
         """.encode("utf-8")
     )
