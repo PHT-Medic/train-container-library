@@ -116,7 +116,7 @@ class PHTFhirClient:
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=auth))
                     # Process the previous response
                     response_data = self._process_fhir_response(response, selected_variables=selected_variables)
-                    if response_data:
+                    if response_data is not None:
                         data.append(response_data)
                     response = await task
                     response = response.json()
