@@ -230,12 +230,15 @@ class PHTFhirClient:
     def store_query_results(self, query_results, filename: str, storage_dir: str = None) -> str:
 
         storage_dir = storage_dir if storage_dir else os.getenv("TRAIN_DATA_DIR")
+        if not os.path.isdir(storage_dir):
+            os.mkdir(storage_dir)
 
         if not storage_dir:
             logger.warning("No storage directory specified, saving results to current working directory.")
             results_path = filename
         else:
             results_path = os.path.join(storage_dir, filename)
+
 
         if self.output_format == "csv":
             if not isinstance(query_results, pd.DataFrame):
