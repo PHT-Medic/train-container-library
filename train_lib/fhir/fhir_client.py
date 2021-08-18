@@ -46,7 +46,7 @@ class PHTFhirClient:
             raise ValueError("No FHIR server address given.")
 
     async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None,
-                            query: dict = None) -> pd.DataFrame:
+                            query: dict = None, store_results: bool = False) -> pd.DataFrame:
         """
         Asynchronously build the query string and execute it against the given fhir server either based on a query.json
         file or based on a dictionary containing the query file content.
@@ -76,10 +76,11 @@ class PHTFhirClient:
         #                                                        selected_variables=selected_variables)
 
         query_results = self._get_query_results_from_api_sync(url=url, auth=auth,
-                                                               selected_variables=selected_variables)
+                                                              selected_variables=selected_variables)
 
         filename = query_file_content["data"]["filename"]
-        self.store_query_results(query_results, filename=filename)
+        if store_results:
+            self.store_query_results(query_results, filename=filename)
 
         return query_results
 
@@ -235,7 +236,6 @@ class PHTFhirClient:
             results_path = filename
         else:
             results_path = os.path.join(storage_dir, filename)
-
 
         if self.output_format == "csv":
             if not isinstance(query_results, pd.DataFrame):

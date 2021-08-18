@@ -5,10 +5,6 @@
       {
         "variable": "gender",
         "condition": "male"
-      },
-      {
-        "variable": "birthdate",
-        "condition": "gt1980-08-12"
       }
     ]
   },

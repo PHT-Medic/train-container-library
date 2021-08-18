@@ -35,11 +35,13 @@ def calculate_new_average(average_age_dict, data_path, results_path):
     # previous results exist load them otherwise create a new dictionary containing the results
     if average_age_dict:
         prev_average = average_age_dict["average_age"]
-        new_average = (prev_average if prev_average else 0 + local_average) / 2
+        new_average = (prev_average + local_average) / 2 if prev_average else local_average
         average_age_dict["average_age"] = new_average
     else:
         new_average = local_average
         average_age_dict = {"average_age": new_average}
+
+    print(average_age_dict)
 
     # store the updated results
     with open(results_path, "w") as f:
@@ -48,8 +50,8 @@ def calculate_new_average(average_age_dict, data_path, results_path):
 
 def main():
     data_path = os.getenv("TRAIN_DATA_PATH")
+    print(f"Loading data at {data_path}")
     prev_results = load_previous_data(RESULTS_PATH)
-
     calculate_new_average(prev_results, data_path, RESULTS_PATH)
 
 
