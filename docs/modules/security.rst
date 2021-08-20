@@ -61,4 +61,12 @@ Symmetric Encryption
     :undoc-members:
     :show-inheritance:
 
+Docker Image Validation
+-----------------------
+
+.. automodule:: train_lib.docker_util.validate_master_image
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
