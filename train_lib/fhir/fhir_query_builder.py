@@ -94,9 +94,3 @@ def load_query_file(query_json: Union[str, os.PathLike, bytes]) -> dict:
         raise ValueError("Unsupported file type for query definition.")
 
     return query_dict
-
-
-if __name__ == '__main__':
-    query_file = load_query_file("query.json")
-    query_str = build_query_string(query_file["query"])
-    print(query_str)

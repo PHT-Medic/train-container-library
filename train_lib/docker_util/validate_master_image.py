@@ -1,21 +1,36 @@
 import subprocess
 from typing import List, Tuple
 
-import docker
-from pprint import pprint
-import json
-from icecream import ic
 
 
 def validate_train_image(train_img: str, master_image: str):
+    """
+    Validates a train image against an official master image
+    :param train_img: identifier of the docker image defining a train
+    :param master_image: identifier of the master docker image to validate against
+    :return:
+    """
+
     status, message = _compare_image_file_system(master_image, train_img)
     print(message)
-    assert status == 0
+    if status != 0:
+        raise ValueError(f"File system could not be validated. \n {message}")
 
 
-def _compare_image_file_system(master_image_name: str, submission_image_name: str):
+def _compare_image_file_system(master_image_name: str, train_image_name: str):
+    """
+    Compares the full file systems of the master image against, any added, changed or deleted files will be detected
+    and if any changes are detected outside of the PHT specific directories will be considered invalid and raise an
+    error.
+    Uses the container-diff tool from google: https://github.com/GoogleContainerTools/container-diff
+
+    :param master_image_name:
+    :param train_image_name:
+    :return:
+    """
+
     container_diff_args = ["container-diff", "diff", f"daemon://{master_image_name}",
-                           f"daemon://{submission_image_name}", "--type=file"]
+                           f"daemon://{train_image_name}", "--type=file"]
     output = subprocess.run(container_diff_args, capture_output=True)
     file_system_diff = output.stdout.decode().splitlines()
     valid, msg = _validate_file_system_changes(file_system_diff)
@@ -108,9 +123,3 @@ def _validate_added_file(file: str) -> Tuple[bool, str]:
         print(f"Invalid file detected: {path}")
 
     return valid, path
-
-
-if __name__ == '__main__':
-    TRAIN_IMAGE = "harbor-pht.tada5hi.net/pht_incoming/ed8045f8-77d3-4475-b4fd-3e24cb22c6fe"
-    MASTER_IMAGE = "harbor-pht.tada5hi.net/master/python/ubuntu"
-    validate_train_image(TRAIN_IMAGE, MASTER_IMAGE)

@@ -49,7 +49,7 @@ def calculate_new_average(average_age_dict, data_path, results_path):
 
 
 def main():
-    data_path = os.getenv("TRAIN_DATA_PATH")
+    data_path = os.getenv("TRAIN_DATA_PATH", "/opt/train_data/patients.csv")
     print(f"Loading data at {data_path}")
     prev_results = load_previous_data(RESULTS_PATH)
     calculate_new_average(prev_results, data_path, RESULTS_PATH)
