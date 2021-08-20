@@ -21,7 +21,7 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'PHT train container library'
-copyright = '2020, Michael Graf'
+copyright = ''
 author = 'Michael Graf'
 
 # The short X.Y version

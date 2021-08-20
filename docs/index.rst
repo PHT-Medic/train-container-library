@@ -19,6 +19,7 @@ station to interact with Trains or to provide functionality inside of a running 
    :caption: Packages
 
    modules/security
+   modules/fhir
    modules/client
    modules/dockerUtil
 
