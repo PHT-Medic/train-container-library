@@ -2,7 +2,6 @@ import subprocess
 from typing import List, Tuple
 
 
-
 def validate_train_image(train_img: str, master_image: str):
     """
     Validates a train image against an official master image
@@ -80,6 +79,7 @@ def _validate_file_system_changes(file_system_diff: List[str]) -> Tuple[bool, st
     # -> image invalid
     if len(file_system_diff[deleted_ind: changed_ind]) > 2:
         print("Deleted Files detected")
+        print(file_system_diff[deleted_ind: changed_ind])
         valid = False
         return valid, "Files deleted from master image"
     # If the length of the deleted files section is greater than two, files have been changed from the master image
@@ -105,7 +105,6 @@ def _validate_added_file(file: str) -> Tuple[bool, str]:
     print(f"Validate called with file: {file}")
     if not file:
         return True, path
-
 
     if len(path) > 1:
         path_dir = path.split("/")[1:]
