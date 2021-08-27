@@ -83,8 +83,6 @@ class PHTFhirClient:
 
         return query_results
 
-
-
     async def _get_query_results_from_api(self, url: str, auth: requests.auth.AuthBase = None,
                                           selected_variables: List[str] = None, k_anonymity: int = 5) -> pd.DataFrame:
         """
@@ -107,8 +105,9 @@ class PHTFhirClient:
             response = await task
             response = response.json()
             # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
-            if response["total"] < k_anonymity:
-                raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
+            if len(response["entry"]) < k_anonymity:
+                raise ValueError(
+                    f"Number of total responses n={len(response['entry'])} is too low, for basic k-anonymity.")
             #  Process all the pages contained in the response
             while True:
                 # todo improve this

@@ -55,7 +55,7 @@ def _validate_file_system_changes(file_system_diff: List[str]) -> Tuple[bool, st
     add_ind = None
     deleted_ind = None
     changed_ind = None
-    valid = False
+    valid = True
     for ind, content in enumerate(file_system_diff):
         if "These entries have been added" in content:
             add_ind = ind
@@ -81,13 +81,13 @@ def _validate_file_system_changes(file_system_diff: List[str]) -> Tuple[bool, st
     if len(file_system_diff[deleted_ind: changed_ind]) > 2:
         print("Deleted Files detected")
         valid = False
+        return valid, "Files deleted from master image"
     # If the length of the deleted files section is greater than two, files have been changed from the master image
     # -> image invalid
     if len(file_system_diff[changed_ind:]) > 2:
         print("Changed files detected")
         valid = False
-    if valid:
-        print("Validation success!")
+        return valid, "Files changed in the master"
 
     return valid, "Successfully verified file system"
 
