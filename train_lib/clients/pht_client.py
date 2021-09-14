@@ -169,19 +169,3 @@ class PHTClient:
         headers = {"Authorization": f"Basic {auth_string}"}
         return headers
 
-
-if __name__ == '__main__':
-    load_dotenv(find_dotenv())
-    ampq_url = os.getenv("AMPQ_URL")
-    pht_client = PHTClient(api_url=os.getenv("UI_TRAIN_API"), ampq_url=ampq_url, vault_url=os.getenv("vault_url"),
-                           vault_token=os.getenv("vault_token"))
-    tar_url = 'https://pypi.python.org/packages/source/x/xlrd/xlrd-0.9.4.tar.gz'
-    # archive = pht_client._get_tar_archive_from_stream(tar_url, external_endpoint=True)
-    # print(archive)
-    print(pht_client.get_station_pk(2))
-    tb_client_id = "17a05c10-194f-4734-b09a-7c5e1ab0a4ef"
-    tb_client_secret = "fc5c14a6ccdc02a85fc698344124b36182ca5366858188e74c9676a6bbd41efe0d2223a7fc6d290d"
-    train_id = "77fcbb98-b63a-403d-92d3-e172ecc7370f"
-
-    files = pht_client.get_train_files_archive(train_id=train_id, token=tb_client_secret, client_id=tb_client_id)
-

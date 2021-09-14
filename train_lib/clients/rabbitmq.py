@@ -466,14 +466,3 @@ class ReconnectingConsumer(object):
         if self._reconnect_delay > 30:
             self._reconnect_delay = 30
         return self._reconnect_delay
-
-
-def main():
-    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
-    amqp_url = 'amqp://pht:start123@193.196.20.19:5672/'
-    consumer = ReconnectingConsumer(amqp_url)
-    consumer.run()
-
-
-if __name__ == '__main__':
-    main()
