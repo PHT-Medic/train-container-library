@@ -111,7 +111,6 @@ class PHTFhirClient:
             #  Process all the pages contained in the response
             while True:
                 # todo improve this
-                print(response)
                 if response.get("link", None):
                     next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
                 else:
@@ -119,15 +118,12 @@ class PHTFhirClient:
                 if next_page:
                     logger.info("Getting next page in paginated FHIR response.")
                     # Schedule a new task for new page
-                    print(next_page["url"])
-                    print(str(auth))
                     task = asyncio.create_task(client.get(url=next_page["url"], auth=self._generate_auth()))
                     # Process the previous response
                     response_data = self._process_fhir_response(response, selected_variables=selected_variables)
                     if response_data is not None:
                         data.append(response_data)
                     response = await task
-                    print(response.text)
                     response = response.json()
 
                 else:
