@@ -377,7 +377,7 @@ class PHTFhirClient:
         else:
             raise ValueError("Either query dictionary or string need to be given")
         # add formatting configuration
-        url += f"&_format={return_format}&_limit={limit}"
+        url += f"&_format={return_format}&_count={limit}"
 
         return url
 

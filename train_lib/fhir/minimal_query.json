@@ -9,8 +9,8 @@
     ]
   },
   "data": {
-    "output_format": "csv",
-    "filename": "patients.csv",
+    "output_format": "json",
+    "filename": "patients.json",
     "variables": [
       "id",
       "birthDate",
