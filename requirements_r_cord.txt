@@ -1,3 +1,8 @@
 tidyverse
 eeptools
 ggplot2
+tidyr
+stringr
+tibble
+dplyr
+fhircrackr
