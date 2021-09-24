@@ -37,7 +37,7 @@ class PHTFhirClient:
         self.disable_k_anon = disable_k_anon
 
         # Check for correct initialization based on env vars or constructor parameters
-        if not (self.username and self.password) and self.token:
+        if (self.username and self.password) and self.token:
             raise ValueError("Only one of username:pw or token auth can be selected")
         if not ((self.username and self.password) or self.token) and disable_auth:
             raise ValueError("Insufficient login information, either token or username and password need to be set.")
