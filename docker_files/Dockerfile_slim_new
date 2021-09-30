@@ -1,12 +1,11 @@
 FROM alpine
 RUN apk update && apk upgrade && apk add --no-cache python3 && ln -sf python3 /usr/bin/python
-RUN python3 -m ensurepip
+RUN python3 -m ensurepip && pip3 install --upgrade pip
 RUN echo "http://dl-8.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
-RUN apk --no-cache --update-cache add gcc gfortran build-base wget freetype-dev libpng-dev openblas-dev
+RUN apk --no-cache --update-cache add gcc gfortran build-base wget freetype-dev libpng-dev openblas-dev libffi-dev
 RUN apk add --no-cache \
         libressl-dev \
-        musl-dev \
-        libffi-dev && \
+        musl-dev && \
     pip3 install --no-cache-dir cryptography && \
     apk del \
         libressl-dev \

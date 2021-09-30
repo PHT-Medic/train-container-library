@@ -49,7 +49,7 @@ if __name__ == '__main__':
     #     files += [os.path.join(dir_path, file) for file in file_names]
     # # hash = hash_immutable_files(files, "1", session_id)
 
-    train_hash = bytes.fromhex("f276888682a1f0e184c7c9f8055da0c4abf42120cad1732dc07180f3f7f2496e7407c6cec148bb688c4b974fa2df8212f86b2db821505952ccf7939e23c36f6b")
+    train_hash = bytes.fromhex("48a7aebbd4131a26a957374bb8f5096e43c74002c1e098ec2554b0a2c2154263987741990dfbc2fdcbff0c5dd97eb37f1e7c46b59957fa2d51fe6360006d2734")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,

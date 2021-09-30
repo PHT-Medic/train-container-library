@@ -98,8 +98,7 @@ class SecurityProtocol:
             logging.info("Pre-run protocol success")
             return
         else:
-            raise ValueError("Neither instance variables for  train and results directories nor the the mutable files"
-                             "and immutable files arguments are set.")
+            raise ValueError("Neither train image or results and train directories are set")
 
     def post_run_protocol(self, img: str = None, private_key_path: str = None, mutable_dir: str = "/opt/pht_results"):
         """
