@@ -1,0 +1,11 @@
+[run]
+source =
+    train_lib
+
+[paths]
+source =
+    train_lib
+
+[report]
+show_missing = true
+precision = 2

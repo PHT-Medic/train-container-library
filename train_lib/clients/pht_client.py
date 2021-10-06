@@ -85,7 +85,7 @@ class PHTClient:
 
     def _get_tar_archive_from_stream(self, endpoint: str, params: dict = None,
                                      external_endpoint: bool = False, token: str = None,
-                                     client_id: str = None) -> TarFile:
+                                     client_id: str = None) -> BytesIO:
         """
         Read a stream of tar data from the given endpoint and return an in memory BytesIO object containing the data
 
@@ -117,14 +117,11 @@ class PHTClient:
         :param user_id:
         :return: hex string containing an rsa public key
         """
-
-
-
         url = f"{self.vault_url}v1/user_pks/{user_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
         data = r.json()["data"]
-        return data["data"]["rsa_public_key"]
+        return data["rsa_public_key"]
 
     def get_station_pk(self, station_id):
         """
@@ -136,7 +133,7 @@ class PHTClient:
         url = f"{self.vault_url}v1/station_pks/{station_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
-        public_key = r.json()["data"]["data"]["rsa_station_public_key"]
+        public_key = r.json()["data"]["rsa_station_public_key"]
         return public_key
 
     def get_multiple_station_pks(self, station_ids: List) -> dict:
