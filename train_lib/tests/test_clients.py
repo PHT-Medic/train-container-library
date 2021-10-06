@@ -121,7 +121,3 @@ def test_upload_route_to_vault(vault_client: hvac.Client, pht_client: PHTClient)
         path=train_id,
         mount_point=mount
     )
-
-
-
-
