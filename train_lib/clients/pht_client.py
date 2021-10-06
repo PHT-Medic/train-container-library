@@ -118,6 +118,8 @@ class PHTClient:
         :return: hex string containing an rsa public key
         """
 
+
+
         url = f"{self.vault_url}v1/user_pks/{user_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()

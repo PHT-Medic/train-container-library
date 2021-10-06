@@ -66,8 +66,8 @@ def generalize_datetime_column(date_col: pd.Series, level: int = 2):
 
     if level == 2:
         generalized_col = col.apply(lambda x: x.strftime('m-%Y'))
-        return generalized_col
+        return pd.to_datetime(generalized_col)
 
     elif level == 3:
         generalized_col = col.apply(lambda x: x.strftime('%Y'))
-        return generalized_col
+        return pd.to_datetime(generalized_col)
