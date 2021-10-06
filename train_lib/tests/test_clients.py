@@ -38,7 +38,7 @@ def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
     path = "test_user"
     secret_val = "test_key"
     secret = {"rsa_public_key": secret_val}
-    vault_client.kv.v1.create_or_update_secret(
+    vault_client.secrets.kv.v1.create_or_update_secret(
         mount_point=mount,
         path=path,
         secret=secret
@@ -66,7 +66,7 @@ def test_get_station_pk(vault_client: hvac.Client, pht_client: PHTClient):
     path = "test_station"
     secret_val = "test_key"
     secret = {"rsa_station_public_key": secret_val}
-    vault_client.kv.v1.create_or_update_secret(
+    vault_client.secrets.kv.v1.create_or_update_secret(
         mount_point=mount,
         path=path,
         secret=secret
@@ -91,7 +91,7 @@ def test_get_multiple_station_pks(vault_client: hvac.Client, pht_client: PHTClie
     for i in range(3):
         path = f"test_station_{i}"
         paths.append(path)
-        vault_client.kv.v1.create_or_update_secret(
+        vault_client.secrets.kv.v1.create_or_update_secret(
             mount_point=mount,
             path=path,
             secret=secret
@@ -107,3 +107,21 @@ def test_get_multiple_station_pks(vault_client: hvac.Client, pht_client: PHTClie
             path=path,
             mount_point=mount
         )
+
+
+def test_upload_route_to_vault(vault_client: hvac.Client, pht_client: PHTClient):
+    route = [1, 2, 3]
+    train_id = "test_train_route"
+    mount = f"kv-pht-routes"
+
+    pht_client.post_route_to_vault(train_id, route)
+
+    # Cleanup route
+    vault_client.secrets.kv.v2.delete_metadata_and_all_versions(
+        path=train_id,
+        mount_point=mount
+    )
+
+
+
+
