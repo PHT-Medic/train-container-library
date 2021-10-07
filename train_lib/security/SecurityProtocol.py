@@ -27,7 +27,6 @@ class SecurityProtocol:
     :type config: Union[str, dict]
     :param results_dir: path to the directory containing the results
     :param train_dir: path to the directory containing the immutable files defining a train
-
     """
 
     def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None,

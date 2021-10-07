@@ -49,7 +49,8 @@ if __name__ == '__main__':
     #     files += [os.path.join(dir_path, file) for file in file_names]
     # # hash = hash_immutable_files(files, "1", session_id)
 
-    train_hash = bytes.fromhex("48a7aebbd4131a26a957374bb8f5096e43c74002c1e098ec2554b0a2c2154263987741990dfbc2fdcbff0c5dd97eb37f1e7c46b59957fa2d51fe6360006d2734")
+    train_hash = bytes.fromhex(
+        "9d6346646882ac44cbe705332637bc9500ba188c48a12d6ba7c938e7d755a630ab4642b26977c9c3089e5d00887c8c8198e34ad437ea473e1baae16c1584f961")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,
@@ -71,3 +72,9 @@ if __name__ == '__main__':
                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
                       utils.Prehashed(hashes.SHA512()))
 
+    with open("./S_2_sk.pem", "rb") as station_sk:
+        private_key = serialization.load_pem_private_key(station_sk.read(), password=None,
+                                                         backend=default_backend())
+
+        print(private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.PKCS1).hex())
