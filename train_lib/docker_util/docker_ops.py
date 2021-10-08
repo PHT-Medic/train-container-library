@@ -27,10 +27,11 @@ def extract_query_json(img: str, query_file_path: str = "/opt/pht_train/query.js
     :param query_file_path: path of the query file inside the image
     :return: dictionary containing the  security values stored inside the train:config.json
     """
-    config_archive = extract_archive(img, query_file_path)
-    query_file = config_archive.extractfile("query.json")
-    data = query_file.read()
-    query_dict = json.loads(data)
+
+    with extract_archive(img, query_file_path) as query_archive:
+        query_file = query_archive.extractfile("query.json")
+        data = query_file.read()
+        query_dict = json.loads(data)
     return query_dict
 
 

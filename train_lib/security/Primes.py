@@ -2,7 +2,7 @@ import random
 
 
 def ipow(a, b, n):
-    """calculates (a**b) % n via binary exponentiation, yielding itermediate
+    """calculates (a**b) % n via binary exponentiation, yielding intermediate
        results as Rabin-Miller requires"""
     A = a = int(a % n)
     yield A

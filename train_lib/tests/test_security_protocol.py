@@ -17,10 +17,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
 from cryptography.hazmat.primitives import serialization, hashes
 
 from train_lib.security.Hashing import hash_immutable_files, hash_results
-from train_lib.docker_util.docker_ops import extract_train_config
+from train_lib.docker_util.docker_ops import extract_train_config, extract_query_json
 from train_lib.security.SecurityProtocol import SecurityProtocol
 from train_lib.security.SecurityErrors import ValidationError
 from train_lib.docker_util import docker_ops
+from train_lib.docker_util.validate_master_image import validate_train_image
 
 
 @pytest.fixture
@@ -114,7 +115,7 @@ def key_pairs():
 
 
 @pytest.fixture
-def train_files():
+def train_files(query_json):
     entrypoint_file_string = """
 import os
 import random
@@ -143,8 +144,9 @@ if __name__ == '__main__':
     entrypoint_file = BytesIO(entrypoint_file_string.encode("utf-8"))
 
     filenames = ["entrypoint.py", "file_1_test.py", "r_script.r", "query.json"]
-    files = [BytesIO(os.urandom(random.randint(5000, 20000))) for _ in range(len(filenames) - 1)]
+    files = [BytesIO(os.urandom(random.randint(5000, 20000))) for _ in range(len(filenames) - 2)]
     files.insert(0, entrypoint_file)
+    files.append(query_json)
     return filenames, files
 
 
@@ -195,6 +197,51 @@ def train_config(key_pairs, train_files):
 
 
 @pytest.fixture
+def query_json():
+    minimal_query = {
+        "query": {
+            "resource": "Patient",
+            "parameters": [
+                {
+                    "variable": "gender",
+                    "condition": "male"
+                }
+            ]
+        },
+        "data": {
+            "output_format": "json",
+            "filename": "patients.json",
+            "variables": [
+                "id",
+                "birthDate",
+                "gender"
+            ]
+        }
+    }
+    # transform  to BytesIo containing binary json data
+    query = BytesIO(json.dumps(minimal_query, indent=2).encode("utf-8"))
+
+    return query
+
+
+# @pytest.fixture
+# def query_archive(query_json):
+#     query_archive = BytesIO()
+#     tar = tarfile.open(fileobj=query_archive, mode="w")
+#
+#     # Create TarInfo Object based on the data
+#     query_file = tarfile.TarInfo(name="query.json")
+#     query_file.size = query_json.getbuffer().nbytes
+#     query_file.mtime = time.time()
+#     # add query data and reset the archive
+#     tar.addfile(query_file, query_json)
+#     tar.close()
+#     query_archive.seek(0)
+#
+#     return query_archive
+#
+
+@pytest.fixture
 def train_file_archive(train_files):
     archive = BytesIO()
     tar = tarfile.open(fileobj=archive, mode="w")
@@ -215,12 +262,15 @@ def train_file_archive(train_files):
 
 
 @pytest.fixture
-def test_train_image(train_config, train_file_archive, docker_client):
-    # TODO test if image exists otherwise build it and pass the identifier to the test functions
+def master_image():
+    return "harbor-pht.tada5hi.net/master/python/ubuntu:latest"
 
+
+@pytest.fixture
+def test_train_image(train_config, train_file_archive, docker_client, master_image):
     docker_file_obj = BytesIO(
-        """
-        FROM harbor-pht.tada5hi.net/master/python/ubuntu:latest
+        f"""
+        FROM {master_image}
         RUN mkdir /opt/pht_results && mkdir /opt/pht_train
         CMD ["python", "/opt/pht_train/entrypoint.py"]
         """.encode("utf-8")
@@ -265,6 +315,20 @@ def test_extract_train_config(test_train_image, train_files):
     assert type(config) == dict
 
     assert config["immutable_file_list"] == file_names
+
+
+def test_extract_query_json(test_train_image, query_json):
+    extracted_query = extract_query_json(test_train_image)
+
+    assert extracted_query
+    query_json.seek(0)
+    initial_query = json.loads(query_json.read())
+    assert extracted_query == initial_query
+
+
+# # todo failing cases
+# def test_validate_master_image(test_train_image, master_image):
+#     validate_train_image(test_train_image, master_image)
 
 
 def test_pre_run_protocol(test_train_image, tmpdir, key_pairs, docker_client):
