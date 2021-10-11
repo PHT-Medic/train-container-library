@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # # hash = hash_immutable_files(files, "1", session_id)
 
     train_hash = bytes.fromhex(
-        "515857f4553c478115d16bd2fa6a684d7840d81fafdbfcad02f91244c18509cd9cdd08c152f5a6850875135d105056810cbd3d3c0da6ef481d5fd8142160e581")
+        "89956a4bce6ed34f30a08dc6617e3faabbb87a77ff53cabb65b04752ebe1b7abf070d76a1cf92cc2acc1a5d5e0ca620b72d9688d7efade3a45c7b3fa225c69da")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None,

@@ -54,8 +54,8 @@ def enc_add(pub, a, b):
 
 
 def secure_addition(result_local, result_prev, n=None):
-    if n is None:
-        return ValueError("Empty secure addition key")
+    if not n:
+        raise ValueError("Empty secure addition key")
 
     pk = PublicKey.from_n(n)
 
