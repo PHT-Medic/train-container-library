@@ -431,7 +431,7 @@ class SecurityProtocol:
                               utils.Prehashed(hashes.SHA512())
                               )
 
-    def _is_first_station_on_route(self):
+    def _is_first_station_on_route(self) -> bool:
         """
         Returns true if current station is the first station on the route
         :return:
@@ -453,9 +453,3 @@ class SecurityProtocol:
         logging.info(f"Found {len(files)} Files")
         return files
 
-    def _previous_station_id(self):
-        """
-        :return: station id of previous station on route
-        """
-        # get the key of the last entry in the ds dictionary as the previous station id
-        return self.key_manager.get_security_param("digital_signature")[-1]["station"]
