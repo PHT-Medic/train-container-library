@@ -224,23 +224,6 @@ def query_json():
     return query
 
 
-# @pytest.fixture
-# def query_archive(query_json):
-#     query_archive = BytesIO()
-#     tar = tarfile.open(fileobj=query_archive, mode="w")
-#
-#     # Create TarInfo Object based on the data
-#     query_file = tarfile.TarInfo(name="query.json")
-#     query_file.size = query_json.getbuffer().nbytes
-#     query_file.mtime = time.time()
-#     # add query data and reset the archive
-#     tar.addfile(query_file, query_json)
-#     tar.close()
-#     query_archive.seek(0)
-#
-#     return query_archive
-#
-
 @pytest.fixture
 def train_file_archive(train_files):
     archive = BytesIO()
@@ -326,9 +309,9 @@ def test_extract_query_json(test_train_image, query_json):
     assert extracted_query == initial_query
 
 
-# # todo failing cases
-# def test_validate_master_image(test_train_image, master_image):
-#     validate_train_image(test_train_image, master_image)
+# todo failing cases
+def test_validate_master_image(test_train_image, master_image):
+    validate_train_image(test_train_image, master_image)
 
 
 def test_pre_run_protocol(test_train_image, tmpdir, key_pairs, docker_client):
