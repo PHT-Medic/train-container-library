@@ -37,7 +37,7 @@ def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
     mount = "user_pks"
     path = "test_user"
     secret_val = "test_key"
-    secret = {"rsa_public_key": secret_val}
+    secret = {"data": {"rsa_public_key": secret_val, "he-key": "hello"}}
     vault_client.secrets.kv.v1.create_or_update_secret(
         mount_point=mount,
         path=path,
@@ -48,7 +48,7 @@ def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
         mount_point=mount,
         path=path
     )
-    assert read_secret["data"]["rsa_public_key"] == secret_val
+    assert read_secret["data"]["data"]["rsa_public_key"] == secret_val
 
     read_pk = pht_client.get_user_pk(path)
 

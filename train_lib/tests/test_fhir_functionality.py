@@ -7,6 +7,8 @@ from train_lib.fhir import PHTFhirClient
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 from io import BytesIO
+from train_lib.fhir.fhir_query_builder import build_query_string, load_query_file
+import asyncio
 
 
 @pytest.fixture
@@ -54,11 +56,11 @@ def advanced_query():
             "parameters": [
                 {
                     "variable": "gender",
-                    "condition": "male"
+                    "condition": ["male", "female"]
                 },
                 {
                     "variable": "birthdate",
-                    "condition": "sa1980-08-12"
+                    "condition": "gt1980-08-12"
                 }
             ],
             "has": [
@@ -70,8 +72,7 @@ def advanced_query():
                 {
                     "resource": "Condition",
                     "property": "code",
-                    "params": ["D70.0", "D70.10", "D70.11", "D70.11", "D70.12", "D70.13", "D70.14", "D70.18", "D70.19",
-                               "D70.3", "D70.5", "D70.6", "D70.7"]
+                    "params": "D70.0"
                 }
             ]
         },
@@ -95,13 +96,57 @@ def test_load_query_json(pht_fhir_client: PHTFhirClient, minimal_query, advanced
     minimal_query_dict = pht_fhir_client.read_query_file(query_io)
 
     assert isinstance(minimal_query_dict, dict)
+    assert minimal_query == minimal_query_dict
 
     query_io = BytesIO(json.dumps(advanced_query).encode("utf-8"))
     advanced_query_dict = pht_fhir_client.read_query_file(query_io)
 
     assert isinstance(advanced_query_dict, dict)
+    assert advanced_query == advanced_query_dict
 
 
+def test_load_query_file(minimal_query, tmp_path):
+    query_str = json.dumps(minimal_query)
+    loaded_query = load_query_file(query_str)
+
+    assert loaded_query == minimal_query
+
+    query_bytes = query_str.encode("utf-8")
+
+    loaded_query = load_query_file(query_bytes)
+
+    assert loaded_query == minimal_query
+
+    p = tmp_path / "query.json"
+    p.write_text(query_str)
+
+    loaded_query = load_query_file(p)
+    assert loaded_query == minimal_query
+
+    loaded_query = load_query_file(str(p))
+
+    assert loaded_query == minimal_query
+
+    with pytest.raises(ValueError):
+        loaded_query = load_query_file(1234567)
 
 
+def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advanced_query):
+    string_query = "Patient?gender=male"
 
+    query_string = build_query_string(minimal_query["query"])
+
+    assert string_query == query_string
+
+    advanced_query_string = "Patient?gender=male,female&birthdate=gt1980-08-12&_has:Observation:patient:code=I63.0,I63.1,I63.2,I63.3,I63.4,I63.5,I63.6,I63.7,I63.8,I63.9&_has:Condition:patient:code=D70.0"
+
+    query_string = build_query_string(advanced_query["query"])
+
+    assert advanced_query_string == query_string
+
+
+def test_query_with_client(pht_fhir_client: PHTFhirClient, minimal_query):
+    loop = asyncio.get_event_loop()
+    query_result = loop.run_until_complete(pht_fhir_client.execute_query(query=minimal_query))
+    print(query_result)
+    assert query_result

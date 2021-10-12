@@ -120,7 +120,7 @@ class PHTClient:
         url = f"{self.vault_url}v1/user_pks/{user_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
-        data = r.json()["data"]
+        data = r.json()["data"]["data"]
         return data["rsa_public_key"]
 
     def get_station_pk(self, station_id):

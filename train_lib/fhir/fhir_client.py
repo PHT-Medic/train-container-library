@@ -55,18 +55,15 @@ class PHTFhirClient:
         :return:
         """
         if query and query_file:
-            raise ValueError("Only specify one of query file or query")
-
-        if query:
+            raise ValueError("Only specify one of query file or query dictionary")
+        if query and isinstance(query, dict):
             query_file_content = query
         else:
             query_file_content = self.read_query_file(query_file)
 
         # set the output format
         self.output_format = query_file_content["data"]["output_format"]
-
         # Generate url query string and generate auth (basic)
-
         url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
         selected_variables = query_file_content["data"].get("variables", None)
@@ -187,7 +184,7 @@ class PHTFhirClient:
         if response["total"] < k_anonymity:
             raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
 
-        data.append(self._process_fhir_response(response, selected_variables=selected_variables))
+        data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
 
         while True:
             if response.get("link", None):
@@ -201,7 +198,7 @@ class PHTFhirClient:
                 r = requests.get(url=next_page["url"], auth=self._generate_auth())
                 r.raise_for_status()
                 response = r.json()
-                data.append(self._process_fhir_response(response, selected_variables=selected_variables))
+                data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
 
             else:
                 break
@@ -322,7 +319,7 @@ class PHTFhirClient:
         """
         entries = []
 
-        if self.output_format != "raw":
+        if self.output_format == "df":
             if response.get("entry", None):
                 for entry in response["entry"]:
                     if selected_variables:
