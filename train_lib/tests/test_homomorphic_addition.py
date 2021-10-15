@@ -73,7 +73,7 @@ def test_secure_addition():
     test_n = random.randint(1000, 100000)
     public_key = HomomorphicAddition.PublicKey(test_n)
     a = 32
-    b = 17
+    b = 64
     encrypted_a = HomomorphicAddition.encrypt(public_key, a)
     encrypted_b = HomomorphicAddition.encrypt(public_key, b)
 
