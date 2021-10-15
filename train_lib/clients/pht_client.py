@@ -133,7 +133,7 @@ class PHTClient:
         url = f"{self.vault_url}v1/station_pks/{station_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
-        public_key = r.json()["data"]["rsa_station_public_key"]
+        public_key = r.json()["data"]["data"]["rsa_station_public_key"]
         return public_key
 
     def get_multiple_station_pks(self, station_ids: List) -> dict:

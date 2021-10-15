@@ -87,7 +87,7 @@ def test_get_multiple_station_pks(vault_client: hvac.Client, pht_client: PHTClie
     mount = "station_pks"
     paths = []
     secret_val = "test_key"
-    secret = {"rsa_station_public_key": secret_val}
+    secret = {"data": {"rsa_station_public_key": secret_val}}
     for i in range(3):
         path = f"test_station_{i}"
         paths.append(path)
@@ -97,7 +97,6 @@ def test_get_multiple_station_pks(vault_client: hvac.Client, pht_client: PHTClie
             secret=secret
         )
     station_pks = pht_client.get_multiple_station_pks(paths)
-
     for path in paths:
         assert station_pks[path] == secret_val
 
