@@ -65,7 +65,7 @@ def test_get_station_pk(vault_client: hvac.Client, pht_client: PHTClient):
     mount = "station_pks"
     path = "test_station"
     secret_val = "test_key"
-    secret = {"rsa_station_public_key": secret_val}
+    secret = {"data": {"rsa_station_public_key": secret_val}}
     vault_client.secrets.kv.v1.create_or_update_secret(
         mount_point=mount,
         path=path,
