@@ -118,6 +118,9 @@ def _validate_added_file(file: str) -> Tuple[bool, str]:
 
             if path_dir[1] == "train_config.json":
                 valid = True
+
+            if path_dir[1] == "user_sym_key.key":
+                valid = True
     if not valid:
         print(f"Invalid file detected: {path}")
 

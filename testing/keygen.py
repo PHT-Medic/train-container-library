@@ -50,16 +50,17 @@ if __name__ == '__main__':
     # # hash = hash_immutable_files(files, "1", session_id)
 
     train_hash = bytes.fromhex(
-        "499ee2867aba8437788e5ef62d93e9abebd74bb76ec140a7c45997efdd6d621ed547aa12edfc1e1f3e0af924f89f8db37ff0ea9dfc055a5ddde577e632e43117")
+        "ac644769542322d3efbcbc8dadf208f27c0968b3b4dfb7cd8bfb7f61e71975245d7ecd43590abc619bba9d79133c2dd8f46de8b5df4cf7b83e37fae39c0458ba")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
-        private_key = serialization.load_pem_private_key(pk.read(), password=None,
-                                                         backend=default_backend())
-        sig = private_key.sign(train_hash,
-                               padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                           salt_length=padding.PSS.MAX_LENGTH),
-                               utils.Prehashed(hashes.SHA512())
-                               )
+        private_key = serialization.load_pem_private_key(pk.read(), password=None, backend=default_backend())
+        sig = private_key.sign(
+            train_hash,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA512()),
+                salt_length=padding.PSS.MAX_LENGTH),
+            utils.Prehashed(hashes.SHA512())
+        )
         print("Signature: ", sig.hex())
     with open("./user_public_key.pem", "rb") as pk:
         pk_pem = pk.read().hex()
@@ -67,8 +68,9 @@ if __name__ == '__main__':
                                                                          backend=default_backend())
         print("Public Key:", pk_pem)
 
-    public_key.verify(sig,
-                      train_hash,
+    public_key.verify(
+        sig,
+        train_hash,
                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
                       utils.Prehashed(hashes.SHA512()))
 
