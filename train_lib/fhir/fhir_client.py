@@ -67,9 +67,6 @@ class PHTFhirClient:
         url = self._generate_url(query_file_content["query"])
         auth = self._generate_auth()
         selected_variables = query_file_content["data"].get("variables", None)
-        #
-        # query_results = await self._get_query_results_from_api(url=url, auth=auth,
-        #                                                        selected_variables=selected_variables)
 
         query_results = self._get_query_results_from_api_sync(url=url, auth=auth,
                                                               selected_variables=selected_variables)
@@ -260,6 +257,11 @@ class PHTFhirClient:
         elif self.output_format in ["raw", "json"]:
             with open(results_path, "w") as results_file:
                 results_file.write(json.dumps(query_results, indent=2))
+
+        elif self.output_format == "xml":
+            raise NotImplementedError("XML output is not yet supported.")
+            with open(results_path, "w") as results_file:
+                pass
 
         else:
             raise ValueError(f"Unsupported output format: {self.output_format}")

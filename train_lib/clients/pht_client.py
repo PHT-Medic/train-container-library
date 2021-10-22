@@ -145,6 +145,7 @@ class PHTClient:
     def post_route_to_vault(self, train_id, route, periodic=False):
         route = [str(_) for _ in route]
         vault_url = f"{self.vault_url}v1/kv-pht-routes/data/{train_id}"
+        print(route)
         payload = {
             "options": {
                 "cas": 0

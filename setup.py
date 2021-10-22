@@ -3,6 +3,12 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open("requirements.txt", "r") as rf:
+    requirements = rf.readlines()
+
+with open("requirements_dev.txt", "r") as rfd:
+    dev_requirements = rfd.readlines()
+
 setuptools.setup(
     name="pht-train-container-library",
     version="0.9.0",
@@ -20,23 +26,7 @@ setuptools.setup(
     ],
     keywords=['PHT', 'security', 'encryption', 'personalhealthtrain', 'docker'],
     python_requires='>=3.7',
-    install_requires=[
-        "cryptography",
-        "requests",
-        "threaded",
-        "python-dotenv",
-        "redis",
-        "docker",
-        "pandas",
-        "python-dotenv",
-        "fhirpy",
-        "pika",
-        "loguru",
-        "pytest",
-        "httpx",
-        "pendulum",
-        "GitPython",
-        "icecream",
-        "fhir.resources"
-    ]
+    install_requires=requirements,
+    tests_require=dev_requirements
+
 )
