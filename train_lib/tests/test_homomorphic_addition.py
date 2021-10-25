@@ -46,7 +46,7 @@ def test_modulo_inverse():
 
 
 def test_homomorphic_encrypt():
-    n = random.randint(100, 1000)
+    n = 327
     public_key = HomomorphicAddition.PublicKey(n)
 
     encrypted = HomomorphicAddition.encrypt(public_key, n)
