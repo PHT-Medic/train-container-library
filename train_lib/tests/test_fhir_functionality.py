@@ -1,13 +1,11 @@
 import json
 import os
-import uuid
 
 import pytest
-from train_lib.fhir import PHTFhirClient
-from pathlib import Path
+from train_lib.clients import PHTFhirClient
 from dotenv import load_dotenv, find_dotenv
 from io import BytesIO
-from train_lib.fhir.fhir_query_builder import build_query_string, load_query_file
+from train_lib.clients.fhir import build_query_string, load_query_file
 import asyncio
 
 

@@ -10,8 +10,8 @@ import asyncio
 from fhir.resources.bundle import Bundle
 from loguru import logger
 
-from train_lib.fhir.fhir_query_builder import build_query_string
-from train_lib.fhir import fhir_k_anonymity
+from .fhir_query_builder import build_query_string
+from train_lib.clients.fhir import fhir_k_anonymity
 from itertools import chain
 
 
