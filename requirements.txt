@@ -118,4 +118,4 @@ wcwidth==0.2.5
 webencodings==0.5.1
 websocket-client==0.58.0
 yarl==1.6.3
-zipp==3.5.0
+zipp==3.6.0
