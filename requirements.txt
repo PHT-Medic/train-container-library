@@ -37,7 +37,7 @@ httpcore==0.13.6
 httpx==0.18.2
 hvac==0.11.2
 icecream==2.1.1
-idna==2.10
+idna==3.3
 importlib-metadata==4.6.4
 iniconfig==1.1.1
 ipykernel==6.0.2
