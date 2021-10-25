@@ -59,7 +59,7 @@ MarkupSafe==2.0.1
 matplotlib-inline==0.1.2
 mccabe==0.6.1
 mistune==0.8.4
-multidict==5.1.0
+multidict==5.2.0
 nbclassic==0.3.1
 nbclient==0.5.3
 nbconvert==6.1.0
