@@ -9,8 +9,8 @@ python-dotenv
 fhirpy
 pika
 setuptools
-pytest
 httpx
 pendulum
 GitPython
 loguru
+fhir.resources
