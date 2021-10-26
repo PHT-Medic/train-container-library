@@ -11,7 +11,7 @@ with open("requirements_dev.txt", "r") as rfd:
 
 setuptools.setup(
     name="pht-train-container-library",
-    version="0.9.0",
+    version="0.9.1",
     author="Michael Graf",
     author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
