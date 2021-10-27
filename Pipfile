@@ -13,14 +13,22 @@ docker = "*"
 pandas = "*"
 fhirpy = "*"
 pika = "*"
-httpx = "*"
 pendulum = "*"
 loguru = "*"
 aiohttp = ">=3.7.4"
 pypiwin32 = {version = "*", sys_platform = "== 'win32'"}
 pywin32 = {version = "*", sys_platform = "== 'win32'"}
+hvac = "*"
 
 [dev-packages]
+pytest = "*"
+coverage = "*"
+tox = "*"
+mkdocs = "*"
+mkdocs-material = "*"
+twine = "*"
+bump2version = "*"
+pipenv-setup = "*"
 
 [requires]
 python_version = "3.9"

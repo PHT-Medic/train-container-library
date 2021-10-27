@@ -8,9 +8,6 @@ pandas
 python-dotenv
 fhirpy
 pika
-setuptools
-httpx
 pendulum
-GitPython
 loguru
-fhir.resources
+hvac
