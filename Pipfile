@@ -1,0 +1,27 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+cryptography = "*"
+numpy = "*"
+requests = "*"
+python-dotenv = "*"
+redis = "*"
+docker = "*"
+pandas = "*"
+fhirpy = "*"
+pika = "*"
+httpx = "*"
+pendulum = "*"
+loguru = "*"
+"fhir.resources" = "*"
+GitPython = "*"
+pypiwin32 = {version = "*", sys_platform = "== 'win32'"}
+pywin32 = {version = "*", sys_platform = "== 'win32'"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
