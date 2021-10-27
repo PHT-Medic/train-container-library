@@ -2,6 +2,7 @@
 [![CodeQL](https://github.com/PHT-Medic/train-container-library/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/PHT-Medic/train-container-library/actions/workflows/codeql-analysis.yml)
 [![main-ci](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml/badge.svg)](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/PHT-EU/train-container-library/branch/master/graph/badge.svg?token=11RYRZK2FO)](https://codecov.io/gh/PHT-EU/train-container-library)
+[![PyPI version](https://badge.fury.io/py/pht-train-container-library.svg)](https://badge.fury.io/py/pht-train-container-library)
 # Train Container Library
 
 Python library for pht-train images/containers.
