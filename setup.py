@@ -135,6 +135,7 @@ setup(
         "websocket-client==1.2.1; python_version >= '3.6'",
         "win32-setctime==1.0.3; sys_platform == 'win32'",
         "yarl==1.7.0; python_version >= '3.6'",
+        "fhir.resources"
     ],
     tests_require=dev_requirements,
 )
