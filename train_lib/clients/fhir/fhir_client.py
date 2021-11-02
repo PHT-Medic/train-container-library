@@ -421,7 +421,6 @@ class PHTFhirClient:
 
         elif self.fhir_server_type in ["blaze", "hapi"]:
             url += "/fhir"
-
         else:
             raise ValueError(f"Unsupported FHIR server type: {self.fhir_server_type}")
 

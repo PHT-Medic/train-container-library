@@ -1,12 +1,13 @@
 import json
 import os
-
+from unittest import mock
 import pytest
 from train_lib.clients import PHTFhirClient
 from dotenv import load_dotenv, find_dotenv
 from io import BytesIO
 from train_lib.clients.fhir import build_query_string, load_query_file
 import asyncio
+import xmltodict
 
 
 @pytest.fixture
@@ -76,6 +77,13 @@ def advanced_query():
     }
 
 
+def test_client_from_env():
+    with mock.patch.dict(os.environ, {
+
+    }):
+        client = PHTFhirClient.from_env()
+
+
 def test_server_connection(pht_fhir_client: PHTFhirClient):
     pht_fhir_client.health_check()
 
@@ -140,22 +148,23 @@ def test_query_with_client(pht_fhir_client: PHTFhirClient, minimal_query):
     assert query_result
 
 
-def test_query_xml(pht_fhir_client: PHTFhirClient):
+def test_query_xml(pht_fhir_client: PHTFhirClient, tmp_path):
     xml_query = {
         "query": {
-            "resource": "Patient",
-            "parameters": [
-                {
-                    "variable": "gender",
-                    "condition": "male"
-                }
-            ]
+            "resource": "Patient"
         },
         "data": {
             "output_format": "xml",
-            "filename": "patients.xml",
+            "filename": "conditions.xml",
         }
     }
     query_result = pht_fhir_client.execute_query(query=xml_query)
     assert query_result
     assert isinstance(query_result, str)
+
+    pht_fhir_client.store_query_results(query_result, filename="fhir_results.xml")
+
+    file_content = open("fhir_results.xml", "r").read()
+
+    assert file_content == query_result
+    os.remove("fhir_results.xml")
