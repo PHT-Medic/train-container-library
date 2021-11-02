@@ -13,10 +13,13 @@ from loguru import logger
 from .fhir_query_builder import build_query_string
 from train_lib.clients.fhir import fhir_k_anonymity
 from itertools import chain
+from requests_oauthlib import OAuth2Session
+from oauthlib.oauth2 import BackendApplicationClient
 
 
 class PHTFhirClient:
     def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
+                 client_id: str = None, client_secret: str = None, oidc_provider_url: str = None,
                  fhir_server_type: str = None, disable_auth: bool = False, disable_k_anon: bool = False):
         """
         Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
@@ -24,13 +27,20 @@ class PHTFhirClient:
         :param server_url: base url of the FHIR server to execute the query against
         :param username: username for use in basic auth authentication against the fhir server
         :param password: password for use in basic auth
-        :param token: token to use for authenticating against a FHIR server using a bearer token
+        :param token: token to use for authenticating against a FHIR server using a static bearer token
+        :param client_id: client id for OIDC authentication flow
+        :param client_secret: secret for OIDC authentication flow
+        :param oidc_provider_url: url where a token can be obtained using client_id and client_secret
         :param fhir_server_type: the type of the server one of ["blaze", "hapi", "ibm"]
         """
         self.server_url = server_url if server_url else os.getenv("FHIR_SERVER_URL")
         self.username = username if username else os.getenv("FHIR_USER")
         self.password = password if password else os.getenv("FHIR_PW")
         self.token = token if token else os.getenv("FHIR_TOKEN")
+        self.client_id = client_id if client_id else os.getenv("CLIENT_ID")
+        self.client_secret = client_secret if client_secret else os.getenv("CLIENT_SECRET")
+        self.oidc_provider_url = oidc_provider_url if oidc_provider_url else os.getenv("OIDC_PROVIDER_URL")
+
         self.fhir_server_type = fhir_server_type if fhir_server_type else os.getenv("FHIR_SERVER_TYPE")
         self.output_format = None
         self.disable_auth = disable_auth
@@ -43,6 +53,59 @@ class PHTFhirClient:
             raise ValueError("Insufficient login information, either token or username and password need to be set.")
         if not self.server_url:
             raise ValueError("No FHIR server address given.")
+
+    @classmethod
+    def from_env(cls):
+        """
+        Initialize a client instance from environment variables.
+
+        :return: an instance of the fhir client
+        """
+
+        # attempt to find the API address from the different options for environtment variables
+        api_url = os.getenv("FHIR_SERVER_URL", os.getenv("FHIR_ADDRESS", os.getenv("FHIR_API_URL")))
+        if not api_url:
+            raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
+
+        server_type = os.getenv("FHIR_SERVER_TYPE")
+
+        # attempt to load basic auth information
+        username = os.getenv("FHIR_USER")
+        if username:
+            password = os.getenv("FHIR_PW")
+            if not password:
+                raise EnvironmentError("Username given but no password found in environment variables.")
+
+            return cls(server_url=api_url, username=username, password=password, fhir_server_type=server_type)
+
+        token = os.getenv("FHIR_TOKEN")
+        if username and token:
+            raise EnvironmentError("Conflicting auth information: both username and token are set.")
+
+        if token:
+            return cls(server_url=api_url, token=token, fhir_server_type=server_type)
+
+        client_id = os.getenv("CLIENT_ID")
+        client_secret = os.getenv("CLIENT_SECRET")
+        oidc_provider = os.getenv("OIDC_PROVIDER_URL")
+
+        if username and client_id:
+            raise EnvironmentError("Conflicting auth information: both username and client id are set.")
+
+        if token and client_id:
+            raise EnvironmentError("Conflicting auth information: both token and client id are set.")
+
+        if client_id:
+            if not client_secret:
+                raise EnvironmentError("No client secret set for oauth2 authentication flow.")
+            if not oidc_provider:
+                raise EnvironmentError("No provider URL given for oauth2 authentication flow.")
+
+            return cls(server_url=api_url, client_id=client_id, client_secret=client_secret,
+                       oidc_provider_url=oidc_provider, fhir_server_type=server_type)
+
+        logger.info("No authentication info given, attempting access without it.")
+        return cls(server_url=api_url, fhir_server_type=server_type, disable_auth=True)
 
     async def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None,
                             query: dict = None, store_results: bool = False) -> pd.DataFrame:
@@ -395,8 +458,8 @@ class PHTFhirClient:
 
     def _generate_auth(self) -> requests.auth.AuthBase:
         """
-        Generate authoriation for the request to be sent to server. Either based on a given bearer token or using basic
-        auth with username and password.
+        Generate authentication for the request to be sent to server. Based on a given bearer token, basic
+        auth with username and password or by requesting a new token using oauth2.
 
         :return: Auth object to pass to a requests call.
         """
@@ -404,6 +467,17 @@ class PHTFhirClient:
             return HTTPBasicAuth(username=self.username, password=self.password)
         # TODO request token from id provider if configured
         elif self.token:
+            return BearerAuth(token=self.token)
+
+        elif self.client_id and self.client_secret and self.oidc_provider_url:
+            client = BackendApplicationClient(client_id=self.client_id)
+            oauth = OAuth2Session(client=client)
+            token = oauth.fetch_token(
+                token_url=self.oidc_provider_url,
+                client_secret=self.client_secret,
+                client_id=self.client_id
+            )
+            self.token = token["access_token"]
             return BearerAuth(token=self.token)
 
 

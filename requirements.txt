@@ -11,3 +11,5 @@ pika
 pendulum
 loguru
 hvac
+requests_oauthlib
+oauthlib
