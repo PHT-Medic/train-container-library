@@ -25,7 +25,7 @@ setup(
             "charset-normalizer==2.0.7; python_version >= '3'",
             "click==8.0.3; python_version >= '3.6'",
             "colorama==0.4.4; sys_platform == 'win32'",
-            "coverage==6.0.2",
+            "coverage==6.1.1",
             "distlib==0.3.3",
             "docutils==0.18; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "filelock==3.3.1; python_version >= '3.6'",
