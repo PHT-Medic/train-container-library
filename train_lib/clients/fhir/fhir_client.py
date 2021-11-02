@@ -56,6 +56,53 @@ class PHTFhirClient:
             raise ValueError("No FHIR server address given.")
 
     @classmethod
+    def from_dict(cls, fhir_config: dict):
+        # attempt to find the API address from the different options for environtment variables
+        api_url = fhir_config.get("FHIR_SERVER_URL", os.get("FHIR_ADDRESS", os.get("FHIR_API_URL")))
+        if not api_url:
+            raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
+
+        server_type = fhir_config.get("FHIR_SERVER_TYPE")
+
+        # attempt to load basic auth information
+        username = fhir_config.get("FHIR_USER")
+        if username:
+            password = fhir_config.get("FHIR_PW")
+            if not password:
+                raise EnvironmentError("Username given but no password found in environment variables.")
+
+            return cls(server_url=api_url, username=username, password=password, fhir_server_type=server_type)
+
+        token = fhir_config.get("FHIR_TOKEN")
+        if username and token:
+            raise EnvironmentError("Conflicting auth information: both username and token are set.")
+
+        if token:
+            return cls(server_url=api_url, token=token, fhir_server_type=server_type)
+
+        client_id = fhir_config.get("CLIENT_ID")
+        client_secret = fhir_config.get("CLIENT_SECRET")
+        oidc_provider = fhir_config.get("OIDC_PROVIDER_URL")
+
+        if username and client_id:
+            raise EnvironmentError("Conflicting auth information: both username and client id are set.")
+
+        if token and client_id:
+            raise EnvironmentError("Conflicting auth information: both token and client id are set.")
+
+        if client_id:
+            if not client_secret:
+                raise EnvironmentError("No client secret set for oauth2 authentication flow.")
+            if not oidc_provider:
+                raise EnvironmentError("No provider URL given for oauth2 authentication flow.")
+
+            return cls(server_url=api_url, client_id=client_id, client_secret=client_secret,
+                       oidc_provider_url=oidc_provider, fhir_server_type=server_type)
+
+        logger.info("No authentication info given, attempting access without it.")
+        return cls(server_url=api_url, fhir_server_type=server_type, disable_auth=True)
+
+    @classmethod
     def from_env(cls):
         """
         Initialize a client instance from environment variables.
@@ -251,7 +298,7 @@ class PHTFhirClient:
             return result
 
     def _get_query_results_from_api_xml(self, url: str, auth: requests.auth.AuthBase = None) -> str:
-
+        print(url)
         server_response = requests.get(url, auth=auth)
 
         initial_response = xmltodict.parse(server_response.text)
@@ -342,7 +389,7 @@ class PHTFhirClient:
         query_file = json.loads(query_file)
         return query_file
 
-    def _generate_url(self, query: Union[dict, list, str], return_format="json", limit=5000):
+    def _generate_url(self, query: Union[dict, list, str], limit=5000):
         """
         Generates the fhir search url to request from the server based. Either based on a previously given query string
         or based on a dictionary containing the query definition in the query.json file.
@@ -363,7 +410,7 @@ class PHTFhirClient:
         else:
             raise ValueError("Either query dictionary or string need to be given")
         # add formatting configuration
-        url += f"&_format={return_format}&_count={limit}"
+        url += f"&_format={self.output_format}&_count={limit}"
 
         return url
 

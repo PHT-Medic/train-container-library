@@ -37,11 +37,6 @@ def minimal_query():
         "data": {
             "output_format": "json",
             "filename": "patients.json",
-            "variables": [
-                "id",
-                "birthDate",
-                "gender"
-            ]
         }
     }
 
@@ -75,12 +70,8 @@ def advanced_query():
             ]
         },
         "data": {
-            "output_format": "csv",
-            "variables": [
-                "id",
-                "birthDate",
-                "gender"
-            ]
+            "output_format": "json",
+            "filename": "patients.json"
         }
     }
 
@@ -144,7 +135,27 @@ def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advan
 
 
 def test_query_with_client(pht_fhir_client: PHTFhirClient, minimal_query):
-    loop = asyncio.get_event_loop()
-    query_result = loop.run_until_complete(pht_fhir_client.execute_query(query=minimal_query))
+    query_result = pht_fhir_client.execute_query(query=minimal_query)
     print(query_result)
     assert query_result
+
+
+def test_query_xml(pht_fhir_client: PHTFhirClient):
+    xml_query = {
+        "query": {
+            "resource": "Patient",
+            "parameters": [
+                {
+                    "variable": "gender",
+                    "condition": "male"
+                }
+            ]
+        },
+        "data": {
+            "output_format": "xml",
+            "filename": "patients.xml",
+        }
+    }
+    query_result = pht_fhir_client.execute_query(query=xml_query)
+    assert query_result
+    assert isinstance(query_result, str)
