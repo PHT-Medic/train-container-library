@@ -5,22 +5,22 @@ import json
 import pandas as pd
 from requests.auth import HTTPBasicAuth
 import requests
-import httpx
-import asyncio
-from fhir.resources.bundle import Bundle
 from loguru import logger
+import xmltodict
 
 from .fhir_query_builder import build_query_string
 from train_lib.clients.fhir import fhir_k_anonymity
 from itertools import chain
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
+import collections
 
 
 class PHTFhirClient:
     def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
                  client_id: str = None, client_secret: str = None, oidc_provider_url: str = None,
-                 fhir_server_type: str = None, disable_auth: bool = False, disable_k_anon: bool = False):
+                 fhir_server_type: str = None, disable_auth: bool = False, k_anon: int = 5,
+                 disable_k_anon: bool = False):
         """
         Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
 
@@ -45,6 +45,7 @@ class PHTFhirClient:
         self.output_format = None
         self.disable_auth = disable_auth
         self.disable_k_anon = disable_k_anon
+        self.k_anon = k_anon
 
         # Check for correct initialization based on env vars or constructor parameters
         if (self.username and self.password) and self.token:
@@ -132,8 +133,11 @@ class PHTFhirClient:
         auth = self._generate_auth()
         selected_variables = query_file_content["data"].get("variables", None)
 
-        query_results = self._get_query_results_from_api_sync(url=url, auth=auth,
-                                                              selected_variables=selected_variables)
+        if self.output_format == "xml":
+            query_results = self._get_query_results_from_api_xml(url, auth)
+        else:
+            query_results = self._get_query_results_from_api_json(url=url, auth=auth,
+                                                                  selected_variables=selected_variables)
 
         filename = query_file_content["data"]["filename"]
 
@@ -142,7 +146,39 @@ class PHTFhirClient:
 
         return query_results
 
-    def _get_query_results_from_api_sync(self, url: str, auth: requests.auth.AuthBase = None,
+    def store_query_results(self, query_results, filename: str, storage_dir: str = None) -> str:
+        """
+        Store the results from the query according to the output format specified in the query file
+
+        :param query_results: The parsed or raw response from a fhir server to the given query
+        :param filename: name for the results file (defined in query.json)
+        :param storage_dir: directory in which the data should be stored
+        :return:
+        """
+
+        storage_dir = storage_dir if storage_dir else os.getenv("TRAIN_DATA_DIR")
+        if not storage_dir:
+            logger.warning("No storage directory specified, saving results to current working directory.")
+            results_path = filename
+        else:
+            results_path = os.path.join(storage_dir, filename)
+
+        if self.output_format in ["raw", "json"]:
+            with open(results_path, "w") as results_file:
+                results_file.write(json.dumps(query_results, indent=2))
+
+        # write xml string to file directly
+        elif self.output_format == "xml":
+            with open(results_path, "w") as results_file:
+                results_file.write(query_results)
+
+        else:
+            raise ValueError(f"Unsupported output format: {self.output_format}")
+
+        logger.info("Stored query results in {}", results_path)
+        return results_path
+
+    def _get_query_results_from_api_json(self, url: str, auth: requests.auth.AuthBase = None,
                                          selected_variables: List[str] = None, k_anonymity: int = 5):
         """
         Blocking version of the querying a fhir server with the given search url. Processes all next relations in the
@@ -214,37 +250,43 @@ class PHTFhirClient:
             logger.info("Returning unvalidated results.")
             return result
 
-    def store_query_results(self, query_results, filename: str, storage_dir: str = None) -> str:
-        """
-        Store the results from the query according to the output format specified in the query file
+    def _get_query_results_from_api_xml(self, url: str, auth: requests.auth.AuthBase = None) -> str:
 
-        :param query_results: The parsed or raw response from a fhir server to the given query
-        :param filename: name for the results file (defined in query.json)
-        :param storage_dir: directory in which the data should be stored
-        :return:
-        """
+        server_response = requests.get(url, auth=auth)
 
-        storage_dir = storage_dir if storage_dir else os.getenv("TRAIN_DATA_DIR")
-        if not storage_dir:
-            logger.warning("No storage directory specified, saving results to current working directory.")
-            results_path = filename
-        else:
-            results_path = os.path.join(storage_dir, filename)
+        initial_response = xmltodict.parse(server_response.text)
+        entries = initial_response["Bundle"]["entry"]
+        response = initial_response
+        while True:
+            next_page = False
+            for link in response["Bundle"]["link"]:
+                if isinstance(link, collections.OrderedDict):
+                    relation_dict = dict(link["relation"])
+                else:
+                    break
+                if relation_dict.get("@value") == "next":
+                    print("Getting next")
+                    # get url and extend with xml format
+                    url = link["url"]["@value"]
+                    url = url + "&_format=xml"
+                    r = requests.get(url, auth=auth)
+                    r.raise_for_status()
+                    response = xmltodict.parse(r.text)
+                    added_entries = response["Bundle"]["entry"]
+                    entries.extend(added_entries)
+                    # Stop resolving the pagination when the limit is reached
+                    next_page = True
 
-        if self.output_format in ["raw", "json"]:
-            with open(results_path, "w") as results_file:
-                results_file.write(json.dumps(query_results, indent=2))
+            if not next_page:
+                print("All pages found")
+                break
+        # added the paginated resources to the initial response
+        initial_response["Bundle"]["entry"] = entries
 
-        elif self.output_format == "xml":
-            raise NotImplementedError("XML output is not yet supported.")
-            with open(results_path, "w") as results_file:
-                pass
-
-        else:
-            raise ValueError(f"Unsupported output format: {self.output_format}")
-
-        logger.info("Stored query results in {}", results_path)
-        return results_path
+        if (len(entries) < self.k_anon) and not self.disable_k_anon:
+            raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+        full_response_xml = xmltodict.unparse(initial_response, pretty=True)
+        return full_response_xml
 
     def health_check(self):
 
@@ -300,7 +342,7 @@ class PHTFhirClient:
         query_file = json.loads(query_file)
         return query_file
 
-    def _generate_url(self, query: Union[dict, list, str], return_format="json", limit=2000):
+    def _generate_url(self, query: Union[dict, list, str], return_format="json", limit=5000):
         """
         Generates the fhir search url to request from the server based. Either based on a previously given query string
         or based on a dictionary containing the query definition in the query.json file.
