@@ -101,7 +101,7 @@ setup(
     keywords=["PHT", "security", "encryption", "personalhealthtrain", "docker"],
     python_requires=">=3.7",
     install_requires=[
-        "aiohttp==3.7.4.post0",
+        "aiohttp==3.8.0",
         "async-timeout==3.0.1; python_full_version >= '3.5.3'",
         "attrs==21.2.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
         "certifi==2021.10.8",
