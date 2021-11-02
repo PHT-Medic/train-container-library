@@ -60,7 +60,7 @@ setup(
         "urllib3==1.26.7; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4'",
         "websocket-client==1.2.1; python_version >= '3.6'",
         "win32-setctime==1.0.3; sys_platform == 'win32'",
-        "yarl==1.7.0; python_version >= '3.6'",
+        "yarl==1.7.2; python_version >= '3.6'",
         "fhir.resources",
         "requests_oauthlib",
         "oauthlib"
