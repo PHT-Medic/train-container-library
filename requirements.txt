@@ -13,3 +13,4 @@ loguru
 hvac
 requests_oauthlib
 oauthlib
+xmltodict
