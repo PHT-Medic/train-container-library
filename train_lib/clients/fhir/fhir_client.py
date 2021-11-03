@@ -34,6 +34,8 @@ class PHTFhirClient:
         :param fhir_server_type: the type of the server one of ["blaze", "hapi", "ibm"]
         """
         self.server_url = server_url if server_url else os.getenv("FHIR_SERVER_URL")
+        if not self.server_url[-1] == "/":
+            self.server_url = self.server_url + "/"
         self.username = username if username else os.getenv("FHIR_USER")
         self.password = password if password else os.getenv("FHIR_PW")
         self.token = token if token else os.getenv("FHIR_TOKEN")
@@ -62,7 +64,7 @@ class PHTFhirClient:
         if not api_url:
             raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
 
-        server_type = fhir_config.get("FHIR_SERVER_TYPE")
+        server_type = fhir_config.get("FHIR_SERVER_TYPE", "blaze")
 
         # attempt to load basic auth information
         username = fhir_config.get("FHIR_USER")
@@ -115,7 +117,7 @@ class PHTFhirClient:
         if not api_url:
             raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
 
-        server_type = os.getenv("FHIR_SERVER_TYPE")
+        server_type = os.getenv("FHIR_SERVER_TYPE", "blaze")
 
         # attempt to load basic auth information
         username = os.getenv("FHIR_USER")
@@ -238,67 +240,13 @@ class PHTFhirClient:
         :return:
         """
 
-        # data = []
-        # logger.info("Querying server with url: {}", url)
-        #
         r = requests.get(url, auth=auth)
         r.raise_for_status()
-        # response = r.json()
-        #
-        # # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
-        # if response["total"] < k_anonymity:
-        #     raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
-        #
-        # data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
-        #
-        # while True:
-        #     if response.get("link", None):
-        #         next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
-        #     else:
-        #         break
-        #
-        #     if next_page:
-        #         logger.info("Getting next page in paginated FHIR response.")
-        #
-        #         r = requests.get(url=next_page["url"], auth=self._generate_auth())
-        #         r.raise_for_status()
-        #         response = r.json()
-        #         data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
-        #
-        #     else:
-        #         break
-        #
-        # if data:
-        #     logger.info("Aggregating FHIR response")
-        #     if self.output_format == "csv":
-        #         result = pd.concat(data)
-        #     else:
-        #         result = list(chain.from_iterable(data))
-        #
-        # else:
-        #     raise ValueError("No Results matched the given query.")
-        #
-        # # it's not possible to check raw output for k-anonymity so only check parsed responses
-        # if self.output_format == "csv" and not self.disable_k_anon:
-        #
-        #     logger.info("Checking if the response satisfies k-anonymity with k = {}...", k_anonymity)
-        #     # Check if the returned results satisfy k-anonymity
-        #     if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
-        #         return result
-        #     # Attempt to generalize the dataframe
-        #     else:
-        #         anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
-        #         if anon_df:
-        #             return anon_df
-        #         else:
-        #             raise PermissionError(
-        #                 f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
-        # else:
-        #     logger.info("Returning unvalidated results.")
-        #     return result
 
         initial_response = r.json()
         response = r.json()
+        if (len(response["entry"]) < self.k_anon) and not self.disable_k_anon:
+            raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
         link = response.get("link", None)
         if not link:
             return response
@@ -320,7 +268,6 @@ class PHTFhirClient:
             return initial_response
 
     def _get_query_results_from_api_xml(self, url: str, auth: requests.auth.AuthBase = None) -> str:
-        print(url)
         server_response = requests.get(url, auth=auth)
 
         initial_response = xmltodict.parse(server_response.text)
@@ -359,7 +306,7 @@ class PHTFhirClient:
 
     def health_check(self):
 
-        api_url = self._generate_api_url() + "/metadata"
+        api_url = self.server_url + "metadata"
         auth = self._generate_auth()
 
         r = requests.get(api_url, auth=auth)
@@ -422,7 +369,12 @@ class PHTFhirClient:
         :param limit: the max number of entries in a paginated response
         :return: url string to perform a request against a fhir server with
         """
-        url = self._generate_api_url() + "/"
+
+        if self.server_url[-1] == "/":
+            url = self.server_url
+        else:
+            url = self.server_url + "/"
+
         if isinstance(query, dict):
             url += build_query_string(query_dict=query)
         elif isinstance(query, list):
@@ -433,18 +385,6 @@ class PHTFhirClient:
             raise ValueError("Either query dictionary or string need to be given")
         # add formatting configuration
         url += f"&_format={self.output_format}&_count={limit}"
-
-        return url
-
-    def _generate_api_url(self) -> str:
-        url = self.server_url
-        if self.fhir_server_type == "ibm":
-            url += "/fhir-server/api/v4"
-
-        elif self.fhir_server_type in ["blaze", "hapi"]:
-            url += "/fhir"
-        else:
-            raise ValueError(f"Unsupported FHIR server type: {self.fhir_server_type}")
 
         return url
 
