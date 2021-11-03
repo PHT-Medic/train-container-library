@@ -129,7 +129,7 @@ setup(
             "pyyaml==6.0; python_version >= '3.6'",
             "pyyaml-env-tag==0.1; python_version >= '3.6'",
             "readme-renderer==30.0",
-            "regex==2021.10.23",
+            "regex==2021.11.2",
             "requests==2.26.0",
             "requests-toolbelt==0.9.3",
             "requirementslib==1.5.16; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
