@@ -238,64 +238,86 @@ class PHTFhirClient:
         :return:
         """
 
-        data = []
-        logger.info("Querying server with url: {}", url)
-
+        # data = []
+        # logger.info("Querying server with url: {}", url)
+        #
         r = requests.get(url, auth=auth)
         r.raise_for_status()
+        # response = r.json()
+        #
+        # # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
+        # if response["total"] < k_anonymity:
+        #     raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
+        #
+        # data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
+        #
+        # while True:
+        #     if response.get("link", None):
+        #         next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
+        #     else:
+        #         break
+        #
+        #     if next_page:
+        #         logger.info("Getting next page in paginated FHIR response.")
+        #
+        #         r = requests.get(url=next_page["url"], auth=self._generate_auth())
+        #         r.raise_for_status()
+        #         response = r.json()
+        #         data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
+        #
+        #     else:
+        #         break
+        #
+        # if data:
+        #     logger.info("Aggregating FHIR response")
+        #     if self.output_format == "csv":
+        #         result = pd.concat(data)
+        #     else:
+        #         result = list(chain.from_iterable(data))
+        #
+        # else:
+        #     raise ValueError("No Results matched the given query.")
+        #
+        # # it's not possible to check raw output for k-anonymity so only check parsed responses
+        # if self.output_format == "csv" and not self.disable_k_anon:
+        #
+        #     logger.info("Checking if the response satisfies k-anonymity with k = {}...", k_anonymity)
+        #     # Check if the returned results satisfy k-anonymity
+        #     if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
+        #         return result
+        #     # Attempt to generalize the dataframe
+        #     else:
+        #         anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
+        #         if anon_df:
+        #             return anon_df
+        #         else:
+        #             raise PermissionError(
+        #                 f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
+        # else:
+        #     logger.info("Returning unvalidated results.")
+        #     return result
+
+        initial_response = r.json()
         response = r.json()
+        link = response.get("link", None)
+        if not link:
+            return response
+        else:
+            print("Resolving response pagination")
+            entries = []
+            entries.extend(response["entry"])
 
-        # Basic k-anon -> check if there are more than k responses in the returned results. if not throw an error
-        if response["total"] < k_anonymity:
-            raise ValueError(f"Number of total responses n={response['total']} is too low, for basic k-anonymity.")
+            while response.get("link", None):
 
-        data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
-
-        while True:
-            if response.get("link", None):
                 next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
-            else:
-                break
-
-            if next_page:
-                logger.info("Getting next page in paginated FHIR response.")
-
-                r = requests.get(url=next_page["url"], auth=self._generate_auth())
-                r.raise_for_status()
-                response = r.json()
-                data.extend(self._process_fhir_response(response, selected_variables=selected_variables))
-
-            else:
-                break
-
-        if data:
-            logger.info("Aggregating FHIR response")
-            if self.output_format == "csv":
-                result = pd.concat(data)
-            else:
-                result = list(chain.from_iterable(data))
-
-        else:
-            raise ValueError("No Results matched the given query.")
-
-        # it's not possible to check raw output for k-anonymity so only check parsed responses
-        if self.output_format == "csv" and not self.disable_k_anon:
-
-            logger.info("Checking if the response satisfies k-anonymity with k = {}...", k_anonymity)
-            # Check if the returned results satisfy k-anonymity
-            if fhir_k_anonymity.is_k_anonymized(result, k=k_anonymity):
-                return result
-            # Attempt to generalize the dataframe
-            else:
-                anon_df = fhir_k_anonymity.anonymize(result, k=k_anonymity)
-                if anon_df:
-                    return anon_df
+                if next_page:
+                    response = requests.get(next_page["url"], auth=auth).json()
+                    entries.extend(response["entry"])
                 else:
-                    raise PermissionError(
-                        f"Query results did not satisfy the desired k-anonymity properties of k = {k_anonymity}")
-        else:
-            logger.info("Returning unvalidated results.")
-            return result
+                    break
+
+            initial_response["entry"] = entries
+            return initial_response
 
     def _get_query_results_from_api_xml(self, url: str, auth: requests.auth.AuthBase = None) -> str:
         print(url)

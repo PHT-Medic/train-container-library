@@ -78,10 +78,99 @@ def advanced_query():
 
 
 def test_client_from_env():
-    with mock.patch.dict(os.environ, {
+    user = "test_user"
+    password = "test_password"
+    token = "test_token"
+    client_id = "test_client_id"
+    client_secret = "test_client_secret"
+    oidc_url = "test_oidc_url"
 
-    }):
+    with mock.patch.dict(os.environ,
+                         {"FHIR_SERVER_URL": "test_address",
+                          "FHIR_USER": user,
+                          "FHIR_PW": password,
+                          "FHIR_TOKEN": ""}
+                         ):
         client = PHTFhirClient.from_env()
+
+        assert client.username == user
+        assert client.password == password
+
+    with mock.patch.dict(os.environ,
+                         {
+                             "FHIR_SERVER_URL": "test_address",
+                             "FHIR_USER": user,
+                             "FHIR_PW": "",
+                             "FHIR_TOKEN": ""
+
+                         }):
+        with pytest.raises(EnvironmentError):
+            client = PHTFhirClient.from_env()
+
+    with mock.patch.dict(os.environ,
+                         {
+                             "FHIR_SERVER_URL": "test_address",
+                             "FHIR_USER": "",
+                             "FHIR_PW": "",
+                             "FHIR_TOKEN": token
+
+                         }):
+        client = PHTFhirClient.from_env()
+        assert client.token == token
+
+    with mock.patch.dict(os.environ,
+                         {
+                             "FHIR_SERVER_URL": "test_address",
+                             "FHIR_USER": user,
+                             "FHIR_PW": "",
+                             "FHIR_TOKEN": token
+
+                         }):
+        with pytest.raises(EnvironmentError):
+            client = PHTFhirClient.from_env()
+
+    with mock.patch.dict(os.environ,
+                         {
+                             "FHIR_SERVER_URL": "test_address",
+                             "FHIR_USER": "",
+                             "FHIR_PW": "",
+                             "FHIR_TOKEN": "",
+                             "CLIENT_ID": client_id,
+                             "CLIENT_SECRET": client_secret,
+                             "OIDC_PROVIDER_URL": oidc_url
+
+                         }):
+        client = PHTFhirClient.from_env()
+
+        assert client.client_id == client_id
+
+    with mock.patch.dict(os.environ,
+                         {
+                             "FHIR_SERVER_URL": "test_address",
+                             "FHIR_USER": "",
+                             "FHIR_PW": "",
+                             "FHIR_TOKEN": "",
+                             "CLIENT_ID": client_id,
+                             "CLIENT_SECRET": "",
+                             "OIDC_PROVIDER_URL": oidc_url
+
+                         }):
+        with pytest.raises(EnvironmentError):
+            client = PHTFhirClient.from_env()
+
+    with mock.patch.dict(os.environ,
+                         {
+                             "FHIR_SERVER_URL": "test_address",
+                             "FHIR_USER": "hello",
+                             "FHIR_PW": "",
+                             "FHIR_TOKEN": "",
+                             "CLIENT_ID": client_id,
+                             "CLIENT_SECRET": client_secret,
+                             "OIDC_PROVIDER_URL": oidc_url
+
+                         }):
+        with pytest.raises(EnvironmentError):
+            client = PHTFhirClient.from_env()
 
 
 def test_server_connection(pht_fhir_client: PHTFhirClient):
@@ -148,7 +237,7 @@ def test_query_with_client(pht_fhir_client: PHTFhirClient, minimal_query):
     assert query_result
 
 
-def test_query_xml(pht_fhir_client: PHTFhirClient, tmp_path):
+def test_query_xml(pht_fhir_client: PHTFhirClient):
     xml_query = {
         "query": {
             "resource": "Patient"
@@ -167,4 +256,21 @@ def test_query_xml(pht_fhir_client: PHTFhirClient, tmp_path):
     file_content = open("fhir_results.xml", "r").read()
 
     assert file_content == query_result
+
     os.remove("fhir_results.xml")
+
+
+def test_query_json(pht_fhir_client: PHTFhirClient):
+    json_query = {
+        "query": {
+            "resource": "Patient"
+        },
+        "data": {
+            "output_format": "json",
+            "filename": "patients.json",
+        }
+    }
+    query_result = pht_fhir_client.execute_query(query=json_query)
+    assert len(query_result["entry"]) >= 1
+    pht_fhir_client.store_query_results(query_result, filename="patients.json")
+    os.remove("patients.json")
