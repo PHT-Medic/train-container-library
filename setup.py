@@ -122,7 +122,7 @@ setup(
             "py==1.10.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pygments==2.10.0; python_version >= '3.5'",
             "pymdown-extensions==9.0; python_version >= '3.6'",
-            "pyparsing==3.0.2; python_version >= '3.6'",
+            "pyparsing==3.0.5; python_version >= '3.6'",
             "pytest==6.2.5",
             "python-dateutil==2.8.2; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pywin32-ctypes==0.2.0; sys_platform == 'win32'",
