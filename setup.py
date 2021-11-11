@@ -34,7 +34,7 @@ setup(
         "certifi==2021.10.8",
         "cffi==1.15.0",
         "charset-normalizer==2.0.7; python_version >= '3'",
-        "click==8.0.3; python_version >= '3.6'",
+        "click>=7.0.0; python_version >= '3.6'",
         "click-spinner==0.1.10",
         "colorama==0.4.4; sys_platform == 'win32' and platform_system == 'Windows' and platform_system == 'Windows'",
         "cryptography==35.0.0",
