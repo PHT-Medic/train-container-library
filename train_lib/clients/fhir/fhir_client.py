@@ -384,7 +384,11 @@ class PHTFhirClient:
         else:
             raise ValueError("Either query dictionary or string need to be given")
         # add formatting configuration
-        url += f"&_format={self.output_format}&_count={limit}"
+
+        if url[-1] == "?":
+            url += f"_format={self.output_format}&_count={limit}"
+        else:
+            url += f"&_format={self.output_format}&_count={limit}"
 
         return url
 

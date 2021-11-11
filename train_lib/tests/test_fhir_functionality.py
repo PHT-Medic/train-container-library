@@ -173,6 +173,67 @@ def test_client_from_env():
             client = PHTFhirClient.from_env()
 
 
+def test_query_marius(pht_fhir_client: PHTFhirClient):
+    query = {
+        "query": {
+            "resource": "Patient",
+            "parameters": [
+                {
+                    "variable": "gender",
+                    "condition": "male"
+                },
+                {
+                    "variable": "birthdate",
+                    "condition": "sa1980-08-12"
+                }
+            ],
+            "has": [
+                {
+                    "resource": "Condition",
+                    "property": "code",
+                    "params": ["E70.0", "E70.1", "E84.0", "E84.1", "E84.8", "E84.80", "E84.87", "E84.88", "E84.9"]
+                }
+            ]
+        },
+        "data": {
+            "output_format": "xml",
+            "filename": "patients.xml"
+        }
+    }
+
+    query2 = {
+        "query": {
+            "resource": "Patient",
+            "parameters": [
+                {
+                    "variable": "gender",
+                    "condition": "male"
+                },
+                {
+                    "variable": "birthdate",
+                    "condition": "sa1980-08-12"
+                }
+            ],
+            "has": [
+                {
+                    "resource": "Condition",
+                    "property": "code",
+                    "params": ["E70.0", "I20.0"]
+                }
+            ]
+        },
+        "data": {
+            "output_format": "xml",
+            "filename": "patients.xml"
+        }
+    }
+    query_string = build_query_string(query["query"])
+    print(query_string)
+    query_string = build_query_string(query2["query"])
+    print(query_string)
+
+
+
 def test_server_connection(pht_fhir_client: PHTFhirClient):
     pht_fhir_client.health_check()
 
@@ -257,7 +318,7 @@ def test_query_xml(pht_fhir_client: PHTFhirClient):
 
     assert file_content == query_result
 
-    os.remove("fhir_results.xml")
+    # os.remove("fhir_results.xml")
 
 
 def test_query_json(pht_fhir_client: PHTFhirClient):

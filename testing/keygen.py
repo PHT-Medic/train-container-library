@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # # hash = hash_immutable_files(files, "1", session_id)
 
     train_hash = bytes.fromhex(
-        "f227d0aaa89564b17b66942a884678404b4696607fb6f792bfeb8300f386a1d76c676efe4ad2fc95409000b571ff6f6126b44300b3cbb71d0683997be732e32a")
+        "9521782958cb63d355dd375bc6d28058e19ff8d39bddecf0aa318c8ba8568ff5925e3783c8c1a61a275f26e28f648245b61f44c53b742658e03c78db766a7b6f")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None, backend=default_backend())
@@ -62,6 +62,16 @@ if __name__ == '__main__':
             utils.Prehashed(hashes.SHA512())
         )
         print("Signature: ", sig.hex())
+    with open("./demo_key.pem", "rb") as pk:
+        private_key = serialization.load_pem_private_key(pk.read(), password="start123".encode(), backend=default_backend())
+        sig = private_key.sign(
+            train_hash,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA512()),
+                salt_length=padding.PSS.MAX_LENGTH),
+            utils.Prehashed(hashes.SHA512())
+        )
+        print("Demo Signature: ", sig.hex())
     with open("./user_public_key.pem", "rb") as pk:
         pk_pem = pk.read().hex()
         public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(bytes.fromhex(pk_pem),
