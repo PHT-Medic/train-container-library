@@ -382,6 +382,7 @@ class PHTFhirClient:
             url += query
         else:
             raise ValueError("Either query dictionary or string need to be given")
+
         # add formatting configuration
 
         if url[-1] == "?":
