@@ -305,7 +305,7 @@ def test_query_xml(pht_fhir_client: PHTFhirClient):
         },
         "data": {
             "output_format": "xml",
-            "filename": "conditions.xml",
+            "filename": "conditions.xml"
         }
     }
     query_result = pht_fhir_client.execute_query(query=xml_query)

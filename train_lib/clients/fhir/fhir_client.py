@@ -36,12 +36,12 @@ class PHTFhirClient:
         self.server_url = server_url if server_url else os.getenv("FHIR_SERVER_URL")
         if not self.server_url[-1] == "/":
             self.server_url = self.server_url + "/"
-        self.username = username if username else os.getenv("FHIR_USER")
-        self.password = password if password else os.getenv("FHIR_PW")
-        self.token = token if token else os.getenv("FHIR_TOKEN")
-        self.client_id = client_id if client_id else os.getenv("CLIENT_ID")
-        self.client_secret = client_secret if client_secret else os.getenv("CLIENT_SECRET")
-        self.oidc_provider_url = oidc_provider_url if oidc_provider_url else os.getenv("OIDC_PROVIDER_URL")
+        self.username = username
+        self.password = password
+        self.token = token
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.oidc_provider_url = oidc_provider_url
 
         self.fhir_server_type = fhir_server_type if fhir_server_type else os.getenv("FHIR_SERVER_TYPE")
         self.output_format = None
@@ -269,7 +269,6 @@ class PHTFhirClient:
 
     def _get_query_results_from_api_xml(self, url: str, auth: requests.auth.AuthBase = None) -> str:
         server_response = requests.get(url, auth=auth)
-
         initial_response = xmltodict.parse(server_response.text)
         entries = initial_response["Bundle"]["entry"]
         response = initial_response
@@ -400,12 +399,15 @@ class PHTFhirClient:
         :return: Auth object to pass to a requests call.
         """
         if self.username and self.password:
+            logger.info("Using basic auth")
             return HTTPBasicAuth(username=self.username, password=self.password)
         # TODO request token from id provider if configured
         elif self.token:
+            logger.info("Using static token auth.")
             return BearerAuth(token=self.token)
 
         elif self.client_id and self.client_secret and self.oidc_provider_url:
+            logger.info("Requesting oauth2 token")
             client = BackendApplicationClient(client_id=self.client_id)
             oauth = OAuth2Session(client=client)
             token = oauth.fetch_token(
