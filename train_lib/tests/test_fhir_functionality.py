@@ -206,19 +206,15 @@ def test_query_marius(pht_fhir_client: PHTFhirClient):
             "resource": "Patient",
             "parameters": [
                 {
-                    "variable": "gender",
-                    "condition": "male"
-                },
-                {
                     "variable": "birthdate",
-                    "condition": "sa1980-08-12"
+                    "condition": "gt1960-08-12"
                 }
             ],
             "has": [
                 {
                     "resource": "Condition",
                     "property": "code",
-                    "params": ["E70.0", "I20.0"]
+                    "params": ["E70.0"]
                 }
             ]
         },
@@ -231,7 +227,6 @@ def test_query_marius(pht_fhir_client: PHTFhirClient):
     print(query_string)
     query_string = build_query_string(query2["query"])
     print(query_string)
-
 
 
 def test_server_connection(pht_fhir_client: PHTFhirClient):

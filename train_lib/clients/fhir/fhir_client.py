@@ -271,6 +271,11 @@ class PHTFhirClient:
         server_response = requests.get(url, auth=auth)
         initial_response = xmltodict.parse(server_response.text)
         entries = initial_response["Bundle"]["entry"]
+
+        if not entries:
+            print("No results found for query")
+            return server_response.text
+
         response = initial_response
         while True:
             next_page = False
