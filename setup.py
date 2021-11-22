@@ -132,7 +132,7 @@ setup(
             "regex==2021.10.23",
             "requests==2.26.0",
             "requests-toolbelt==1.0.0",
-            "requirementslib==1.5.16; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+            "requirementslib==1.6.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "rfc3986==1.5.0",
             "six==1.16.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "toml==0.10.2; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
