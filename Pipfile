@@ -32,6 +32,7 @@ mkdocs-material = "*"
 twine = "*"
 bump2version = "*"
 pipenv-setup = "*"
+pht-train-container-library = {path = "."}
 
 [requires]
 python_version = "3.9"
