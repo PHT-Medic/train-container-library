@@ -95,7 +95,7 @@ setup(
             "coverage==6.0.2",
             "distlib==0.3.3",
             "docutils==0.18; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
-            "filelock==3.3.1; python_version >= '3.6'",
+            "filelock==3.4.0; python_version >= '3.6'",
             "ghp-import==2.0.2",
             "idna==3.3; python_version >= '3'",
             "importlib-metadata==4.8.1; python_version >= '3.6'",
