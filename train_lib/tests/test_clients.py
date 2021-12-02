@@ -54,7 +54,8 @@ def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
 
     secrets = pht_client.get_user_secrets(path)
 
-    assert secrets.rsa_public_key == secret_val
+    assert secrets.rsa_public_key == rsa_secret_val
+    assert secrets.paillier_public_key == paillier_secret_val
 
     # remove the secrets again
     vault_client.secrets.kv.v1.delete_secret(
