@@ -14,7 +14,7 @@ def main():
     url = os.getenv("VAULT_URL")
     headers = {"X-Vault-Token": token}
     for station in TEST_STATIONS:
-        request_url = f"{url}/v1/station_pks/{station}"
+        request_url = f"{url}/v1/station-secrets/{station}"
         print(request_url)
         # Generate key pairs
         private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -41,7 +41,7 @@ def main():
                 "cas": 1
             },
             "data": {
-                "rsa_station_public_key": public_key_hex
+                "rsa_public_key": public_key_hex
             }
         }
         r = requests.post(request_url, headers=headers, data=json.dumps(payload))

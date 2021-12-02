@@ -110,18 +110,18 @@ class PHTClient:
 
         return file_obj
 
-    def get_user_pk(self, user_id):
+    def get_user_secrets(self, user_id):
         """
         Get the public key associated with the given user_id from vault storage
 
         :param user_id:
         :return: hex string containing an rsa public key
         """
-        url = f"{self.vault_url}v1/user_pks/{user_id}"
+        url = f"{self.vault_url}v1/user-secrets/{user_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
         data = r.json()["data"]["data"]
-        return data["rsa_public_key"]
+        return data
 
     def get_station_pk(self, station_id):
         """
@@ -130,10 +130,10 @@ class PHTClient:
         :param station_id: identifier of the station in vault
         :return: hex string containing an rsa public key
         """
-        url = f"{self.vault_url}v1/station_pks/{station_id}"
+        url = f"{self.vault_url}v1/station-secrets/{station_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
-        public_key = r.json()["data"]["data"]["rsa_station_public_key"]
+        public_key = r.json()["data"]["data"]["rsa_public_key"]
         return public_key
 
     def get_multiple_station_pks(self, station_ids: List) -> dict:

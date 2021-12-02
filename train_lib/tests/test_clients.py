@@ -34,10 +34,11 @@ def test_vault_initialized(vault_client: hvac.Client):
 
 def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
     # add a sample key
-    mount = "user_pks"
+    mount = "user-secrets"
     path = "test_user"
-    secret_val = "test_key"
-    secret = {"data": {"rsa_public_key": secret_val, "he-key": "hello"}}
+    rsa_secret_val = "test_key"
+    paillier_secret_val = "test_key"
+    secret = {"data": {"rsa_public_key": secret_val, "paillier_public_key": paillier_secret_val}}
     vault_client.secrets.kv.v1.create_or_update_secret(
         mount_point=mount,
         path=path,
@@ -48,11 +49,12 @@ def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
         mount_point=mount,
         path=path
     )
-    assert read_secret["data"]["data"]["rsa_public_key"] == secret_val
+    assert read_secret["data"]["data"]["rsa_public_key"] == rsa_secret_val
+    assert read_secret["data"]["data"]["paillier_public_key"] == paillier_secret_val
 
-    read_pk = pht_client.get_user_pk(path)
+    secrets = pht_client.get_user_secrets(path)
 
-    assert read_pk == secret_val
+    assert secrets.rsa_public_key == secret_val
 
     # remove the secrets again
     vault_client.secrets.kv.v1.delete_secret(
@@ -62,10 +64,10 @@ def test_get_user_pk(vault_client: hvac.Client, pht_client: PHTClient):
 
 
 def test_get_station_pk(vault_client: hvac.Client, pht_client: PHTClient):
-    mount = "station_pks"
+    mount = "station-secrets"
     path = "test_station"
     secret_val = "test_key"
-    secret = {"data": {"rsa_station_public_key": secret_val}}
+    secret = {"data": {"rsa_public_key": secret_val}}
     vault_client.secrets.kv.v1.create_or_update_secret(
         mount_point=mount,
         path=path,
@@ -84,10 +86,10 @@ def test_get_station_pk(vault_client: hvac.Client, pht_client: PHTClient):
 
 
 def test_get_multiple_station_pks(vault_client: hvac.Client, pht_client: PHTClient):
-    mount = "station_pks"
+    mount = "station-secrets"
     paths = []
     secret_val = "test_key"
-    secret = {"data": {"rsa_station_public_key": secret_val}}
+    secret = {"data": {"rsa_public_key": secret_val}}
     for i in range(3):
         path = f"test_station_{i}"
         paths.append(path)
