@@ -32,7 +32,7 @@ class StationPK(BaseModel):
 
 
 class UserKeys(BaseModel):
-    user_id: Union[int, str]
+    user_id: Optional[Union[int, str]]
     paillier_public_key: HexString
     rsa_public_key: Optional[HexString] = None
 
@@ -67,5 +67,4 @@ class TrainConfig(BaseModel):
     results_hash: HexString  # e_d
     results_signature: HexString  # e_d_sig
     digital_signature: List[DigitalSignature]
-    user_he_key: str
     user_encrypted_sym_key: Optional[HexString] = None

@@ -30,7 +30,7 @@ setup(
         "aiohttp==3.8.0; python_version >= '3.6'",
         "aiosignal==1.2.0; python_version >= '3.6'",
         "async-timeout==4.0.0; python_version >= '3.6'",
-        "attrs==21.2.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+        "attrs",
         "certifi==2021.10.8",
         "cffi==1.15.0",
         "charset-normalizer==2.0.7; python_version >= '3'",
