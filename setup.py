@@ -11,7 +11,7 @@ with open("requirements_dev.txt", "r") as rfd:
 
 setup(
     name="pht-train-container-library",
-    version="1.0.0",
+    version="1.0.1",
     author="Michael Graf",
     author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
@@ -118,7 +118,7 @@ setup(
             "pkginfo==1.7.1",
             "platformdirs==2.4.0; python_version >= '3.6'",
             "plette[validation]==0.2.3; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
-            "pluggy==1.0.0; python_version >= '3.6'",
+            "pluggy==1.0.1; python_version >= '3.6'",
             "py==1.10.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pygments==2.10.0; python_version >= '3.5'",
             "pymdown-extensions==9.0; python_version >= '3.6'",
@@ -131,7 +131,7 @@ setup(
             "readme-renderer==30.0",
             "regex==2021.11.10",
             "requests==2.26.0",
-            "requests-toolbelt==1.0.0",
+            "requests-toolbelt==1.0.1",
             "requirementslib==1.6.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "rfc3986==1.5.0",
             "six==1.16.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
