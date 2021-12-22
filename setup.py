@@ -3,11 +3,11 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", "r") as rf:
-    requirements = rf.readlines()
-
-with open("requirements_dev.txt", "r") as rfd:
-    dev_requirements = rfd.readlines()
+# with open("requirements.txt", "r") as rf:
+#     requirements = rf.readlines()
+#
+# with open("requirements_dev.txt", "r") as rfd:
+#     dev_requirements = rfd.readlines()
 
 setup(
     name="pht-train-container-library",
@@ -76,7 +76,6 @@ setup(
         "xmltodict==0.12.0",
         "yarl==1.7.2; python_version >= '3.6'",
     ],
-    tests_require=dev_requirements,
     extras_require={
         "dev": [
             "appdirs==1.4.4",
