@@ -32,6 +32,7 @@ mkdocs-material = "*"
 twine = "*"
 bump2version = "*"
 pipenv-setup = "*"
+build = "*"
 
 [requires]
 python_version = "3.9"
