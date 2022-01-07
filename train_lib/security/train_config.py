@@ -26,15 +26,15 @@ class HexString(str):
         return bytes.fromhex(self)
 
 
-class StationPK(BaseModel):
+class StationPublicKeys(BaseModel):
     station_id: Union[int, str]
     rsa_public_key: HexString
 
 
-class UserKeys(BaseModel):
-    user_id: Optional[Union[int, str]]
-    paillier_public_key: HexString
-    rsa_public_key: Optional[HexString] = None
+class UserPublicKeys(BaseModel):
+    user_id: Union[int, str]
+    rsa_public_key: HexString
+    paillier_public_key: Optional[Union[HexString, int, str]] = None
 
 
 class EncryptedSymKey(BaseModel):
@@ -58,13 +58,17 @@ class TrainConfig(BaseModel):
     proposal_id: Union[int, str]
     train_id: str
     session_id: HexString
-    user_keys: UserKeys
+    user_keys: UserPublicKeys
     encrypted_keys: Optional[List[EncryptedSymKey]] = None
-    station_public_keys: List[StationPK]
-    immutable_file_list = List[str]
+    station_public_keys: List[StationPublicKeys]
+    immutable_file_list: List[str]
     immutable_file_hash: HexString  # e_h
     immutable_file_signature: HexString  # e_h_sig
-    results_hash: HexString  # e_d
-    results_signature: HexString  # e_d_sig
-    digital_signature: List[DigitalSignature]
+    results_hash: Optional[HexString] = None  # e_d
+    results_signature: Optional[HexString]  # e_d_sig
+    digital_signature: Optional[List[DigitalSignature]] = None
     user_encrypted_sym_key: Optional[HexString] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+        validate_assignment = True
