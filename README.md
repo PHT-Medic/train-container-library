@@ -1,16 +1,16 @@
 [![Documentation Status](https://readthedocs.org/projects/train-container-library/badge/?version=latest)](https://train-container-library.readthedocs.io/en/latest/?badge=latest)
 [![CodeQL](https://github.com/PHT-Medic/train-container-library/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/PHT-Medic/train-container-library/actions/workflows/codeql-analysis.yml)
 [![main-ci](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml/badge.svg)](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml)
-[![codecov](https://codecov.io/gh/PHT-EU/train-container-library/branch/master/graph/badge.svg?token=11RYRZK2FO)](https://codecov.io/gh/PHT-EU/train-container-library)
+[![codecov](https://codecov.io/gh/PHT-Medic/train-container-library/branch/master/graph/badge.svg?token=11RYRZK2FO)](https://codecov.io/gh/PHT-Medic/train-container-library)
 [![PyPI version](https://badge.fury.io/py/pht-train-container-library.svg)](https://badge.fury.io/py/pht-train-container-library)
 # Train Container Library
+Python library for validating and interacting with pht-train images/containers.
 
-Python library for pht-train images/containers.
+## Installation
 
-## Tests
-
-Run the tests to validate the security protocol is working as intended. From this projects root directory run 
-`pytest train_lib`
+```shell
+pip install pht-train-container-library
+```
 
 ## Security Protocol
 
@@ -51,7 +51,10 @@ Once these steps have been completed the image is ready to be executed.
 
 With the completion of these steps the train is ready to be pushed into the registry for further processing
 
+## Tests
 
+Run the tests to validate the security protocol is working as intended. From this projects root directory run 
+`pytest train_lib`
 
 
 

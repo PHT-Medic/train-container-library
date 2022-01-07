@@ -3,15 +3,15 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", "r") as rf:
-    requirements = rf.readlines()
-
-with open("requirements_dev.txt", "r") as rfd:
-    dev_requirements = rfd.readlines()
+# with open("requirements.txt", "r") as rf:
+#     requirements = rf.readlines()
+#
+# with open("requirements_dev.txt", "r") as rfd:
+#     dev_requirements = rfd.readlines()
 
 setup(
     name="pht-train-container-library",
-    version="0.9.3",
+    version="1.0.2",
     author="Michael Graf",
     author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
@@ -76,7 +76,6 @@ setup(
         "xmltodict==0.12.0",
         "yarl==1.7.2; python_version >= '3.6'",
     ],
-    tests_require=dev_requirements,
     extras_require={
         "dev": [
             "appdirs==1.4.4",
@@ -85,7 +84,7 @@ setup(
             "backports.entry-points-selectable==1.1.0; python_version >= '2.7'",
             "black==19.10b0; python_version >= '3.6'",
             "bleach==4.1.0; python_version >= '3.6'",
-            "bump2version==1.0.1",
+            "bump2version==1.0.2",
             "cached-property==1.5.2",
             "cerberus==1.3.4",
             "certifi==2021.10.8",
@@ -95,7 +94,7 @@ setup(
             "coverage==6.0.2",
             "distlib==0.3.3",
             "docutils==0.18; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
-            "filelock==3.3.1; python_version >= '3.6'",
+            "filelock==3.4.0; python_version >= '3.6'",
             "ghp-import==2.0.2",
             "idna==3.3; python_version >= '3'",
             "importlib-metadata==4.8.1; python_version >= '3.6'",
@@ -108,7 +107,7 @@ setup(
             "mkdocs==1.2.3",
             "mkdocs-material==7.3.4",
             "mkdocs-material-extensions==1.0.3; python_version >= '3.6'",
-            "orderedmultidict==1.0.1",
+            "orderedmultidict==1.0.2",
             "packaging==20.9; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pathspec==0.9.0",
             "pep517==0.12.0",
@@ -118,7 +117,7 @@ setup(
             "pkginfo==1.7.1",
             "platformdirs==2.4.0; python_version >= '3.6'",
             "plette[validation]==0.2.3; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
-            "pluggy==1.0.0; python_version >= '3.6'",
+            "pluggy==1.0.2; python_version >= '3.6'",
             "py==1.10.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pygments==2.10.0; python_version >= '3.5'",
             "pymdown-extensions==9.0; python_version >= '3.6'",
@@ -129,10 +128,10 @@ setup(
             "pyyaml==6.0; python_version >= '3.6'",
             "pyyaml-env-tag==0.1; python_version >= '3.6'",
             "readme-renderer==30.0",
-            "regex==2021.10.23",
+            "regex==2021.11.10",
             "requests==2.26.0",
-            "requests-toolbelt==0.9.3",
-            "requirementslib==1.5.16; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+            "requests-toolbelt==1.0.2",
+            "requirementslib==1.6.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "rfc3986==1.5.0",
             "six==1.16.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "toml==0.10.2; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",

@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # # hash = hash_immutable_files(files, "1", session_id)
 
     train_hash = bytes.fromhex(
-        "94e1a70dbff0977a8cb49644a94ea052ddb9e1537af7b33d44e698ea0cd4b046962fc2299b05b08bfa37790f24dc4b724ad3e40beceb1bf717e622a6ce2231ca")
+        "bcdad96c1ebb18f4cb1564c1992c8c236fe2a4631a17025decd5cb67795fe9efb0b39bda3ca76acc5bd0bda36785960037db9367772fc4bb9ababa5455af6a23")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None, backend=default_backend())
@@ -62,17 +62,16 @@ if __name__ == '__main__':
             utils.Prehashed(hashes.SHA512())
         )
         print("Signature: ", sig.hex())
-    with open("./demo_key.pem", "rb") as pk:
-        private_key = serialization.load_pem_private_key(pk.read(), password="start123".encode(),
-                                                         backend=default_backend())
-        sig = private_key.sign(
-            train_hash,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA512()),
-                salt_length=padding.PSS.MAX_LENGTH),
-            utils.Prehashed(hashes.SHA512())
-        )
-        print("Demo Signature: ", sig.hex())
+    # with open("./demo_key.pem", "rb") as pk:
+    #     private_key = serialization.load_pem_private_key(pk.read(), password="start123".encode(), backend=default_backend())
+    #     sig = private_key.sign(
+    #         train_hash,
+    #         padding.PSS(
+    #             mgf=padding.MGF1(hashes.SHA512()),
+    #             salt_length=padding.PSS.MAX_LENGTH),
+    #         utils.Prehashed(hashes.SHA512())
+    #     )
+    #     print("Demo Signature: ", sig.hex())
     with open("./user_public_key.pem", "rb") as pk:
         pk_pem = pk.read().hex()
         public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(bytes.fromhex(pk_pem),
@@ -82,8 +81,8 @@ if __name__ == '__main__':
     public_key.verify(
         sig,
         train_hash,
-        padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
-        utils.Prehashed(hashes.SHA512()))
+                      padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
+                      utils.Prehashed(hashes.SHA512()))
 
     with open("./S_2_sk.pem", "rb") as station_sk:
         private_key = serialization.load_pem_private_key(station_sk.read(), password=None,
