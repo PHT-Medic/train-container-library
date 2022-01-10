@@ -63,7 +63,7 @@ setup(
         "pytz==2021.3",
         "pytzdata==2020.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
         "pywin32==227; sys_platform == 'win32'",
-        "pyyaml==6.0; python_version >= '3.6'",
+        "pyyaml",
         "redis==3.5.3",
         "requests==2.26.0",
         "requests-oauthlib==1.3.0",
