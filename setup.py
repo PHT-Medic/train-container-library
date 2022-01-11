@@ -41,7 +41,7 @@ setup(
         "dnspython==2.1.0; python_version >= '3.6'",
         "docker==5.0.3",
         "email-validator==1.1.3",
-        "fhir-kindling==0.3.0",
+        "fhir-kindling",
         "fhir.resources==6.1.0; python_version >= '3.6'",
         "fhirpy==1.2.1",
         "frozenlist==1.2.0; python_version >= '3.6'",
