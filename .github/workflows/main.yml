@@ -12,7 +12,7 @@ on:
 jobs:
   build:
 
-    runs-on: [ self-hosted, linux, docker ]
+    runs-on: docker
 
     steps:
       - uses: actions/checkout@v2
