@@ -246,7 +246,7 @@ def train_file_archive(train_files):
 
 @pytest.fixture
 def master_image():
-    return "harbor-pht.tada5hi.net/master/python/ubuntu:latest"
+    return "dev-harbor.grafm.de/master/python/base:latest"
 
 
 @pytest.fixture

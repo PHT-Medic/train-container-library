@@ -117,7 +117,7 @@ class PHTClient:
         :param user_id:
         :return: hex string containing an rsa public key
         """
-        url = f"{self.vault_url}v1/user_pks/{user_id}"
+        url = f"{self.vault_url}/v1/user_pks/{user_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
         data = r.json()["data"]["data"]
@@ -130,7 +130,7 @@ class PHTClient:
         :param station_id: identifier of the station in vault
         :return: hex string containing an rsa public key
         """
-        url = f"{self.vault_url}v1/station_pks/{station_id}"
+        url = f"{self.vault_url}/v1/station_pks/{station_id}"
         r = requests.get(url, headers=self.vault_headers)
         r.raise_for_status()
         public_key = r.json()["data"]["data"]["rsa_station_public_key"]
@@ -144,7 +144,7 @@ class PHTClient:
 
     def post_route_to_vault(self, train_id, route, periodic=False):
         route = [str(_) for _ in route]
-        vault_url = f"{self.vault_url}v1/kv-pht-routes/data/{train_id}"
+        vault_url = f"{self.vault_url}/v1/kv-pht-routes/data/{train_id}"
         print(route)
         payload = {
             "options": {
