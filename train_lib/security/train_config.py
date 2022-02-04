@@ -43,7 +43,7 @@ class EncryptedSymKey(BaseModel):
 
 
 class StationSignature(BaseModel):
-    sig: HexString
+    signature: HexString
     digest: HexString
 
 
@@ -72,3 +72,5 @@ class TrainConfig(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         validate_assignment = True
+
+# https://github.com/samuelcolvin/pydantic/issues/889#issuecomment-850312496

@@ -245,8 +245,11 @@ class PHTFhirClient:
 
         initial_response = r.json()
         response = r.json()
-        if (len(response["entry"]) < self.k_anon) and not self.disable_k_anon:
-            raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+        if response.get("entry"):
+            if (len(response["entry"]) < self.k_anon) and not self.disable_k_anon:
+                raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+        else:
+            raise ValueError("No results match the query.")
         link = response.get("link", None)
         if not link:
             return response
