@@ -245,8 +245,11 @@ class PHTFhirClient:
 
         initial_response = r.json()
         response = r.json()
-        if (len(response["entry"]) < self.k_anon) and not self.disable_k_anon:
-            raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+        if response.get("entry"):
+            if (len(response["entry"]) < self.k_anon) and not self.disable_k_anon:
+                raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+        else:
+            raise ValueError("No results match the query.")
         link = response.get("link", None)
         if not link:
             return response
@@ -271,6 +274,11 @@ class PHTFhirClient:
         server_response = requests.get(url, auth=auth)
         initial_response = xmltodict.parse(server_response.text)
         entries = initial_response["Bundle"]["entry"]
+
+        if not entries:
+            print("No results found for query")
+            return server_response.text
+
         response = initial_response
         while True:
             next_page = False
