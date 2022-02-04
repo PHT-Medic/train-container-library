@@ -57,7 +57,7 @@ def test_homomorphic_encrypt():
 
 
 def test_encrypted_addition():
-    n = random.randint(100, 1000)
+    n = random.randint(5000, 3213123)
     public_key = HomomorphicAddition.PublicKey(n)
     a = 32
     b = 17
