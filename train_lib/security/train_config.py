@@ -1,4 +1,5 @@
 from typing import List, Optional, Union
+from enum import Enum
 
 from pydantic import BaseModel
 
@@ -24,6 +25,11 @@ class HexString(str):
 
     def get_bytes(self):
         return bytes.fromhex(self)
+
+
+class Ecosystem(str, Enum):
+    TUE = 'tue'
+    AAC = 'aac'
 
 
 class StationPublicKeys(BaseModel):
@@ -56,6 +62,7 @@ class TrainConfig(BaseModel):
     master_image: str
     user_id: Union[int, str]
     proposal_id: Union[int, str]
+    eco_system: Optional[Ecosystem] = "tue"
     train_id: str
     session_id: HexString
     user_keys: UserPublicKeys
