@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="pht-train-container-library",
-    version="1.0.5",
+    version="1.0.6",
     author="Michael Graf",
     author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
