@@ -114,7 +114,7 @@ setup(
             "pip-shims==0.5.3; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "pipenv-setup==3.1.1",
             "pipfile==0.0.2",
-            "pkginfo==1.7.1",
+            "pkginfo==1.8.2",
             "platformdirs==2.4.0; python_version >= '3.6'",
             "plette[validation]==0.2.3; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pluggy==1.0.5; python_version >= '3.6'",
