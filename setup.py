@@ -118,7 +118,7 @@ setup(
             "platformdirs==2.4.0; python_version >= '3.6'",
             "plette[validation]==0.2.3; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pluggy==1.0.5; python_version >= '3.6'",
-            "py==1.10.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+            "py==1.11.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "pygments==2.10.0; python_version >= '3.5'",
             "pymdown-extensions==9.0; python_version >= '3.6'",
             "pyparsing==3.0.2; python_version >= '3.6'",
