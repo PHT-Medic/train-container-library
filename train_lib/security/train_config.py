@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class HexString(str):
@@ -35,6 +35,7 @@ class Ecosystem(str, Enum):
 class StationPublicKeys(BaseModel):
     station_id: Union[int, str]
     rsa_public_key: HexString
+    eco_system: Ecosystem
 
 
 class UserPublicKeys(BaseModel):
@@ -49,8 +50,8 @@ class EncryptedSymKey(BaseModel):
 
 
 class StationSignature(BaseModel):
-    signature: HexString
     digest: HexString
+    signature: HexString
 
 
 class DigitalSignature(BaseModel):
@@ -58,23 +59,47 @@ class DigitalSignature(BaseModel):
     signature: StationSignature
 
 
+class Creator(BaseModel):
+    id: Union[int, str]
+    rsa_public_key: HexString
+    paillier_public_key: Optional[Union[HexString, int, str]] = None
+    encrypted_key: Optional[HexString] = None
+
+
+class RouteEntry(BaseModel):
+    station: Union[int, str]
+    eco_system: Ecosystem
+    rsa_public_key: HexString
+    index: int
+    signature: Optional[StationSignature] = None
+    encrypted_key: HexString = None
+
+
+class TrainSourceType(str, Enum):
+    IMAGE = 'image_repository'
+    GIT = 'git_repository'
+
+
+class TrainSource(BaseModel):
+    type: TrainSourceType
+    address: str
+    tag: Optional[str] = None
+    branch: Optional[str] = None
+
+
 class TrainConfig(BaseModel):
-    master_image: str
-    user_id: Union[int, str]
+    source: TrainSource
+    creator: Creator
     proposal_id: Union[int, str]
-    eco_system: Optional[Ecosystem] = "tue"
-    train_id: str
+    id: str = Field(alias='@id')
+    context: dict = Field(default=None, alias='@context')
     session_id: HexString
-    user_keys: UserPublicKeys
-    encrypted_keys: Optional[List[EncryptedSymKey]] = None
-    station_public_keys: List[StationPublicKeys]
-    immutable_file_list: List[str]
+    route: List[RouteEntry]
+    file_list: List[str]
     immutable_file_hash: HexString  # e_h
     immutable_file_signature: HexString  # e_h_sig
-    results_hash: Optional[HexString] = None  # e_d
-    results_signature: Optional[HexString]  # e_d_sig
-    digital_signature: Optional[List[DigitalSignature]] = None
-    user_encrypted_sym_key: Optional[HexString] = None
+    result_hash: Optional[HexString] = None  # e_d
+    result_signature: Optional[HexString] = None  # e_d_sig
 
     class Config:
         arbitrary_types_allowed = True
