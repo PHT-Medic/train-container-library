@@ -1,5 +1,5 @@
 import math
-from .Primes import generate_prime
+from .primes import generate_prime
 
 
 class PublicKey(object):

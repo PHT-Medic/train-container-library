@@ -1,9 +1,9 @@
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
 from cryptography.hazmat.primitives import serialization, hashes
-from train_lib.security.SecurityProtocol import SecurityProtocol
+from train_lib.security.protocol import SecurityProtocol
 import os
-from train_lib.security.Hashing import hash_immutable_files
+from train_lib.security.hashing import hash_immutable_files
 
 
 def generate_user_key_pair():

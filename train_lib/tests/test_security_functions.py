@@ -6,8 +6,8 @@ from cryptography.fernet import InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 
-from train_lib.security.Hashing import hash_immutable_files, hash_results
-from train_lib.security.SymmetricEncryption import FileEncryptor, Fernet
+from train_lib.security.hashing import hash_immutable_files, hash_results
+from train_lib.security.encryption import FileEncryptor, Fernet
 
 
 @pytest.fixture

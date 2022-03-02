@@ -2,14 +2,14 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding, utils, rsa
 
-from train_lib.security.SecurityProtocol import SecurityProtocol
+from train_lib.security.protocol import SecurityProtocol
 from train_lib.docker_util.docker_ops import *
 import json
 from tarfile import TarInfo
 from timeit import default_timer as timer
 import time
 from dotenv import find_dotenv, load_dotenv
-from train_lib.security.Hashing import hash_immutable_files
+from train_lib.security.hashing import hash_immutable_files
 
 IMG = "harbor.personalhealthtrain.de/pht_incoming/22:base"
 

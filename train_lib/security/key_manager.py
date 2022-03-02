@@ -9,27 +9,23 @@ from cryptography.fernet import Fernet
 import os
 import json
 
+from train_lib.security.train_config import TrainConfig
+
 
 class KeyManager:
     """
     Class that creates, stores and if necessary updates all relevant keys for symmetric and asymmetric encryption
     """
 
-    def __init__(self, train_config: Union[str, dict]):
+    def __init__(self, train_config: TrainConfig):
         """
         Initialize a KeyManager instance that handles security relevant values based on a train configuration
         
         :param train_config: either a path to a json file storing the configuration values or a dictionary with these values 
         """
-        self.config_path = None
-        if type(train_config) == dict:
-            self.config = train_config
-        else:
-            self.config_path = train_config
-            with open(train_config, "r") as config_file:
-                self.config = json.load(config_file)
+        self.config = train_config
 
-    def save_keyfile(self, path=None, binary_file=False):
+    def save_config(self, path=None, binary_file=False):
         """
         Store the updated config file as a json at the same location
 
@@ -37,14 +33,13 @@ class KeyManager:
         :rtype:
         """
         if binary_file:
-            return BytesIO(json.dumps(self.config).encode("utf-8"))
+            return BytesIO(self.config.json(indent=2).encode("utf-8"))
 
-        if not self.config_path and path:
-            raise ValueError("To save the path either a path needs to given as argument or set as an instance variable")
-        if path:
-            self.config_path = path
-        with open(self.config_path, "w") as config_file:
-            json.dump(self.config, config_file, indent=2)
+        elif path:
+            with open(path, "w") as f:
+                f.write(self.config.json(indent=2))
+        else:
+            raise ValueError("No path or binary file specified for saving the keyfile")
 
     def get_security_param(self, param: str):
         """
@@ -171,4 +166,3 @@ class KeyManager:
         public_key = serialization.load_pem_public_key(bytes.fromhex(key),
                                                        backend=default_backend())
         return public_key
-

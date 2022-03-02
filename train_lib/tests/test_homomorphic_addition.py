@@ -1,7 +1,7 @@
 import random
 
 import pytest
-from train_lib.security import Primes, HomomorphicAddition
+from train_lib.security import primes, homomorphic_addition
 
 
 def test_primes():

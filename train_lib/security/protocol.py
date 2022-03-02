@@ -1,7 +1,7 @@
-from .KeyManager import KeyManager
-from .SymmetricEncryption import FileEncryptor
-from .SecurityErrors import ValidationError
-from .Hashing import *
+from train_lib.security.key_manager import KeyManager
+from train_lib.security.encryption import FileEncryptor
+from train_lib.security.errors import ValidationError
+from train_lib.security.hashing import *
 from train_lib.docker_util.docker_ops import *
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
@@ -24,14 +24,16 @@ class SecurityProtocol:
     :type station_id: str
     :param config: either a string containing a path to the train_config.json or a dictionary containing the values
         parsed from said json file
-    :type config: Union[str, dict]
     :param results_dir: path to the directory containing the results
     :param train_dir: path to the directory containing the immutable files defining a train
     """
 
-    def __init__(self, station_id: str, config: Union[str, dict], results_dir: str = None, train_dir: str = None,
+    def __init__(self, station_id: str, config: TrainConfig, results_dir: str = None, train_dir: str = None,
                  docker_client=None):
         self.station_id = station_id
+
+        self.config = config
+
         self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
         self.train_dir = train_dir
@@ -58,12 +60,12 @@ class SecurityProtocol:
             immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
 
             # Check that no files have been added or removed
-            assert len(immutable_files) == len(self.key_manager.get_security_param("immutable_file_list"))
+            assert len(immutable_files) == len(self.config.file_list)
 
             self.validate_immutable_files(
                 files=immutable_files,
                 immutable_file_names=file_names,
-                ordered_file_list=self.key_manager.get_security_param("immutable_file_list"))
+                ordered_file_list=self.config.file_list)
             if not self._is_first_station_on_route():
                 self.verify_digital_signature()
                 file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id,
@@ -251,7 +253,7 @@ class SecurityProtocol:
         """
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
-        data = self.key_manager.save_keyfile(binary_file=True)
+        data = self.key_manager.save_config(binary_file=True)
 
         # Create TarInfo Object based on the data
         info = TarInfo(name="train_config.json")
@@ -308,7 +310,7 @@ class SecurityProtocol:
         user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
         self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
 
-        self.key_manager.save_keyfile()
+        self.key_manager.save_config()
         logging.info("Post-protocol success")
 
     def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
@@ -321,25 +323,29 @@ class SecurityProtocol:
         :return:
         """
         # check the signature of the stored hash value using ec signature verifying that it is created by the user
-        user_pk = self.key_manager.load_public_key(self.key_manager.get_security_param("rsa_user_public_key"))
-        e_h = bytes.fromhex(self.key_manager.get_security_param("e_h"))
-        e_h_sig = bytes.fromhex(self.key_manager.get_security_param("e_h_sig"))
+        user_pk = self.key_manager.load_public_key(self.config.creator.rsa_public_key)
+        e_h = bytes.fromhex(self.config.immutable_file_hash)
+        e_h_sig = bytes.fromhex(self.config.immutable_file_signature)
         # now check before the run that no immutable files have changed, based on stored hash
         if train_dir:
             immutable_files = self._parse_files(train_dir)
             immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
 
-            current_hash = hash_immutable_files(immutable_files, str(self.key_manager.get_security_param("user_id")),
-                                                bytes.fromhex(self.key_manager.get_security_param("session_id")),
-                                                )
+            current_hash = hash_immutable_files(
+                immutable_files=immutable_files,
+                user_id=str(self.config.creator.id),
+                session_id=bytes.fromhex(self.config.session_id),
+            )
         elif files:
-            current_hash = hash_immutable_files(files,
-                                                str(self.key_manager.get_security_param("user_id")),
-                                                bytes.fromhex(self.key_manager.get_security_param("session_id")),
-                                                binary_files=True,
-                                                ordered_file_list=ordered_file_list,
-                                                immutable_file_names=immutable_file_names
-                                                )
+            current_hash = hash_immutable_files(
+                immutable_files=files,
+                user_id=str(self.config.creator.id),
+                session_id=bytes.fromhex(self.config.session_id),
+                binary_files=True,
+                ordered_file_list=ordered_file_list,
+                immutable_file_names=immutable_file_names
+            )
+
         logging.info(f"e_h: {e_h}")
         logging.info(f"file hash: {current_hash}")
         if e_h != current_hash:
@@ -437,7 +443,7 @@ class SecurityProtocol:
         :return:
         """
         # Check if there are previous results if not station is first station on route
-        return self.key_manager.get_security_param("e_d") is None
+        return self.config.result_hash is None
 
     @staticmethod
     def _parse_files(target_dir):
@@ -452,4 +458,3 @@ class SecurityProtocol:
             files += [os.path.join(dir_path, file) for file in file_names]
         logging.info(f"Found {len(files)} Files")
         return files
-

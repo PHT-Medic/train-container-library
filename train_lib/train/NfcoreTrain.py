@@ -2,8 +2,8 @@ import json
 import pickle
 import os
 
-from train_lib.security.HomomorphicAddition import secure_addition
-from train_lib.security.KeyManager import KeyManager
+from train_lib.security.homomorphic_addition import secure_addition
+from train_lib.security.key_manager import KeyManager
 
 
 class Train:
