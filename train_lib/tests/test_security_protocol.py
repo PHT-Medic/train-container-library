@@ -202,6 +202,12 @@ def train_config(key_pairs, train_files):
                 "rsa_public_key": station_public_keys["station_2"],
                 "eco_system": "tue",
                 "index": 1,
+            },
+            {
+                "station": "station_3",
+                "rsa_public_key": station_public_keys["station_3"],
+                "eco_system": "tue",
+                "index": 2,
             }
         ],
         "file_list": filenames,
@@ -331,6 +337,11 @@ def test_validate_master_image(train_image, master_image):
     validate_train_image(train_image, master_image)
 
 
+def test_get_previous_station(train_config):
+    sp = SecurityProtocol(station_id="station_2", config=train_config)
+    assert sp._get_previous_station().station == "station_1"
+
+
 def test_pre_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     config = extract_train_config(train_image)
 
@@ -448,13 +459,13 @@ def test_user_signature_verification_pre_run(train_image, tmpdir, key_pairs, doc
         wrong_signature = user_private_key.sign(wrong_hash, padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                                                         salt_length=padding.PSS.MAX_LENGTH),
                                                 utils.Prehashed(hashes.SHA512()))
-        config["e_h_sig"] = wrong_signature.hex()
+        config.immutable_file_signature = wrong_signature.hex()
         sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         with pytest.raises(cryptography.exceptions.InvalidSignature):
             sp.pre_run_protocol(img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
 
-def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir, key_pairs, station_id=3):
+def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir, key_pairs, station_id):
     init_config = extract_train_config(test_train_image)
     # Execute the image
     client = docker_client
@@ -466,7 +477,7 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
     container.commit(test_train_image)
 
     # Perform post run protocol
-    if station_id == 1:
+    if station_id == "station_1":
         p1 = tmpdir.join("station_1_private_key.pem")
         p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
 
@@ -478,7 +489,7 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=init_config, docker_client=docker_client)
             sp.post_run_protocol(img=test_train_image + ":latest",
                                  private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
-    elif station_id == 2:
+    elif station_id == "station_2":
         p2 = tmpdir.join("station_2_private_key.pem")
         p2.write(bytes.fromhex(key_pairs["station_2"]["private_key"]))
 
@@ -491,7 +502,7 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
             sp.post_run_protocol(img=test_train_image + ":latest",
                                  private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
-    elif station_id == 3:
+    elif station_id == "station_3":
         p3 = tmpdir.join("station_3_private_key.pem")
         p3.write(bytes.fromhex(key_pairs["station_3"]["private_key"]))
 
@@ -508,7 +519,7 @@ def execute_image_and_post_run_protocol(test_train_image, docker_client, tmpdir,
 def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     init_config = extract_train_config(train_image)
     execute_image_and_post_run_protocol(test_train_image=train_image, docker_client=docker_client, tmpdir=tmpdir,
-                                        key_pairs=key_pairs)
+                                        key_pairs=key_pairs, station_id="station_1")
 
     config = extract_train_config(train_image)
 
@@ -516,20 +527,20 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     assert config != init_config
 
     # The digital signature changed
-    assert config["digital_signature"] != init_config["digital_signature"]
+    assert config.result_hash != init_config.result_hash
 
-    assert len(config["digital_signature"]) == 1
+    assert config.result_signature != init_config.result_signature
 
     # Check that the pre-run protocol works for the next station
-    p1 = tmpdir.join("station_1_private_key.pem")
-    p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
+    p2 = tmpdir.join("station_1_private_key.pem")
+    p2.write(bytes.fromhex(key_pairs["station_2"]["private_key"]))
 
     # set up temporary env vars
-    environment_dict_station_1 = {
-        "STATION_ID": "station_1",
-        "STATION_PRIVATE_KEY_PATH": str(p1)
+    environment_dict_station_2 = {
+        "STATION_ID": "station_2",
+        "STATION_PRIVATE_KEY_PATH": str(p2)
     }
-    with mock.patch.dict(os.environ, environment_dict_station_1):
+    with mock.patch.dict(os.environ, environment_dict_station_2):
         sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         sp.pre_run_protocol(img=train_image + ":latest", private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
@@ -547,7 +558,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     assert unregistered_sk not in [bytes.fromhex(key_pairs[f"station_{s}"]["private_key"]) for s in range(1, 4)]
 
     environment_dict_wrong_sk = {
-        "STATION_ID": "station_3",
+        "STATION_ID": "station_2",
         "STATION_PRIVATE_KEY_PATH": str(p_wrong_key)
     }
     with mock.patch.dict(os.environ, environment_dict_wrong_sk):
@@ -557,7 +568,6 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
             sp.pre_run_protocol(img=train_image + ":latest",
                                 private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
 
-    print(config["digital_signature"])
 
     # Change the results file to an unencrypted one and different one
 
@@ -579,7 +589,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     train_container.wait()
 
     # Should throw error because the results file is not correctly encrypted
-    with mock.patch.dict(os.environ, environment_dict_station_1):
+    with mock.patch.dict(os.environ, environment_dict_station_2):
         with pytest.raises(fernet.InvalidToken):
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
             sp.pre_run_protocol(img=train_image + ":latest",
@@ -606,7 +616,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     train_container.commit(repository=train_image)
     train_container.wait()
 
-    with mock.patch.dict(os.environ, environment_dict_station_1):
+    with mock.patch.dict(os.environ, environment_dict_station_2):
         with pytest.raises(fernet.InvalidToken):
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
             sp.pre_run_protocol(img=train_image + ":latest",

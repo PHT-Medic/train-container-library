@@ -12,6 +12,15 @@ import time
 from tarfile import TarInfo
 import docker
 import logging
+from enum import Enum
+
+from train_lib.security.train_config import RouteEntry
+
+
+class TrainPaths(Enum):
+    IMMUTABLE_DIR = "/opt/pht_train"
+    RESULT_DIR = "/opt/pht_results"
+    CONFIG_PATH = "/opt/train_config.json"
 
 
 class SecurityProtocol:
@@ -33,7 +42,9 @@ class SecurityProtocol:
         self.station_id = station_id
 
         self.config = config
-
+        self.route_stop = next((stop for stop in self.config.route if stop.station == self.station_id), None)
+        if not self.route_stop:
+            raise ValidationError(f"Station {self.station_id} not found in route")
         self.key_manager = KeyManager(train_config=config)
         self.results_dir = results_dir
         self.train_dir = train_dir
@@ -54,54 +65,36 @@ class SecurityProtocol:
         """
         logging.info("Executing pre-run protocol...")
         # Execute the protocol with directly passed files and the instances config file
-        if img and private_key_path:
-            logging.info("Extracting files from image...")
-            # Get the content of the immutable files from the image as ByteObjects
-            immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
+        logging.info("Extracting files from image...")
+        # Get the content of the immutable files from the image as ByteObjects
+        immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
 
-            # Check that no files have been added or removed
-            assert len(immutable_files) == len(self.config.file_list)
+        # Check that no files have been added or removed
+        assert len(immutable_files) == len(self.config.file_list)
 
-            self.validate_immutable_files(
-                files=immutable_files,
-                immutable_file_names=file_names,
-                ordered_file_list=self.config.file_list)
-            if not self._is_first_station_on_route():
-                self.verify_digital_signature()
-                file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id,
-                                                                            private_key_path=private_key_path))
-                # Decrypt all previously encrypted files
-                mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
-                decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
-                self.validate_previous_results(files=decrypted_files)
-                archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
-                logging.info("Adding decrypted files to image")
-                # print(archive.name)
-                self._update_image(img, archive, results_path="/opt")
+        self.validate_immutable_files(
+            files=immutable_files,
+            immutable_file_names=file_names,
+            ordered_file_list=self.config.file_list)
+        if not self._is_first_station_on_route():
+            self.verify_digital_signature()
+            key = self.key_manager.decrypt_symmetric_key(
+                encrypted_key=self.route_stop.encrypted_key,
+                private_key_path=private_key_path
+            )
+            file_encryptor = FileEncryptor(key)
+            # Decrypt all previously encrypted files
+            mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
+            decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
+            self.validate_previous_results(files=decrypted_files)
+            archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
+            logging.info("Adding decrypted files to image")
+            # print(archive.name)
+            self._update_image(img, archive, results_path="/opt")
 
-            logging.info("Pre-run protocol success")
-            return
-        # Execute the protocol parsing the files from the given train and results directories
-        elif self.results_dir and self.train_dir:
-            self.validate_immutable_files(self.train_dir)
+        logging.info("Pre-run protocol success")
 
-            if not self._is_first_station_on_route():
-                self.verify_digital_signature()
-
-                files = self._parse_files(self.results_dir)
-
-                file_encryptor = FileEncryptor(self.key_manager.get_sym_key(self.station_id))
-
-                # Decrypt all previously encrypted files
-                file_encryptor.decrypt_files(files)
-                self.validate_previous_results()
-
-            logging.info("Pre-run protocol success")
-            return
-        else:
-            raise ValueError("Neither train image or results and train directories are set")
-
-    def post_run_protocol(self, img: str = None, private_key_path: str = None, mutable_dir: str = "/opt/pht_results"):
+    def post_run_protocol(self, img: str = None, private_key_path: str = None):
         """
         Updates the necessary values in the train_config.json and encrypts the updated files after a successful train
         execution.
@@ -113,22 +106,18 @@ class SecurityProtocol:
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
-        if img and private_key_path:
-            logging.info(f"Executing post-run protocol - target image: {img} \n")
-            # Get the mutable files and tar archive structure
-            mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
-            # Run the post run protocol
-            encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path)
-            results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
-            results_archive.seek(0)
+        logging.info(f"Executing post-run protocol - target image: {img} \n")
+        # Get the mutable files and tar archive structure
+        mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, TrainPaths.RESULT_DIR.value))
+        # Run the post run protocol
+        encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path)
+        results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
+        results_archive.seek(0)
 
-            # update the container with the encrypted files
-            self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
-            logging.info(f"Successfully executed post run protocol on img: {img}")
+        # update the container with the encrypted files
+        self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
+        logging.info(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
-        else:
-            logging.info("Executing post-run protocol: \n")
-            self._post_run_in_container()
 
     def _post_run_outside_container(self, mutable_files: List[BytesIO], private_key_path: str) -> List[BytesIO]:
         """
@@ -141,13 +130,13 @@ class SecurityProtocol:
         :param private_key_path: path to private key used to sign the results
         :return:
         """
-        logging.info(f"prev results hash {self.key_manager.get_security_param('e_d')}", )
+        logging.info(f"prev results hash {self.config.result_hash}")
         # Update the hash value of the mutable files
         e_d = hash_results(result_files=mutable_files,
-                           session_id=bytes.fromhex(self.key_manager.get_security_param("session_id")),
+                           session_id=bytes.fromhex(self.config.session_id),
                            binary_files=True)
-        self.key_manager.set_security_param("e_d", e_d.hex())
-        logging.info(f"new results hash: {self.key_manager.get_security_param('e_d')}")
+        self.config.result_hash = e_d.hex()
+        logging.info(f"new results hash: {self.config.result_hash}")
 
         # Load the local private key and sign the hash of the results files
         sk = self.key_manager.load_private_key(key_path=private_key_path)
@@ -155,7 +144,7 @@ class SecurityProtocol:
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                       salt_length=padding.PSS.MAX_LENGTH),
                           utils.Prehashed(hashes.SHA512()))
-        self.key_manager.set_security_param("e_d_sig", e_d_sig.hex())
+        self.config.result_signature = e_d_sig.hex()
 
         # Update the digital signature of the train
         self.sign_digital_signature(sk)
@@ -168,14 +157,8 @@ class SecurityProtocol:
         encrypted_results = file_encryptor.encrypt_files(mutable_files, binary_files=True)
 
         # Encrypt the new symmetric key with the available public keys and store them in the image
-        encrypted_symmetric_keys = self.key_manager.encrypt_symmetric_key(new_sym_key)
-        self.key_manager.set_security_param("encrypted_key", encrypted_symmetric_keys)
+        self._update_symmetric_keys(new_sym_key)
         # at the last station encrypt the symmetric key using the rsa public key of the user
-
-        user_public_key = self.key_manager.load_public_key(
-            self.key_manager.get_security_param("rsa_user_public_key"))
-        user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
-        self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
 
         return encrypted_results
 
@@ -253,7 +236,7 @@ class SecurityProtocol:
         """
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
-        data = self.key_manager.save_config(binary_file=True)
+        data = BytesIO(self.config.json(indent=2, by_alias=True).encode("utf-8"))
 
         # Create TarInfo Object based on the data
         info = TarInfo(name="train_config.json")
@@ -269,7 +252,7 @@ class SecurityProtocol:
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
         # Extract user key from config and convert it to bytesio
-        data = BytesIO(bytes.fromhex(self.key_manager.get_security_param("user_encrypted_sym_key")))
+        data = BytesIO(bytes.fromhex(self.config.creator.encrypted_key))
         info = TarInfo(name="user_sym_key.key")
         info.size = data.getbuffer().nbytes
         info.mtime = time.time()
@@ -357,34 +340,32 @@ class SecurityProtocol:
                                    salt_length=padding.PSS.MAX_LENGTH),
                        utils.Prehashed(hashes.SHA512()))
 
-    def validate_previous_results(self, files: List[BinaryIO] = None):
+    def validate_previous_results(self, files: List[BinaryIO]):
         """
         Verify that the results from the execution of the previous station did not change, by hashing the stored results
         from the previous station and comparing it with the decrypted stored hash from the previous station
         """
-        # verify the hash of the results of the previous station
-        prev_results_hash = self.key_manager.get_security_param("e_d")
-        results_sig = self.key_manager.get_security_param("e_d_sig")
-        # Load the public key of the station
-        ds = self.key_manager.get_security_param("digital_signature")
         # Get public key of the previous station
-        station_public_key = self.key_manager.get_security_param("rsa_public_keys")[ds[-1]["station"]]
-        station_public_key = self.key_manager.load_public_key(station_public_key)
-        if files:
-            results_hash = hash_results(files,
-                                        session_id=bytes.fromhex(self.key_manager.get_security_param("session_id")),
-                                        binary_files=True)
-        else:
-            files = self._parse_files(self.results_dir)
-            results_hash = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))
-        station_public_key.verify(bytes.fromhex(results_sig),
-                                  results_hash,
-                                  padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                              salt_length=padding.PSS.MAX_LENGTH),
-                                  utils.Prehashed(hashes.SHA512()))
-        # Compare with the files currently present in the train
-        if results_hash != bytes.fromhex(prev_results_hash):
-            raise ValidationError("The previously hashed results do not match the stored ones")
+        prev_station = self._get_previous_station()
+        print(prev_station)
+        print(self.route_stop)
+        station_public_key = self.key_manager.load_public_key(prev_station.rsa_public_key)
+        results_hash = hash_results(
+            files,
+            session_id=bytes.fromhex(self.config.session_id),
+            binary_files=True
+        )
+        try:
+            station_public_key.verify(
+                signature=bytes.fromhex(self.config.result_signature),
+                data=results_hash,
+                padding=padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
+                                    salt_length=padding.PSS.MAX_LENGTH),
+                algorithm=utils.Prehashed(hashes.SHA512())
+            )
+        except Exception as e:
+            logging.error(f"Error verifying previous results: {e}")
+            raise ValidationError("Error validating previous results")
 
     def sign_digital_signature(self, sk: RSAPrivateKey):
         """
@@ -395,28 +376,65 @@ class SecurityProtocol:
 
         :param sk: private key of the currently running station
         """
-        ds = self.key_manager.get_security_param("digital_signature")
+        # ds = self.key_manager.get_security_param("digital_signature")
+        # sort the route by index for validating the signature
+        sorted_route = sorted(self.config.route, key=lambda x: x.index)
+
         hasher = hashes.Hash(hashes.SHA512(), default_backend())
-        if ds is None:
-            hasher.update(bytes.fromhex(self.key_manager.get_security_param("session_id")))
-            digest = hasher.finalize()
-            sig = sk.sign(digest,
-                          padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                      salt_length=padding.PSS.MAX_LENGTH),
-                          utils.Prehashed(hashes.SHA512())
-                          )
-            ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
-            self.key_manager.set_security_param("digital_signature", ds)
+        # use the session id when first station on route
+        if self.route_stop.index == 0:
+            hasher.update(bytes.fromhex(self.config.session_id))
         else:
-            hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
-            digest = hasher.finalize()
-            sig = sk.sign(digest,
-                          padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                      salt_length=padding.PSS.MAX_LENGTH),
-                          utils.Prehashed(hashes.SHA512())
-                          )
-            ds.append({"station": self.station_id, "sig": (sig.hex(), digest.hex())})
-            self.key_manager.set_security_param("digital_signature", ds)
+            for stop in sorted_route:
+                if stop.index < self.route_stop.index:
+                    hasher.update(bytes.fromhex(stop.signature.digest))
+                else:
+                    break
+
+        hasher.update(bytes.fromhex(self.config.result_hash))
+        digest = hasher.finalize()
+        sig = sk.sign(
+            data=digest,
+            padding=padding.PSS(
+                mgf=padding.MGF1(hashes.SHA512()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            algorithm=utils.Prehashed(hashes.SHA512())
+        )
+        self.route_stop.signature = {
+            "signature": sig.hex(),
+            "digest": digest.hex()
+        }
+
+        # if ds is None:
+        #     hasher.update(bytes.fromhex(self.config.session_id))
+        #     hasher.update(bytes.fromhex(self.config.result_hash))
+        #     digest = hasher.finalize()
+        #     sig = sk.sign(
+        #         data=digest,
+        #         padding=padding.PSS(
+        #             mgf=padding.MGF1(hashes.SHA512()),
+        #             salt_length=padding.PSS.MAX_LENGTH
+        #         ),
+        #         algorithm=utils.Prehashed(hashes.SHA512())
+        #     )
+        #     self.route_stop.signature = {
+        #         "signature": sig.hex(),
+        #         "digest": digest.hex()
+        #     }
+        #     self.config
+        #     ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
+        #     self.key_manager.set_security_param("digital_signature", ds)
+        # else:
+        #     hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
+        #     digest = hasher.finalize()
+        #     sig = sk.sign(digest,
+        #                   padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
+        #                               salt_length=padding.PSS.MAX_LENGTH),
+        #                   utils.Prehashed(hashes.SHA512())
+        #                   )
+        #     ds.append({"station": self.station_id, "sig": (sig.hex(), digest.hex())})
+        #     self.key_manager.set_security_param("digital_signature", ds)
 
     def verify_digital_signature(self):
         """
@@ -426,16 +444,34 @@ class SecurityProtocol:
         :raise: InvalidSignatureError if any of the signed values can not be validated using the provided public keys
 
         """
-        ds = self.key_manager.get_security_param("digital_signature")
-        for sig in ds:
-            public_key = self.key_manager.load_public_key(
-                self.key_manager.get_security_param("rsa_public_keys")[sig["station"]])
-            public_key.verify(bytes.fromhex(sig["sig"][0]),
-                              bytes.fromhex(sig["sig"][1]),
-                              padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                          salt_length=padding.PSS.MAX_LENGTH),
-                              utils.Prehashed(hashes.SHA512())
-                              )
+
+        sorted_route = sorted(self.config.route, key=lambda x: x.index)
+
+        for stop in sorted_route:
+            if stop.index >= self.route_stop.index:
+                break
+            else:
+                pk = self.key_manager.load_public_key(stop.rsa_public_key)
+                pk.verify(
+                    signature=bytes.fromhex(stop.signature.signature),
+                    data=bytes.fromhex(stop.signature.digest),
+                    padding=padding.PSS(
+                        mgf=padding.MGF1(hashes.SHA512()),
+                        salt_length=padding.PSS.MAX_LENGTH
+                    ),
+                    algorithm=utils.Prehashed(hashes.SHA512())
+                )
+
+        # ds = self.key_manager.get_security_param("digital_signature")
+        # for sig in ds:
+        #     public_key = self.key_manager.load_public_key(
+        #         self.key_manager.get_security_param("rsa_public_keys")[sig["station"]])
+        #     public_key.verify(bytes.fromhex(sig["sig"][0]),
+        #                       bytes.fromhex(sig["sig"][1]),
+        #                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
+        #                                   salt_length=padding.PSS.MAX_LENGTH),
+        #                       utils.Prehashed(hashes.SHA512())
+        #                       )
 
     def _is_first_station_on_route(self) -> bool:
         """
@@ -444,6 +480,11 @@ class SecurityProtocol:
         """
         # Check if there are previous results if not station is first station on route
         return self.config.result_hash is None
+
+    def _get_previous_station(self) -> RouteEntry:
+        for stop in self.config.route:
+            if stop.index == self.route_stop.index - 1:
+                return stop
 
     @staticmethod
     def _parse_files(target_dir):
@@ -458,3 +499,11 @@ class SecurityProtocol:
             files += [os.path.join(dir_path, file) for file in file_names]
         logging.info(f"Found {len(files)} Files")
         return files
+
+    def _update_symmetric_keys(self, new_sym_key: bytes):
+        for i, station in enumerate(self.config.route):
+            station.encrypted_key = self.key_manager.encrypt_symmetric_key(new_sym_key, station.rsa_public_key)
+            self.config.route[i] = station
+
+        self.config.creator.encrypted_key = self.key_manager.encrypt_symmetric_key(new_sym_key,
+                                                                                   self.config.creator.rsa_public_key)
