@@ -1,15 +1,13 @@
-import pprint
 import tarfile
 from io import BytesIO
-import os
 import json
-
-from train_lib.security.train_config import TrainConfig
 
 import docker
 
+from train_lib.security.train_config import TrainConfig
 
-def extract_train_config(img: str, config_path: str = "/opt/train_config.json") -> TrainConfig:
+
+def extract_train_config(img: str, config_path: str = "/opt/train_config.json"):
     """
     Extract the train configuration json from the specified image and return it as a dictionary
     :param img: docker image identifier

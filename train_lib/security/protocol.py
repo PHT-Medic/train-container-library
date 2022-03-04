@@ -1,20 +1,25 @@
-from train_lib.security.key_manager import KeyManager
-from train_lib.security.encryption import FileEncryptor
-from train_lib.security.errors import ValidationError
-from train_lib.security.hashing import *
-from train_lib.docker_util.docker_ops import *
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.asymmetric import utils, padding
-import os
-from typing import Union
+import tarfile
 import time
 from tarfile import TarInfo
 import docker
 import logging
 from enum import Enum
+from io import BytesIO
 
-from train_lib.security.train_config import RouteEntry
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.asymmetric import utils, padding
+
+
+from train_lib.security.train_config import RouteEntry, TrainConfig
+from train_lib.security.key_manager import KeyManager
+from train_lib.security.encryption import FileEncryptor
+from train_lib.security.errors import ValidationError
+from train_lib.security.hashing import *
+# from train_lib.docker_util.docker_ops import *
+from train_lib.docker_util.docker_ops import files_from_archive, result_files_from_archive, extract_train_config, \
+    extract_archive
 
 
 class TrainPaths(Enum):
@@ -114,6 +119,7 @@ class SecurityProtocol:
         results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
         results_archive.seek(0)
 
+        self.config = TrainConfig(**self.config.dict(by_alias=True))
         # update the container with the encrypted files
         self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
         logging.info(f"Successfully executed post run protocol on img: {img}")
@@ -175,7 +181,7 @@ class SecurityProtocol:
         # If a config path is given update the train config inside the container
         client = self.docker_client if self.docker_client else docker.from_env()
         base_image = img.split(":")[0] + ":" + "base"
-        container = client.containers.create(base_image)
+        container = client.containers.create(img)
 
         if config_path:
             logging.info("Updating train config")
@@ -347,15 +353,16 @@ class SecurityProtocol:
         """
         # Get public key of the previous station
         prev_station = self._get_previous_station()
-        print(prev_station)
-        print(self.route_stop)
         station_public_key = self.key_manager.load_public_key(prev_station.rsa_public_key)
         results_hash = hash_results(
             files,
             session_id=bytes.fromhex(self.config.session_id),
             binary_files=True
         )
+        if results_hash != bytes.fromhex(self.config.result_hash):
+            raise ValidationError("Previous results have changed")
         try:
+
             station_public_key.verify(
                 signature=bytes.fromhex(self.config.result_signature),
                 data=results_hash,
@@ -365,7 +372,7 @@ class SecurityProtocol:
             )
         except Exception as e:
             logging.error(f"Error verifying previous results: {e}")
-            raise ValidationError("Error validating previous results")
+            raise ValidationError("Error validating previous results signature")
 
     def sign_digital_signature(self, sk: RSAPrivateKey):
         """
@@ -377,7 +384,7 @@ class SecurityProtocol:
         :param sk: private key of the currently running station
         """
         # ds = self.key_manager.get_security_param("digital_signature")
-        # sort the route by index for validating the signature
+        # sort the route by index for signing the signature in order
         sorted_route = sorted(self.config.route, key=lambda x: x.index)
 
         hasher = hashes.Hash(hashes.SHA512(), default_backend())
