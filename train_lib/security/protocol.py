@@ -2,15 +2,12 @@ import tarfile
 import time
 from tarfile import TarInfo
 import docker
-import logging
 from enum import Enum
 from io import BytesIO
 
-
-from cryptography.hazmat.primitives import hashes
+from loguru import logger
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.asymmetric import utils, padding
-
 
 from train_lib.security.train_config import RouteEntry, TrainConfig
 from train_lib.security.key_manager import KeyManager
@@ -68,9 +65,9 @@ class SecurityProtocol:
         :param mutable_dir:
         :return:
         """
-        logging.info("Executing pre-run protocol...")
+        logger.info("Executing pre-run protocol...")
         # Execute the protocol with directly passed files and the instances config file
-        logging.info("Extracting files from image...")
+        logger.info("Extracting files from image...")
         # Get the content of the immutable files from the image as ByteObjects
         immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
 
@@ -93,11 +90,11 @@ class SecurityProtocol:
             decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
             self.validate_previous_results(files=decrypted_files)
             archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
-            logging.info("Adding decrypted files to image")
+            logger.info("Adding decrypted files to image")
             # print(archive.name)
             self._update_image(img, archive, results_path="/opt")
 
-        logging.info("Pre-run protocol success")
+        logger.info("Pre-run protocol success")
 
     def post_run_protocol(self, img: str = None, private_key_path: str = None):
         """
@@ -111,7 +108,7 @@ class SecurityProtocol:
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
-        logging.info(f"Executing post-run protocol - target image: {img} \n")
+        logger.info(f"Executing post-run protocol - target image: {img} \n")
         # Get the mutable files and tar archive structure
         mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, TrainPaths.RESULT_DIR.value))
         # Run the post run protocol
@@ -122,7 +119,7 @@ class SecurityProtocol:
         self.config = TrainConfig(**self.config.dict(by_alias=True))
         # update the container with the encrypted files
         self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
-        logging.info(f"Successfully executed post run protocol on img: {img}")
+        logger.info(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
 
     def _post_run_outside_container(self, mutable_files: List[BytesIO], private_key_path: str) -> List[BytesIO]:
@@ -136,13 +133,13 @@ class SecurityProtocol:
         :param private_key_path: path to private key used to sign the results
         :return:
         """
-        logging.info(f"prev results hash {self.config.result_hash}")
+        logger.info(f"prev results hash {self.config.result_hash}")
         # Update the hash value of the mutable files
         e_d = hash_results(result_files=mutable_files,
                            session_id=bytes.fromhex(self.config.session_id),
                            binary_files=True)
         self.config.result_hash = e_d.hex()
-        logging.info(f"new results hash: {self.config.result_hash}")
+        logger.info(f"new results hash: {self.config.result_hash}")
 
         # Load the local private key and sign the hash of the results files
         sk = self.key_manager.load_private_key(key_path=private_key_path)
@@ -184,16 +181,16 @@ class SecurityProtocol:
         container = client.containers.create(img)
 
         if config_path:
-            logging.info("Updating train config")
+            logger.info("Updating train config")
             config_archive = self._make_train_config_archive()
             config_archive.seek(0)
             # add_archive(img, config_archive, config_path)
             container.put_archive(config_path, config_archive)
         # add the updated results archive
-        logging.info("Adding encrypted result files")
+        logger.info("Adding encrypted result files")
         container.put_archive(results_path, results_archive)
         # add_archive(img, results_archive, results_path)
-        logging.info("Updating user key file ")
+        logger.info("Updating user key file ")
         user_key = self._make_user_key()
         # add user key to opt directory
         # add_archive(img, user_key, "/opt")
@@ -300,7 +297,7 @@ class SecurityProtocol:
         self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
 
         self.key_manager.save_config()
-        logging.info("Post-protocol success")
+        logger.info("Post-protocol success")
 
     def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
                                  immutable_file_names: List[str] = None):
@@ -335,8 +332,8 @@ class SecurityProtocol:
                 immutable_file_names=immutable_file_names
             )
 
-        logging.info(f"e_h: {e_h}")
-        logging.info(f"file hash: {current_hash}")
+        logger.info(f"Stored hash: {e_h}")
+        logger.info(f"Current hash: {current_hash}")
         if e_h != current_hash:
             raise ValidationError("Immutable Files have changed")
         # Verify that the hash value corresponds with the signature
@@ -371,7 +368,7 @@ class SecurityProtocol:
                 algorithm=utils.Prehashed(hashes.SHA512())
             )
         except Exception as e:
-            logging.error(f"Error verifying previous results: {e}")
+            logger.error(f"Error verifying previous results: {e}")
             raise ValidationError("Error validating previous results signature")
 
     def sign_digital_signature(self, sk: RSAPrivateKey):
@@ -501,10 +498,10 @@ class SecurityProtocol:
         :return: Tuple consisting of lists of paths for the different file types
         """
         files = list()
-        logging.info("Detecting files...")
+        logger.info("Detecting files...")
         for (dir_path, dir_names, file_names) in os.walk(target_dir):
             files += [os.path.join(dir_path, file) for file in file_names]
-        logging.info(f"Found {len(files)} Files")
+        logger.info(f"Found {len(files)} Files")
         return files
 
     def _update_symmetric_keys(self, new_sym_key: bytes):

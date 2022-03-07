@@ -20,7 +20,8 @@ RUN apt -y update && apt-get -y install software-properties-common && \
 COPY . /opt/protocol
 WORKDIR /opt/protocol
 RUN python -m pip install pipenv && \
-    pipenv install --dev --deploy --system
+    pipenv install --deploy --system && \
+    pip install .
 
 ENTRYPOINT ["/opt/protocol/docker/entrypoint/entrypoint.sh"]
 

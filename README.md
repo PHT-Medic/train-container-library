@@ -3,7 +3,9 @@
 [![main-ci](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml/badge.svg)](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/PHT-Medic/train-container-library/branch/master/graph/badge.svg?token=11RYRZK2FO)](https://codecov.io/gh/PHT-Medic/train-container-library)
 [![PyPI version](https://badge.fury.io/py/pht-train-container-library.svg)](https://badge.fury.io/py/pht-train-container-library)
-# Train Container Library
+
+# &#128646; Train Container Library
+
 Python library for validating and interacting with pht-train images/containers.
 
 ## Installation
@@ -22,10 +24,50 @@ The pht security protocol adapted from `docs/Secure_PHT_latest__official.pdf` pe
 2. After executing the train the updated results need to be encrypted and the train configuration needs to be updated to
    reflect the current state ->`post-run`.
 
-To function the protocol expects two environment variables to be set:
+### Train image structure
 
-1. `STATION_ID` String identifier that has public key/s registered with the central service
-2. `RSA_STATON_PRIVATE_KEY` Hex string containing the private key to be used for decryption and signing.
+To ensure the protocol is working correctly train docker images are required to keep the following structure:
+
+- `/opt/train_config.json`: Stores the configuration file of the train.
+- `/opt/pht_train/`: Stores all the files containing code or other things required for the train algorithm to run. The
+  contents of this directory can never change and is validated by the `pre-run` step.
+- `/opt/pht_results/`: Stores the results of the train. Which will be decrypted in the `pre-run` step and encrypted in
+  the `post-run` step.
+
+No files in the image outside the `/opt/pht_results/` directory should change during the execution of the algorithm.
+
+### Usage - Python Script
+
+To use the protocol in your own python application, after installing the library
+with `pip install pht-train-container-library` an instance of the protocol can be to validate docker images as follows:
+
+```python
+from train_lib.security import SecurityProtocol
+from train_lib.docker_util.docker_ops import extract_train_config
+
+image_name = '<image-repo>:<image-tag>'
+station_id = '<station-id>'
+
+# Get the train configuration from the image
+config = extract_train_config(image_name)
+# Initialize the protocol with the extracted config and station_id
+protocol = SecurityProtocol(station_id=station_id, config=config)
+
+# execute one of the protocol steps
+protocol.pre_run_protocol(image_name, private_key_path='<path-to-private-key>')
+# protocol.post_run_protocol(image_name, private_key_path='<path-to-private-key>')
+```
+
+### Usage - Container
+
+A containerized version of the protocol is also available it can be used with the following command:
+
+```shell
+docker run -e STATION_ID=<station_id> -e PRIVATE_KEY_PATH=/opt/private_key.pem -v /var/run/docker.sock:/var/run/docker.sock -v <path_to_your_key>:/opt/private_key.pem ghcr.io/pht-medic/protocol <pre-run/post-run> <image-repo>:<image-tag>
+```
+
+`STATION_ID` and `PRIVATE_KEY_PATH` are required to be set in the environment variables. As well as passing the docker
+socket `/var/run/docker.sock` to the container as a volume to enable docker-in-docker functionality.
 
 ### Pre-run protocol
 
@@ -43,7 +85,7 @@ Once these steps have been completed the image is ready to be executed.
 ### Post-run protocol
 
 1. Calculate the hash of the newly generated results
-2. Sign the hash of the results using the provided `RSA_STATION_PRIVATE_KEY`
+2. Sign the hash of the results using the provided `PRIVATE_KEY_PATH`
 3. Update the the train signature using the session id that is randomly generated at each execution step
 4. Encrypt the resulting files using a newly generated symmetric key
 5. Encrypt the generated symmetric key with the public keys of the train participants
@@ -53,7 +95,7 @@ With the completion of these steps the train is ready to be pushed into the regi
 
 ## Tests
 
-Run the tests to validate the security protocol is working as intended. From this projects root directory run 
+Run the tests to validate the security protocol is working as intended. From this projects root directory run
 `pytest train_lib`
 
 
