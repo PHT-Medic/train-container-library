@@ -9,8 +9,6 @@ from loguru import logger
 import xmltodict
 
 from .fhir_query_builder import build_query_string
-from train_lib.clients.fhir import fhir_k_anonymity
-from itertools import chain
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 import collections
