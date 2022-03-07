@@ -6,8 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
-from train_lib.security.HomomorphicAddition import secure_addition
-from train_lib.security.KeyManager import KeyManager
+from train_lib.security.homomorphic_addition import secure_addition
+from train_lib.security.key_manager import KeyManager
 
 class Train:
     def __init__(self, model=None, results=None, query=None):

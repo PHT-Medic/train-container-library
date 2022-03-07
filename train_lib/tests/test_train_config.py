@@ -1,44 +1,50 @@
 import pytest
-from train_lib.security.train_config import TrainConfig, StationPublicKeys, EncryptedSymKey, DigitalSignature, UserPublicKeys
+import os
+from train_lib.security.train_config import TrainConfig, StationPublicKeys, EncryptedSymKey, DigitalSignature, \
+    UserPublicKeys
 
 
 @pytest.fixture
-def station_pks():
-    station_pks = []
-    for i in range(3):
-        station_pks.append(
-            StationPublicKeys(
-                station_id=str(i),
-                rsa_public_key="d9bbfd2b1198",
-            )
-        )
-    return station_pks
+def config_dict():
+    config_dict = {
+        "@id": "test_train_id",
+        "session_id": os.urandom(32).hex(),
+        "proposal_id": "test_proposal_id",
+        "source": {
+            "type": "image_repository",
+            "tag": "latest",
+            "address": "test_repository",
+        },
+        "creator": {
+            "id": "test_creator_id",
+            "rsa_public_key": os.urandom(32).hex(),
+        },
+        "route": [
+            {
+                "station": "test_station_1",
+                "eco_system": "aac",
+                "rsa_public_key": os.urandom(32).hex(),
+                "index": 0,
+            },
+            {
+                "station": "test_station_2",
+                "rsa_public_key": os.urandom(32).hex(),
+                "eco_system": "tue",
+                "index": 1,
+            }
+        ],
+        "file_list": ["test_train/entrypoint.py", "test_train/requirements.txt"],
+        "immutable_file_hash": os.urandom(16).hex(),
+        "immutable_file_signature": os.urandom(32).hex(),
+        "@context": {"link": "https://www.w3.org/2018/credentials/v1"},
+    }
+    return config_dict
 
 
-@pytest.fixture
-def user_keys():
-    return UserPublicKeys(
-        user_id="config-test-user",
-        rsa_public_key="d9bbfd2b1198",
-        paillier_public_key="d9bbfd2b1198",
-    )
+def test_config_init(config_dict):
+    config = TrainConfig(**config_dict)
+    assert config.id == config_dict["@id"]
 
-
-@pytest.fixture
-def valid_config(station_pks, user_keys):
-    return TrainConfig(
-        master_image="test_image",
-        user_id="config-test-user",
-        proposal_id=1,
-        train_id="14fc32e6-7e53-406e-b7ab-6f02c0699ade",
-        session_id="d9bbfd2b119bb87f0fa7f377cffab87efed4a3ff29f87f6d57346ac83db15ec6099c63aeccd57fbdde3dae696b320fb19c922b79563c4d0a0c501de607426aa9",
-        station_public_keys=station_pks,
-        user_keys=user_keys,
-        immutable_file_list=["entrypoint.py"],
-        immutable_file_hash="d9bbfd2b1198",
-        immutable_file_signature="d9bbfd2b1198",
-    )
-
-
-def test_config(valid_config, station_pks):
-    print(station_pks)
+    print(TrainConfig.schema_json(indent=2))
+    with open("./config_schema.json", "w") as f:
+        f.write(TrainConfig.schema_json(indent=2))

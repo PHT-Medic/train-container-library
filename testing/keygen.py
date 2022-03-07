@@ -1,9 +1,9 @@
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
 from cryptography.hazmat.primitives import serialization, hashes
-from train_lib.security.SecurityProtocol import SecurityProtocol
+from train_lib.security.protocol import SecurityProtocol
 import os
-from train_lib.security.Hashing import hash_immutable_files
+from train_lib.security.hashing import hash_immutable_files
 
 
 def generate_user_key_pair():
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # # hash = hash_immutable_files(files, "1", session_id)
 
     train_hash = bytes.fromhex(
-        "6b01e795f1becbb2eb30d2503e116d7cac580e860ac91459adc6c37431dcf2d5e0caca58150a37bb23508e1506cd89cea08f8c874ae4aba55728f79dafd2f3e7")
+        "7b4c40ba2bef602ce59ab575cea90ecf8ceafe225442f5e1dfd2d8a4557e138c9d2551e6a876de8631adec398a3c125072b888deaa6b21a258a7c56a6ed52083")
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
         private_key = serialization.load_pem_private_key(pk.read(), password=None, backend=default_backend())

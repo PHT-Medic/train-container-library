@@ -39,6 +39,7 @@ setup(
         "xmltodict",
         "oauthlib",
         "requests_oauthlib",
-        "docker"
+        "docker",
+        "loguru",
     ],
 )
