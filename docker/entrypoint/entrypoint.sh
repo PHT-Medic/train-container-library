@@ -7,11 +7,13 @@ fi
 
 if [ "$1" = 'pre-run' ]
 then
-  python /opt/security/security_protocol.py pre-run;
+  shift
+  python /opt/protocol/docker/entrypoint/run_protocol.py pre-run "$@";
 fi
 if [ "$1" = 'post-run' ]
 then
-  python /opt/security/security_protocol.py post-run;
+  shift
+  python /opt/protocol/docker/entrypoint/run_protocol post-run "$@";
 else
   exec "$@";
 fi
