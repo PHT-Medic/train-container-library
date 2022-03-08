@@ -22,6 +22,8 @@ WORKDIR /opt/protocol
 RUN python -m pip install pipenv && \
     pipenv install --deploy --system && \
     pip install .
+RUN chmod +x /opt/protocol/docker/entrypoint/entrypoint.sh && \
+    chmod +x /opt/protocol/docker/entrypoint/run_protocol.py
 
 ENTRYPOINT ["/opt/protocol/docker/entrypoint/entrypoint.sh"]
 
