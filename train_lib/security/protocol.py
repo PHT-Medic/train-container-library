@@ -65,7 +65,7 @@ class SecurityProtocol:
         :param mutable_dir:
         :return:
         """
-        logger.info("Executing pre-run protocol...")
+        logger.info(f"Executing pre-run protocol at station {self.station_id} for image: {img}")
         # Execute the protocol with directly passed files and the instances config file
         logger.info("Extracting files from image...")
         # Get the content of the immutable files from the image as ByteObjects
@@ -108,7 +108,7 @@ class SecurityProtocol:
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
-        logger.info(f"Executing post-run protocol - target image: {img} \n")
+        logger.info(f"Executing pre-run protocol at station {self.station_id} for image: {img}")
         # Get the mutable files and tar archive structure
         mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, TrainPaths.RESULT_DIR.value))
         # Run the post run protocol

@@ -9,8 +9,7 @@ if [ "$1" = 'pre-run' ]
 then
   shift
   python /opt/protocol/docker/entrypoint/run_protocol.py pre-run "$@";
-fi
-if [ "$1" = 'post-run' ]
+elif [ "$1" = 'post-run' ]
 then
   shift
   python /opt/protocol/docker/entrypoint/run_protocol post-run "$@";

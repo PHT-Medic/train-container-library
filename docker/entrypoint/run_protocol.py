@@ -24,11 +24,7 @@ if __name__ == '__main__':
 
     protocol = SecurityProtocol(station_id=station_id, config=config)
     if protocol_step == Commands.PRE:
-        print(f"Executing pre-run protocol - Station: {station_id}, Image: {image}")
         protocol.pre_run_protocol(img=image, private_key_path=private_key_path)
-        print("Pre-run protocol completed")
 
     elif protocol_step == Commands.POST:
-        print(f"Executing post-run protocol - Station: {station_id}, Image: {image}")
         protocol.post_run_protocol(img=image, private_key_path=private_key_path)
-        print("Post-run protocol completed")
