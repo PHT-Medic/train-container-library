@@ -778,3 +778,4 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
             post_run_config = extract_train_config(image_name)
 
             assert post_run_config.route[i].signature
+

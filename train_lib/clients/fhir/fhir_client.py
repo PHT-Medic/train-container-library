@@ -365,7 +365,7 @@ class PHTFhirClient:
         query_file = json.loads(query_file)
         return query_file
 
-    def _generate_url(self, query: Union[dict, list, str], limit=5000):
+    def _generate_url(self, query: Union[dict, list, str], limit=1000):
         """
         Generates the fhir search url to request from the server based. Either based on a previously given query string
         or based on a dictionary containing the query definition in the query.json file.
