@@ -1,0 +1,6 @@
+general:
+  vulnerabilities:
+    - CVE-2022-25235
+    - CVE-2022-25236
+    - CVE-2022-24407
+    - CVE-2022-0847
