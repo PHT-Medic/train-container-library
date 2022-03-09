@@ -196,7 +196,13 @@ class SecurityProtocol:
         # add_archive(img, user_key, "/opt")
         container.put_archive("/opt", user_key)
         # Tag container as latest
-        repo, tag = img.split(":")
+        img_split = img.split(":")
+
+        if len(img_split) == 2:
+            repo, tag = img_split
+        else:
+            repo = ":".join(img_split[:-1])
+            tag = img_split[-1]
         container.commit(repository=repo, tag=tag)
         container.wait()
         container.remove()
