@@ -12,7 +12,7 @@ then
 elif [ "$1" = 'post-run' ]
 then
   shift
-  python /opt/protocol/docker/entrypoint/run_protocol post-run "$@";
+  python /opt/protocol/docker/entrypoint/run_protocol.py post-run "$@";
 else
   exec "$@";
 fi
