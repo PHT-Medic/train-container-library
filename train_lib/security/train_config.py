@@ -76,7 +76,7 @@ class RouteEntry(BaseModel):
 
 
 class TrainSourceType(str, Enum):
-    IMAGE = 'image_repository'
+    DOCKER = 'docker_repository'
     GIT = 'git_repository'
 
 
