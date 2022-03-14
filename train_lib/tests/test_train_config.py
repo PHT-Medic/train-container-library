@@ -11,7 +11,7 @@ def config_dict():
         "session_id": os.urandom(32).hex(),
         "proposal_id": "test_proposal_id",
         "source": {
-            "type": "image_repository",
+            "type": "docker_repository",
             "tag": "latest",
             "address": "test_repository",
         },

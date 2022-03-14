@@ -15,7 +15,7 @@ from cryptography import fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
 from cryptography.hazmat.primitives import serialization, hashes
-from train_lib.security import TrainConfig
+from train_lib.security.train_config import TrainConfig
 
 from train_lib.security.hashing import hash_immutable_files, hash_results
 from train_lib.docker_util.docker_ops import extract_train_config, extract_query_json
@@ -182,7 +182,7 @@ def train_config(key_pairs, train_files):
         "session_id": session_id.hex(),
         "proposal_id": "test_proposal_id",
         "source": {
-            "type": "image_repository",
+            "type": "docker_repository",
             "tag": "latest",
             "address": "test_repository",
         },
