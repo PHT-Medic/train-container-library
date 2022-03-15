@@ -11,13 +11,13 @@ with open("README.md", "r") as fh:
 
 setup(
     name="pht-train-container-library",
-    version="1.0.6",
+    version="1.1.0",
     author="Michael Graf",
     author_email="michael.graf@uni-tuebingen.de",
     description="PHT train container library",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://gitlab.com/PersonalHealthTrain/implementations/germanmii/difuture/train-container-library.git",
+    url="https://github.com/PHT-Medic/train-container-library",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
