@@ -416,35 +416,7 @@ class SecurityProtocol:
             "digest": digest.hex()
         }
 
-        # if ds is None:
-        #     hasher.update(bytes.fromhex(self.config.session_id))
-        #     hasher.update(bytes.fromhex(self.config.result_hash))
-        #     digest = hasher.finalize()
-        #     sig = sk.sign(
-        #         data=digest,
-        #         padding=padding.PSS(
-        #             mgf=padding.MGF1(hashes.SHA512()),
-        #             salt_length=padding.PSS.MAX_LENGTH
-        #         ),
-        #         algorithm=utils.Prehashed(hashes.SHA512())
-        #     )
-        #     self.route_stop.signature = {
-        #         "signature": sig.hex(),
-        #         "digest": digest.hex()
-        #     }
-        #     self.config
-        #     ds = [{"station": self.station_id, "sig": (sig.hex(), digest.hex())}]
-        #     self.key_manager.set_security_param("digital_signature", ds)
-        # else:
-        #     hasher.update(bytes.fromhex(ds[-1]["sig"][0]))
-        #     digest = hasher.finalize()
-        #     sig = sk.sign(digest,
-        #                   padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-        #                               salt_length=padding.PSS.MAX_LENGTH),
-        #                   utils.Prehashed(hashes.SHA512())
-        #                   )
-        #     ds.append({"station": self.station_id, "sig": (sig.hex(), digest.hex())})
-        #     self.key_manager.set_security_param("digital_signature", ds)
+        self.config.route[self.route_stop.index] = self.route_stop
 
     def verify_digital_signature(self):
         """
@@ -471,17 +443,6 @@ class SecurityProtocol:
                     ),
                     algorithm=utils.Prehashed(hashes.SHA512())
                 )
-
-        # ds = self.key_manager.get_security_param("digital_signature")
-        # for sig in ds:
-        #     public_key = self.key_manager.load_public_key(
-        #         self.key_manager.get_security_param("rsa_public_keys")[sig["station"]])
-        #     public_key.verify(bytes.fromhex(sig["sig"][0]),
-        #                       bytes.fromhex(sig["sig"][1]),
-        #                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-        #                                   salt_length=padding.PSS.MAX_LENGTH),
-        #                       utils.Prehashed(hashes.SHA512())
-        #                       )
 
     def _is_first_station_on_route(self) -> bool:
         """

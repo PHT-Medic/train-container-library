@@ -1,4 +1,4 @@
-from train_lib.security import SecurityProtocol
+from train_lib.security.protocol import SecurityProtocol
 from train_lib.docker_util.docker_ops import extract_train_config
 from enum import Enum
 import os

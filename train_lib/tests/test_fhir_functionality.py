@@ -278,6 +278,65 @@ def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advan
 
     query_string = build_query_string(minimal_query["query"])
 
+    query_dict = {
+        "query": {
+            "resource": "Patient",
+            "parameters": [
+                {
+                    "variable": "gender",
+                    "condition": "male"
+                },
+                {
+                    "variable": "birthdate",
+                    "condition": "sa1980-08-12"
+                }
+            ],
+            "has": [
+                {
+                    "resource": "Observation",
+                    "property": "code",
+                    "params": [
+                        "I63.0",
+                        "I63.1",
+                        "I63.2",
+                        "I63.3",
+                        "I63.4",
+                        "I63.5",
+                        "I63.6",
+                        "I63.7",
+                        "I63.8",
+                        "I63.9"
+                    ]
+                },
+                {
+                    "resource": "Condition",
+                    "property": "code",
+                    "params": [
+                        "D70.0",
+                        "D70.10",
+                        "D70.11",
+                        "D70.11",
+                        "D70.12",
+                        "D70.13",
+                        "D70.14",
+                        "D70.18",
+                        "D70.19",
+                        "D70.3",
+                        "D70.5",
+                        "D70.6",
+                        "D70.7"
+                    ]
+                }
+            ]
+        },
+        "data": {
+            "output_format": "json",
+            "filename": "patients.json"
+        }
+    }
+
+    print(build_query_string(query_dict["query"]))
+
     assert string_query == query_string
 
     advanced_query_string = "Patient?gender=male,female&birthdate=gt1980-08-12&_has:Observation:patient:code=I63.0,I63.1,I63.2,I63.3,I63.4,I63.5,I63.6,I63.7,I63.8,I63.9&_has:Condition:patient:code=D70.0"
