@@ -22,6 +22,7 @@ fhir-kindling = "*"
 xmltodict = "*"
 requests_oauthlib = "*"
 oauthlib = "*"
+padding = "*"
 
 [dev-packages]
 pytest = "*"
