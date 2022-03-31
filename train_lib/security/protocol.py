@@ -316,8 +316,8 @@ class SecurityProtocol:
         """
         # check the signature of the stored hash value using ec signature verifying that it is created by the user
         user_pk = self.key_manager.load_public_key(self.config.creator.rsa_public_key)
-        e_h = bytes.fromhex(self.config.immutable_file_hash)
-        e_h_sig = bytes.fromhex(self.config.immutable_file_signature)
+        e_h = bytes.fromhex(self.config.hash)
+        e_h_sig = bytes.fromhex(self.config.signature)
         # now check before the run that no immutable files have changed, based on stored hash
         if train_dir:
             immutable_files = self._parse_files(train_dir)
@@ -416,7 +416,9 @@ class SecurityProtocol:
             "digest": digest.hex()
         }
 
-        self.config.route[self.route_stop.index] = self.route_stop
+        sorted_route[self.route_stop.index] = self.route_stop
+
+        self.config.route = sorted_route
 
     def verify_digital_signature(self):
         """

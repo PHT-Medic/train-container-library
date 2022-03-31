@@ -34,8 +34,8 @@ def config_dict():
             }
         ],
         "file_list": ["test_train/entrypoint.py", "test_train/requirements.txt"],
-        "immutable_file_hash": os.urandom(16).hex(),
-        "immutable_file_signature": os.urandom(32).hex(),
+        "hash": os.urandom(16).hex(),
+        "signature": os.urandom(32).hex(),
         "@context": {"link": "https://www.w3.org/2018/credentials/v1"},
     }
     return config_dict

@@ -33,30 +33,13 @@ class KeyManager:
         :rtype:
         """
         if binary_file:
-            return BytesIO(self.config.json(indent=2).encode("utf-8"))
+            return BytesIO(self.config.json(indent=2, by_alias=True).encode("utf-8"))
 
         elif path:
             with open(path, "w") as f:
-                f.write(self.config.json(indent=2))
+                f.write(self.config.json(indent=2, by_alias=True))
         else:
             raise ValueError("No path or binary file specified for saving the keyfile")
-
-    def get_security_param(self, param: str):
-        """
-        Returns a parameter from the associated keyfile
-        :param param:
-        :return: value of the specified parameter
-        """
-        return self.config[param]
-
-    def set_security_param(self, param: str, value):
-        """
-        Updates a parameter in the keyfile with the given value
-        :param param: the parameter to update
-        :param value: new value for param
-        :return:
-        """
-        self.config[param] = value
 
     @staticmethod
     def generate_symmetric_key():

@@ -211,8 +211,8 @@ def train_config(key_pairs, train_files):
             }
         ],
         "file_list": filenames,
-        "immutable_file_hash": immutable_hash.hex(),
-        "immutable_file_signature": user_signature.hex(),
+        "hash": immutable_hash.hex(),
+        "signature": user_signature.hex(),
         "@context": {"link": "https://www.w3.org/2018/credentials/v1"},
     }
 
@@ -443,7 +443,7 @@ def test_user_signature_verification_pre_run(train_image, tmpdir, key_pairs, doc
 
     with mock.patch.dict(os.environ, environment_dict_station_1):
         # Generally invalid signature
-        config.immutable_file_signature = os.urandom(64).hex()
+        config.signature = os.urandom(64).hex()
         sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         with pytest.raises(cryptography.exceptions.InvalidSignature):
             sp.pre_run_protocol(img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
@@ -459,7 +459,7 @@ def test_user_signature_verification_pre_run(train_image, tmpdir, key_pairs, doc
         wrong_signature = user_private_key.sign(wrong_hash, padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                                                         salt_length=padding.PSS.MAX_LENGTH),
                                                 utils.Prehashed(hashes.SHA512()))
-        config.immutable_file_signature = wrong_signature.hex()
+        config.signature = wrong_signature.hex()
         sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
         with pytest.raises(cryptography.exceptions.InvalidSignature):
             sp.pre_run_protocol(img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
