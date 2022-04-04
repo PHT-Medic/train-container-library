@@ -96,8 +96,8 @@ class TrainConfig(BaseModel):
     session_id: HexString
     route: List[RouteEntry]
     file_list: List[str]
-    immutable_file_hash: HexString  # e_h
-    immutable_file_signature: HexString  # e_h_sig
+    hash: HexString  # e_h
+    signature: HexString  # e_h_sig
     result_hash: Optional[HexString] = None  # e_d
     result_signature: Optional[HexString] = None  # e_d_sig
 
