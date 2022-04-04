@@ -22,7 +22,7 @@ def config_dict():
         "route": [
             {
                 "station": "test_station_1",
-                "eco_system": "aac",
+                "eco_system": "padme",
                 "rsa_public_key": os.urandom(32).hex(),
                 "index": 0,
             },
