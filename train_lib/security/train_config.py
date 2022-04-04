@@ -29,7 +29,7 @@ class HexString(str):
 
 class Ecosystem(str, Enum):
     TUE = 'tue'
-    AAC = 'aac'
+    AAC = 'padme'
 
 
 class StationPublicKeys(BaseModel):
