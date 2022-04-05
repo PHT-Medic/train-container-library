@@ -174,7 +174,7 @@ def train_config(key_pairs, train_files):
                                                           backend=default_backend())
     user_signature = user_private_key.sign(immutable_hash,
                                            padding.PKCS1v15(),
-                                           utils.Prehashed(hashes.SHA512()))
+                                           hashes.SHA512())
 
     config_dict = {
         "@id": "test_train_id",
