@@ -346,7 +346,7 @@ class SecurityProtocol:
         user_pk.verify(e_h_sig,
                        current_hash,
                        padding.PKCS1v15(),
-                       utils.Prehashed(hashes.SHA512()))
+                       hashes.SHA512())
 
     def validate_previous_results(self, files: List[BinaryIO]):
         """
