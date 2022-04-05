@@ -345,8 +345,7 @@ class SecurityProtocol:
         # Verify that the hash value corresponds with the signature
         user_pk.verify(e_h_sig,
                        current_hash,
-                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                   salt_length=padding.PSS.MAX_LENGTH),
+                       padding.PKCS1v15(),
                        utils.Prehashed(hashes.SHA512()))
 
     def validate_previous_results(self, files: List[BinaryIO]):

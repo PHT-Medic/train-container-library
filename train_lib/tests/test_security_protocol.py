@@ -173,8 +173,7 @@ def train_config(key_pairs, train_files):
                                                           password=None,
                                                           backend=default_backend())
     user_signature = user_private_key.sign(immutable_hash,
-                                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                                       salt_length=padding.PSS.MAX_LENGTH),
+                                           padding.PKCS1v15(),
                                            utils.Prehashed(hashes.SHA512()))
 
     config_dict = {
