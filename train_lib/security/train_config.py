@@ -59,6 +59,11 @@ class DigitalSignature(BaseModel):
     signature: StationSignature
 
 
+class EncryptedKey(BaseModel):
+    key: HexString
+    iv: HexString
+
+
 class Creator(BaseModel):
     id: Union[int, str]
     rsa_public_key: HexString
