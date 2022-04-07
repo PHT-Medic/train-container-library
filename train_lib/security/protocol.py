@@ -80,11 +80,11 @@ class SecurityProtocol:
             ordered_file_list=self.config.file_list)
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
-            key = self.key_manager.decrypt_symmetric_key(
+            key, nonce = self.key_manager.decrypt_symmetric_key(
                 encrypted_key=self.route_stop.encrypted_key,
                 private_key_path=private_key_path
             )
-            file_encryptor = FileEncryptor(key)
+            file_encryptor = FileEncryptor(key, nonce)
             # Decrypt all previously encrypted files
             mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
             decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)

@@ -2,24 +2,47 @@ import pytest
 import os
 from io import BytesIO
 import json
+
+from cryptography.exceptions import InvalidTag
 from cryptography.fernet import InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 
 from train_lib.security.hashing import hash_immutable_files, hash_results
 from train_lib.security.encryption import FileEncryptor, Fernet
+from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 
 @pytest.fixture
 def config_dict_as_json():
-    config_dict = {}
+    config_dict = {"hello": "world"}
     return json.dumps(config_dict)
 
 
-def test_encryption_decryption(config_dict_as_json):
-    file_encryptor = FileEncryptor(Fernet.generate_key())
+def test_aesccm_encryption():
+    key = AESCCM.generate_key(192)
+    iv = os.urandom(13)
+    file_encryptor = FileEncryptor(key=key, iv=iv)
 
-    files = [BytesIO(config_dict_as_json.encode("utf-8"))]
+    data = b"test data"
+
+    encrypted_data = file_encryptor._encrypt(data)
+
+    decrypted_data = file_encryptor._decrypt(encrypted_data)
+
+    print(key.hex())
+    print(iv.hex())
+    print(encrypted_data.hex())
+
+    assert decrypted_data == data
+
+
+def test_encryption_decryption(config_dict_as_json):
+    key = AESCCM.generate_key(192)
+    iv = os.urandom(13)
+    file_encryptor = FileEncryptor(key, iv)
+
+    files = [BytesIO(config_dict_as_json.encode("utf-8")), BytesIO(b"test data")]
     # Test in memory encryption
     encrypted_files = file_encryptor.encrypt_files(files, binary_files=True)
     assert encrypted_files
@@ -39,14 +62,17 @@ def test_encryption_decryption(config_dict_as_json):
 
 
 def test_decryption_fails_with_wrong_key():
-    file_encryptor_1 = FileEncryptor(Fernet.generate_key())
-    file_encryptor_2 = FileEncryptor(Fernet.generate_key())
+    key = AESCCM.generate_key(192)
+    iv = os.urandom(13)
+    key_2 = AESCCM.generate_key(192)
+    file_encryptor_1 = FileEncryptor(key, iv)
+    file_encryptor_2 = FileEncryptor(key_2, iv)
 
     files = [BytesIO(b"test data")]
 
     encrypted_files = file_encryptor_1.encrypt_files(files, binary_files=True)
     # Should throw error when decrypting with wrong token
-    with pytest.raises(InvalidToken):
+    with pytest.raises(InvalidTag):
         decrypted_files = file_encryptor_2.decrypt_files(encrypted_files, binary_files=True)
 
 

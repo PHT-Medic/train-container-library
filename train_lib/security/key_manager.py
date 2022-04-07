@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Union
+from typing import Union, Tuple
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 import os
 import json
 
-from train_lib.security.train_config import TrainConfig
+from train_lib.security.train_config import TrainConfig, EncryptedKey
 
 
 class KeyManager:
@@ -49,7 +49,7 @@ class KeyManager:
         """
         return Fernet.generate_key()
 
-    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str):
+    def decrypt_symmetric_key(self, encrypted_key: EncryptedKey, private_key_path: str) -> Tuple[bytes, bytes]:
         """
         Decrypts the symmetric key using a stored private key
         :arg station_id: station identifier used to load the correct public key
@@ -58,14 +58,14 @@ class KeyManager:
         private_key = self.load_private_key(key_path=private_key_path)
 
         symmetric_key = private_key.decrypt(
-            ciphertext=bytes.fromhex(encrypted_key),
+            ciphertext=bytes.fromhex(encrypted_key.key),
             padding=padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA512()),
                 algorithm=hashes.SHA512(),
                 label=None
             )
         )
-        return symmetric_key
+        return symmetric_key, bytes.fromhex(encrypted_key.iv)
 
     def generate_encrypted_keys(self, symmetric_key: bytes):
         """
