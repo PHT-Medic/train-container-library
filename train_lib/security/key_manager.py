@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 import os
 import json
 
-from train_lib.security.train_config import TrainConfig, EncryptedKey
+from train_lib.security.train_config import TrainConfig
 
 
 class KeyManager:
@@ -47,9 +47,9 @@ class KeyManager:
         Create a symmetric fernet key for encrypting sensitive files
         :return:
         """
-        return Fernet.generate_key()
+        return os.urandom(32)
 
-    def decrypt_symmetric_key(self, encrypted_key: EncryptedKey, private_key_path: str) -> Tuple[bytes, bytes]:
+    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str) -> bytes:
         """
         Decrypts the symmetric key using a stored private key
         :arg station_id: station identifier used to load the correct public key
@@ -58,14 +58,14 @@ class KeyManager:
         private_key = self.load_private_key(key_path=private_key_path)
 
         symmetric_key = private_key.decrypt(
-            ciphertext=bytes.fromhex(encrypted_key.key),
+            ciphertext=bytes.fromhex(encrypted_key),
             padding=padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA512()),
                 algorithm=hashes.SHA512(),
                 label=None
             )
         )
-        return symmetric_key, bytes.fromhex(encrypted_key.iv)
+        return symmetric_key
 
     def generate_encrypted_keys(self, symmetric_key: bytes):
         """

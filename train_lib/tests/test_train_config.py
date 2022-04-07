@@ -1,7 +1,6 @@
 import pytest
 import os
-from train_lib.security.train_config import TrainConfig, StationPublicKeys, EncryptedSymKey, DigitalSignature, \
-    UserPublicKeys
+from train_lib.security.train_config import TrainConfig
 
 
 @pytest.fixture

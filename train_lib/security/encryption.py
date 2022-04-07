@@ -5,7 +5,10 @@ from cryptography.fernet import Fernet
 from typing import List, Union, BinaryIO
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
 import logging
+
+IV_LENGTH = 16
 
 
 class FileEncryptor:
@@ -13,12 +16,10 @@ class FileEncryptor:
     Performs symmetric encryption and decryption of sensitive files belonging to the train cargo
     """
 
-    def __init__(self, key: bytes, iv: bytes = None):
+    def __init__(self, key: bytes):
 
-        if not iv:
-            self.fernet = Fernet(key)
         self.key = key
-        self.iv = iv if iv else os.urandom(12)
+        self.iv = os.urandom(IV_LENGTH)
 
     def encrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False) -> Union[List[BytesIO], None]:
         """
@@ -32,7 +33,7 @@ class FileEncryptor:
                 logging.info(f"file {i + 1}/{len(files)}...")
                 # Encrypt the files and convert them to bytes io file objects
                 data = file.read()
-                encr_files.append(BytesIO(self._encrypt(data)))
+                encr_files.append(BytesIO(self._encrypt_aes(data)))
                 logging.info("Done")
             return encr_files
 
@@ -54,14 +55,14 @@ class FileEncryptor:
             decr_files = []
             for i, file in enumerate(files):
                 logging.info(f"file {i + 1}/{len(files)}...")
-                data = self._decrypt(file.read())
+                data = self._decrypt_aes(file.read())
                 decr_files.append(BytesIO(data))
                 logging.info("Done")
             return decr_files
         for i, file in enumerate(files):
             logging.info(f"File {i + 1}/{len(files)}...")
             with open(file, "rb") as f:
-                decr_file = self._decrypt(f.read())
+                decr_file = self._decrypt_aes(f.read())
             with open(file, "wb") as ef:
                 ef.write(decr_file)
             logging.info("Done")
@@ -73,3 +74,31 @@ class FileEncryptor:
     def _decrypt(self, data: bytes) -> bytes:
         aesccm = AESCCM(self.key)
         return aesccm.decrypt(self.iv, data, None)
+
+    def _encrypt_aes(self, data: bytes) -> bytes:
+
+        padder = padding.PKCS7(128).padder()
+
+        padded_data = padder.update(data) + padder.finalize()
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv))
+        encryptor = cipher.encryptor()
+
+        encrypted = encryptor.update(padded_data) + encryptor.finalize()
+
+        return self.iv + encrypted
+
+    def _decrypt_aes(self, data: bytes) -> bytes:
+
+        iv = data[:IV_LENGTH]
+        data = data[IV_LENGTH:]
+
+        print(len(data))
+
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv))
+        decryptor = cipher.decryptor()
+
+        decrypted = decryptor.update(data) + decryptor.finalize()
+        unpadder = padding.PKCS7(128).unpadder()
+
+        unpadded_data = unpadder.update(decrypted) + unpadder.finalize()
+        return unpadded_data

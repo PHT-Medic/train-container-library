@@ -54,16 +54,11 @@ class DigitalSignature(BaseModel):
     signature: StationSignature
 
 
-class EncryptedKey(BaseModel):
-    key: HexString
-    iv: HexString
-
-
 class Creator(BaseModel):
     id: Union[int, str]
     rsa_public_key: HexString
     paillier_public_key: Optional[Union[HexString, int, str]] = None
-    encrypted_key: Optional[EncryptedKey] = None
+    encrypted_key: Optional[HexString] = None
 
 
 class RouteEntry(BaseModel):
@@ -72,7 +67,7 @@ class RouteEntry(BaseModel):
     rsa_public_key: HexString
     index: int
     signature: Optional[StationSignature] = None
-    encrypted_key: Optional[EncryptedKey] = None
+    encrypted_key: Optional[HexString] = None
 
 
 class TrainSourceType(str, Enum):
