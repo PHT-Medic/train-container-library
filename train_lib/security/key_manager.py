@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Union
+from typing import Union, Tuple
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -47,9 +47,9 @@ class KeyManager:
         Create a symmetric fernet key for encrypting sensitive files
         :return:
         """
-        return Fernet.generate_key()
+        return os.urandom(32)
 
-    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str):
+    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str) -> bytes:
         """
         Decrypts the symmetric key using a stored private key
         :arg station_id: station identifier used to load the correct public key
