@@ -9,6 +9,8 @@ from cryptography.fernet import Fernet
 import os
 import json
 
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+
 from train_lib.security.train_config import TrainConfig
 
 
@@ -49,13 +51,16 @@ class KeyManager:
         """
         return os.urandom(32)
 
-    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str) -> bytes:
+    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str,
+                              private_key_password: str = None) -> bytes:
         """
         Decrypts the symmetric key using a stored private key
-        :arg station_id: station identifier used to load the correct public key
+        :arg encrypted_key: the encrypted symmetric key to decrypt in hex format
+        :arg private_key_path: path to the private key file
+        :arg private_key_password: optional password to decrypt the private key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
-        private_key = self.load_private_key(key_path=private_key_path)
+        private_key = self.load_private_key(key_path=private_key_path, password=private_key_password)
 
         symmetric_key = private_key.decrypt(
             ciphertext=bytes.fromhex(encrypted_key),
@@ -109,7 +114,7 @@ class KeyManager:
         return encrypted.hex()
 
     @staticmethod
-    def load_private_key(env_key: str = None, key_path: str = None):
+    def load_private_key(env_key: str = None, key_path: str = None, password: str = None) -> RSAPrivateKey:
         """
         Loads the private key from the path provided provided in the environment variables of the currently
         running image
@@ -129,7 +134,7 @@ class KeyManager:
         elif key_path:
             with open(key_path, "rb") as sk_f:
                 private_key = serialization.load_pem_private_key(sk_f.read(),
-                                                                 password=None,
+                                                                 password=password.encode() if password else None,
                                                                  backend=default_backend()
                                                                  )
         else:
