@@ -439,6 +439,12 @@ class SecurityProtocol:
             if stop.index >= self.route_stop.index:
                 break
             else:
+
+                if not stop.signature:
+                    error = ValidationError(f"Missing digital signature for previous stop {stop}. \n"
+                                            f" While currently at {self.route_stop}")
+                    logger.error(error)
+                    raise error
                 pk = self.key_manager.load_public_key(stop.rsa_public_key)
                 pk.verify(
                     signature=bytes.fromhex(stop.signature.signature),

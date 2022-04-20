@@ -40,7 +40,7 @@ class FileEncryptor:
         for i, file in enumerate(files):
             logging.info(f"File {i + 1}/{len(files)}...")
             with open(file, "rb") as f:
-                encr_file = self._encrypt(f.read())
+                encr_file = self._encrypt_aes(f.read())
             with open(file, "wb") as ef:
                 ef.write(encr_file)
             logging.info("Done")
@@ -91,8 +91,6 @@ class FileEncryptor:
 
         iv = data[:IV_LENGTH]
         data = data[IV_LENGTH:]
-
-        print(len(data))
 
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv))
         decryptor = cipher.decryptor()
