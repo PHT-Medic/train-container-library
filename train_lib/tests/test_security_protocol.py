@@ -173,9 +173,8 @@ def train_config(key_pairs, train_files):
                                                           password=None,
                                                           backend=default_backend())
     user_signature = user_private_key.sign(immutable_hash,
-                                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                                       salt_length=padding.PSS.MAX_LENGTH),
-                                           utils.Prehashed(hashes.SHA512()))
+                                           padding.PKCS1v15(),
+                                           hashes.SHA512())
 
     config_dict = {
         "@id": "test_train_id",
@@ -630,7 +629,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
 
     # Should throw error because the results file is not correctly encrypted
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(fernet.InvalidToken):
+        with pytest.raises(ValueError):
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
             sp.pre_run_protocol(img=train_image + ":latest",
                                 private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
@@ -657,7 +656,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     train_container.wait()
 
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(fernet.InvalidToken):
+        with pytest.raises(ValueError):
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
             sp.pre_run_protocol(img=train_image + ":latest",
                                 private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))
@@ -706,7 +705,7 @@ def test_post_run_protocol_wrong_symmetric_key(train_image, tmpdir, key_pairs, d
         "STATION_PRIVATE_KEY_PATH": str(p2)
     }
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(fernet.InvalidToken):
+        with pytest.raises(ValueError):
             sp = SecurityProtocol(os.getenv("STATION_ID"), config=config, docker_client=docker_client)
             sp.pre_run_protocol(img=train_image + ":latest",
                                 private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"))

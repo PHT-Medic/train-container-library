@@ -44,11 +44,6 @@ class UserPublicKeys(BaseModel):
     paillier_public_key: Optional[Union[HexString, int, str]] = None
 
 
-class EncryptedSymKey(BaseModel):
-    station_id: Union[int, str]
-    sym_key: HexString
-
-
 class StationSignature(BaseModel):
     digest: HexString
     signature: HexString
@@ -72,7 +67,7 @@ class RouteEntry(BaseModel):
     rsa_public_key: HexString
     index: int
     signature: Optional[StationSignature] = None
-    encrypted_key: HexString = None
+    encrypted_key: Optional[HexString] = None
 
 
 class TrainSourceType(str, Enum):

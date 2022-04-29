@@ -15,8 +15,7 @@ from train_lib.security.encryption import FileEncryptor
 from train_lib.security.errors import ValidationError
 from train_lib.security.hashing import *
 # from train_lib.docker_util.docker_ops import *
-from train_lib.docker_util.docker_ops import files_from_archive, result_files_from_archive, extract_train_config, \
-    extract_archive
+from train_lib.docker_util.docker_ops import files_from_archive, result_files_from_archive, extract_archive
 
 
 class TrainPaths(Enum):
@@ -53,7 +52,9 @@ class SecurityProtocol:
         self.docker_client = docker_client
         # self.redis = redis.Redis(decode_responses=True)
 
-    def pre_run_protocol(self, img: str = None, private_key_path: str = None, immutable_dir: str = "/opt/pht_train",
+    def pre_run_protocol(self, img: str = None, private_key_path: str = None,
+                         private_key_password: str = None,
+                         immutable_dir: str = "/opt/pht_train",
                          mutable_dir: str = "/opt/pht_results"):
         """
         Decrypts the files contained in the train. And performs the steps necessary to validate a train before it is
@@ -61,6 +62,7 @@ class SecurityProtocol:
 
         :param img: identifier of the image from which the security relevant files will be extracted
         :param private_key_path:
+        :param private_key_password:
         :param immutable_dir:
         :param mutable_dir:
         :return:
@@ -82,8 +84,8 @@ class SecurityProtocol:
             self.verify_digital_signature()
             key = self.key_manager.decrypt_symmetric_key(
                 encrypted_key=self.route_stop.encrypted_key,
-                private_key_path=private_key_path
-            )
+                private_key_path=private_key_path,
+                private_key_password=private_key_password)
             file_encryptor = FileEncryptor(key)
             # Decrypt all previously encrypted files
             mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
@@ -96,7 +98,7 @@ class SecurityProtocol:
 
         logger.info("Pre-run protocol success")
 
-    def post_run_protocol(self, img: str = None, private_key_path: str = None):
+    def post_run_protocol(self, img: str = None, private_key_path: str = None, private_key_password: str = None):
         """
         Updates the necessary values in the train_config.json and encrypts the updated files after a successful train
         execution.
@@ -104,7 +106,7 @@ class SecurityProtocol:
         :param img: identifier of the image <repository>:<tag>
         :param private_key_path: path to the private key associated with the current station and with the corresponding
             public key registered in vault under the PID chosen by the station
-        :param mutable_dir: path to the directory in which the mutable files are stored
+        :param private_key_password: optional password to decrypt the private key
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
@@ -112,7 +114,8 @@ class SecurityProtocol:
         # Get the mutable files and tar archive structure
         mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, TrainPaths.RESULT_DIR.value))
         # Run the post run protocol
-        encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path)
+        encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path,
+                                                                   private_key_password)
         results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
         results_archive.seek(0)
 
@@ -122,7 +125,9 @@ class SecurityProtocol:
         logger.info(f"Successfully executed post run protocol on img: {img}")
         # execute the post run protocol running inside the docker container
 
-    def _post_run_outside_container(self, mutable_files: List[BytesIO], private_key_path: str) -> List[BytesIO]:
+    def _post_run_outside_container(self, mutable_files: List[BytesIO],
+                                    private_key_path: str,
+                                    private_key_password: str = None) -> List[BytesIO]:
         """
         Performs the post run protocol on the mutable files contained in an image. Consisting of encrypting the
         mutable files and updateing the train_config.json. The extracted mutable files are encrypted and the
@@ -142,7 +147,7 @@ class SecurityProtocol:
         logger.info(f"new results hash: {self.config.result_hash}")
 
         # Load the local private key and sign the hash of the results files
-        sk = self.key_manager.load_private_key(key_path=private_key_path)
+        sk = self.key_manager.load_private_key(key_path=private_key_path, password=private_key_password)
         e_d_sig = sk.sign(e_d,
                           padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
                                       salt_length=padding.PSS.MAX_LENGTH),
@@ -345,9 +350,8 @@ class SecurityProtocol:
         # Verify that the hash value corresponds with the signature
         user_pk.verify(e_h_sig,
                        current_hash,
-                       padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                   salt_length=padding.PSS.MAX_LENGTH),
-                       utils.Prehashed(hashes.SHA512()))
+                       padding.PKCS1v15(),
+                       hashes.SHA512())
 
     def validate_previous_results(self, files: List[BinaryIO]):
         """
@@ -435,6 +439,12 @@ class SecurityProtocol:
             if stop.index >= self.route_stop.index:
                 break
             else:
+
+                if not stop.signature:
+                    error = ValidationError(f"Missing digital signature for previous stop {stop}. \n"
+                                            f" While currently at {self.route_stop}")
+                    logger.error(error)
+                    raise error
                 pk = self.key_manager.load_public_key(stop.rsa_public_key)
                 pk.verify(
                     signature=bytes.fromhex(stop.signature.signature),
