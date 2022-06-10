@@ -58,7 +58,7 @@ class PHTFhirClient:
     @classmethod
     def from_dict(cls, fhir_config: dict):
         # attempt to find the API address from the different options for environtment variables
-        api_url = fhir_config.get("FHIR_SERVER_URL", os.get("FHIR_ADDRESS", os.get("FHIR_API_URL")))
+        api_url = fhir_config.getenv("FHIR_SERVER_URL", os.getenv("FHIR_ADDRESS", os.getenv("FHIR_API_URL")))
         if not api_url:
             raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
 
