@@ -1,3 +1,4 @@
+import json
 import tarfile
 import time
 from tarfile import TarInfo
@@ -75,13 +76,13 @@ class SecurityProtocol:
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
-        query_dict = extract_query_json(img)
+        query = extract_query_json(img)
 
         self.validate_immutable_files(
             files=immutable_files,
             immutable_file_names=file_names,
             ordered_file_list=self.config.file_list,
-            query_dict=query_dict
+            query=query
         )
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
@@ -314,7 +315,7 @@ class SecurityProtocol:
         logger.info("Post-protocol success")
 
     def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
-                                 immutable_file_names: List[str] = None, query_dict: dict = None) -> bool:
+                                 immutable_file_names: List[str] = None, query: bytes = None) -> bool:
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
 
@@ -335,7 +336,7 @@ class SecurityProtocol:
                 immutable_files=immutable_files,
                 user_id=str(self.config.creator.id),
                 session_id=bytes.fromhex(self.config.session_id),
-                query_dict=query_dict
+                query=query
             )
         elif files:
             current_hash = hash_immutable_files(
@@ -345,7 +346,7 @@ class SecurityProtocol:
                 binary_files=True,
                 ordered_file_list=ordered_file_list,
                 immutable_file_names=immutable_file_names,
-                query_dict=query_dict
+                query=query
             )
 
         logger.info(f"Stored hash: {e_h}")

@@ -323,7 +323,7 @@ def test_extract_train_config(train_image, train_files):
 
 
 def test_extract_query_json(train_image, query_json):
-    extracted_query = extract_query_json(train_image)
+    extracted_query = json.loads(extract_query_json(train_image))
 
     assert extracted_query
     query_json.seek(0)

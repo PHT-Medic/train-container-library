@@ -10,7 +10,7 @@ def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user
                          binary_files=False,
                          ordered_file_list: list = None,
                          immutable_file_names: List[str] = None,
-                         query_dict: dict = None):
+                         query: bytes = None):
     """
     Calculates the hash of all immutable files in the train, A, R, Q as well as the
     :param binary_files: boolean parameter indicating whether the files are binary files or file paths
@@ -48,8 +48,8 @@ def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user
     if query_file:
         digest.update(query_file)
     # hash query dict
-    if query_dict:
-        digest.update(json.dumps(query_dict).encode("utf-8"))
+    if query:
+        digest.update(query)
     return digest.finalize()
 
 
