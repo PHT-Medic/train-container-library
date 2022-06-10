@@ -1,7 +1,6 @@
 import os
 from io import BytesIO
 
-from cryptography.fernet import Fernet
 from typing import List, Union, BinaryIO
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -17,7 +16,6 @@ class FileEncryptor:
     """
 
     def __init__(self, key: bytes):
-
         self.key = key
         self.iv = os.urandom(IV_LENGTH)
 
@@ -91,7 +89,6 @@ class FileEncryptor:
 
         iv = data[:IV_LENGTH]
         data = data[IV_LENGTH:]
-
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv))
         decryptor = cipher.decryptor()
 

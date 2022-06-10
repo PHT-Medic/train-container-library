@@ -15,7 +15,7 @@ from train_lib.security.encryption import FileEncryptor
 from train_lib.security.errors import ValidationError
 from train_lib.security.hashing import *
 # from train_lib.docker_util.docker_ops import *
-from train_lib.docker_util.docker_ops import files_from_archive, result_files_from_archive, extract_archive
+from train_lib.docker_util.docker_ops import files_from_archive, result_files_from_archive, extract_archive, extract_query_json
 
 
 class TrainPaths(Enum):
@@ -75,17 +75,21 @@ class SecurityProtocol:
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
+        query_dict = extract_query_json(img)
 
         self.validate_immutable_files(
             files=immutable_files,
             immutable_file_names=file_names,
-            ordered_file_list=self.config.file_list)
+            ordered_file_list=self.config.file_list,
+            query_dict=query_dict
+        )
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
             key = self.key_manager.decrypt_symmetric_key(
                 encrypted_key=self.route_stop.encrypted_key,
                 private_key_path=private_key_path,
-                private_key_password=private_key_password)
+                private_key_password=private_key_password
+            )
             file_encryptor = FileEncryptor(key)
             # Decrypt all previously encrypted files
             mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
@@ -123,7 +127,6 @@ class SecurityProtocol:
         # update the container with the encrypted files
         self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
         logger.info(f"Successfully executed post run protocol on img: {img}")
-        # execute the post run protocol running inside the docker container
 
     def _post_run_outside_container(self, mutable_files: List[BytesIO],
                                     private_key_path: str,
@@ -311,7 +314,7 @@ class SecurityProtocol:
         logger.info("Post-protocol success")
 
     def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
-                                 immutable_file_names: List[str] = None):
+                                 immutable_file_names: List[str] = None, query_dict: dict = None) -> bool:
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
 

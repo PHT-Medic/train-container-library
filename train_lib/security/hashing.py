@@ -1,3 +1,5 @@
+import json
+
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from typing import List, Union, BinaryIO
@@ -6,7 +8,9 @@ import os
 
 def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user_id: str, session_id: bytes,
                          binary_files=False,
-                         ordered_file_list: list = None, immutable_file_names: List[str] = None):
+                         ordered_file_list: list = None,
+                         immutable_file_names: List[str] = None,
+                         query_dict: dict = None):
     """
     Calculates the hash of all immutable files in the train, A, R, Q as well as the
     :param binary_files: boolean parameter indicating whether the files are binary files or file paths
@@ -43,6 +47,9 @@ def hash_immutable_files(immutable_files: Union[List[str], List[BinaryIO]], user
     digest.update(session_id)
     if query_file:
         digest.update(query_file)
+    # hash query dict
+    if query_dict:
+        digest.update(json.dumps(query_dict).encode("utf-8"))
     return digest.finalize()
 
 
