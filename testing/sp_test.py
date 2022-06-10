@@ -1,3 +1,5 @@
+import pprint
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding, utils, rsa
@@ -11,32 +13,50 @@ import time
 from dotenv import find_dotenv, load_dotenv
 from train_lib.security.hashing import hash_immutable_files
 
-IMG = "harbor.personalhealthtrain.de/pht_incoming/22:base"
+IMG = "staging-harbor.tada5hi.net/10fqi2nugnog5nak0ylec/79a0c3ba-0d42-4e97-b501-470b34306dce:latest"
 
 
 def main():
     load_dotenv(find_dotenv())
     train_config = extract_train_config(IMG)
+    digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
+    pprint.pp(train_config)
+
+
+
+    query = extract_query_json(IMG)
+    print(query.decode("utf-8"))
+
+    digest.update(query)
+    print(digest.finalize().hex())
+    print(type(query))
+    with open("query.json", "wb") as f:
+        f.write(query)
+
+    with open("query.json", "rb") as f:
+        query_read = f.read()
+
+    print(query_read == query)
     # Execute pre run protocol
-    sp = SecurityProtocol("2", config=train_config)
+    sp = SecurityProtocol("10fqi2nugnog5nak0ylec", config=train_config)
     start = timer()
-    sp.pre_run_protocol(img=IMG, private_key_path="./keys/station_aachen_private_key.pem")
+    sp.pre_run_protocol(img=IMG, private_key_path="test-key.pem")
     print(f"Pre run execution time: {timer() - start}")
 
-    # Run the image
-    start = timer()
-    client = docker.from_env()
-    container = client.containers.run(IMG, detach=True)
-    container.wait()
-    print(container.logs())
-    repository, tag = IMG.split(":")
-    container.commit(repository=repository, tag=tag)
-    print(f"Train execution time: {timer() - start}")
-
-    # Post run
-    start = timer()
-    sp.post_run_protocol(img=IMG, private_key_path=os.path.abspath("./keys/station_aachen_private_key.pem"))
-    print(f"Post run execution time: {timer() - start}")
+    # # Run the image
+    # start = timer()
+    # client = docker.from_env()
+    # container = client.containers.run(IMG, detach=True)
+    # container.wait()
+    # print(container.logs())
+    # repository, tag = IMG.split(":")
+    # container.commit(repository=repository, tag=tag)
+    # print(f"Train execution time: {timer() - start}")
+    #
+    # # Post run
+    # start = timer()
+    # sp.post_run_protocol(img=IMG, private_key_path=os.path.abspath("./keys/station_aachen_private_key.pem"))
+    # print(f"Post run execution time: {timer() - start}")
 
 
 def update_config_with_correct_signature():
@@ -71,16 +91,16 @@ def update_config_with_correct_signature():
 
 if __name__ == '__main__':
     # update_config_with_correct_signature()
-    # main()
+    main()
 
-    img = "harbor.personalhealthtrain.de/pht_incoming/c1623f6a-e734-49e2-b1c1-a0237d5521b4:latest"
-    config = extract_train_config(img)
-    sp = SecurityProtocol(station_id="1", config=config)
-    # files = sp._parse_files(train_dir)
-    # print(files)
-
-    sp.pre_run_protocol("harbor.personalhealthtrain.de/pht_incoming/c1623f6a-e734-49e2-b1c1-a0237d5521b4",
-                        "./keys/user_private_key.pem")
+    # img = "harbor.personalhealthtrain.de/pht_incoming/c1623f6a-e734-49e2-b1c1-a0237d5521b4:latest"
+    # config = extract_train_config(img)
+    # sp = SecurityProtocol(station_id="1", config=config)
+    # # files = sp._parse_files(train_dir)
+    # # print(files)
+    #
+    # sp.pre_run_protocol("harbor.personalhealthtrain.de/pht_incoming/c1623f6a-e734-49e2-b1c1-a0237d5521b4",
+    #                     "./keys/user_private_key.pem")
     #
     # file_order = ["final_train/auto_augment.py", "final_train/central_entrypoint.py", "final_train/entrypoint.py",
     #               "final_train/eval.py", "final_train/models.py", "final_train/test.py", "final_train/train.py",

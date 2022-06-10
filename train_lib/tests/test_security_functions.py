@@ -4,12 +4,12 @@ from io import BytesIO
 import json
 
 from cryptography.exceptions import InvalidTag
-from cryptography.fernet import InvalidToken
+from cryptography.fernet import InvalidToken, Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 
 from train_lib.security.hashing import hash_immutable_files, hash_results
-from train_lib.security.encryption import FileEncryptor, Fernet
+from train_lib.security.encryption import FileEncryptor
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives import padding
 
