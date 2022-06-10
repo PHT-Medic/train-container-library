@@ -335,6 +335,7 @@ class SecurityProtocol:
                 immutable_files=immutable_files,
                 user_id=str(self.config.creator.id),
                 session_id=bytes.fromhex(self.config.session_id),
+                query_dict=query_dict
             )
         elif files:
             current_hash = hash_immutable_files(
@@ -343,7 +344,8 @@ class SecurityProtocol:
                 session_id=bytes.fromhex(self.config.session_id),
                 binary_files=True,
                 ordered_file_list=ordered_file_list,
-                immutable_file_names=immutable_file_names
+                immutable_file_names=immutable_file_names,
+                query_dict=query_dict
             )
 
         logger.info(f"Stored hash: {e_h}")
