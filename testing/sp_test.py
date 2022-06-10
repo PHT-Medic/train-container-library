@@ -13,7 +13,7 @@ import time
 from dotenv import find_dotenv, load_dotenv
 from train_lib.security.hashing import hash_immutable_files
 
-IMG = "staging-harbor.tada5hi.net/10fqi2nugnog5nak0ylec/79a0c3ba-0d42-4e97-b501-470b34306dce:latest"
+IMG = "staging-harbor.tada5hi.net/b0f0imz4srdr7bnl0z8en/b092b95e-7d81-403a-b504-3965d6877908"
 
 
 def main():
@@ -25,6 +25,7 @@ def main():
 
 
     query = extract_query_json(IMG)
+    print(json.loads(query))
     print(query.decode("utf-8"))
 
     digest.update(query)
