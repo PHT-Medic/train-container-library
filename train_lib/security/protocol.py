@@ -76,7 +76,12 @@ class SecurityProtocol:
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
-        query = extract_query_json(img)
+
+        try:
+            query = extract_query_json(img)
+        except Exception as e:
+            logger.warning(f"Error extracting query json from image: {e}")
+            query = None
 
         self.validate_immutable_files(
             files=immutable_files,
