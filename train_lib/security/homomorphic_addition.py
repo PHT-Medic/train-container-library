@@ -1,17 +1,16 @@
 import math
-from .primes import generate_prime
-
+from random import SystemRandom
 
 class PublicKey(object):
 
     @classmethod
-    def from_n(cls, n):
-        return cls(n)
+    def from_n(cls, n, g):
+        return cls(n, g)
 
-    def __init__(self, n):
+    def __init__(self, n,g):
         self.n = n
         self.n_sq = n * n
-        self.g = n + 1
+        self.g = g
 
     def __repr__(self):
         return '<PublicKey: %s>' % self.n
@@ -37,11 +36,7 @@ def invmod(a, p, maxiter=1000000):
 
 
 def encrypt(pub, plain):
-    while True:
-        r = generate_prime(int(round(math.log(pub.n, 2))))
-        if r > 0 and r < pub.n:
-            break
-
+    r = SystemRandom().randrange(1, pub.n)
     x = pow(r, pub.n, pub.n_sq)
 
     cipher = (pow(pub.g, plain, pub.n_sq) * x) % pub.n_sq
@@ -53,11 +48,11 @@ def enc_add(pub, a, b):
     return a * b % pub.n_sq
 
 
-def secure_addition(result_local, result_prev, n=None):
-    if not n:
+def secure_addition(result_local, result_prev, n=None, g=None):
+    if not n or not g:
         raise ValueError("Empty secure addition key")
 
-    pk = PublicKey.from_n(n)
+    pk = PublicKey.from_n(n,g)
 
     if result_prev is None:
         pt = 0
