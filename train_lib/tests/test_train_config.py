@@ -38,6 +38,10 @@ def config_dict():
         "hash": os.urandom(16).hex(),
         "signature": os.urandom(32).hex(),
         "@context": {"link": "https://www.w3.org/2018/credentials/v1"},
+        "build": {
+            "signature": os.urandom(32).hex(),
+            "rsa_public_key": os.urandom(32).hex(),
+        }
     }
     return config_dict
 
