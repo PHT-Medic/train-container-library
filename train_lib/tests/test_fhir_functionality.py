@@ -31,7 +31,7 @@ def minimal_query():
             "parameters": [
                 {
                     "variable": "gender",
-                    "condition": "male"
+                    "condition": "m"
                 }
             ]
         },
@@ -274,7 +274,7 @@ def test_load_query_file(minimal_query, tmp_path):
 
 
 def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advanced_query):
-    string_query = "Patient?gender=male"
+    string_query = "Patient?gender=m"
 
     query_string = build_query_string(minimal_query["query"])
 

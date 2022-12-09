@@ -2,15 +2,20 @@ import os
 from io import BytesIO
 
 from typing import List, Union, BinaryIO
+
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPrivateKey
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives import padding, hashes
+from cryptography.hazmat.primitives.asymmetric import padding as asymmetric_padding
 import logging
+
+from .key_manager import KeyManager
 
 IV_LENGTH = 16
 
 
-class FileEncryptor:
+class SymmetricFileEncryptor:
     """
     Performs symmetric encryption and decryption of sensitive files belonging to the train cargo
     """
@@ -97,3 +102,50 @@ class FileEncryptor:
 
         unpadded_data = unpadder.update(decrypted) + unpadder.finalize()
         return unpadded_data
+
+
+class RSAFileEncryptor:
+    def __init__(self, public_key: Union[str, RSAPublicKey]):
+        if isinstance(public_key, str):
+            self.public_key = KeyManager.load_public_key(public_key)
+        else:
+            self.public_key = public_key
+
+    def encrypt_files(self, files: List[BytesIO]) -> Union[List[BytesIO], None]:
+        encrypted_files = []
+        for file in files:
+            file.seek(0)
+            data = file.read()
+
+            encrypted_files.append(BytesIO(self._encrypt(data)))
+        return encrypted_files
+
+    def _encrypt(self, data: bytes) -> bytes:
+        return self.public_key.encrypt(
+            data,
+            asymmetric_padding.OAEP(
+                mgf=asymmetric_padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+    def decrypt_files(self, private_key: RSAPrivateKey, files: List[BytesIO]) -> Union[List[BytesIO], None]:
+        decrypted_files = []
+        for file in files:
+            file.seek(0)
+            data = file.read()
+
+            decrypted_files.append(BytesIO(self.decrypt(private_key, data)))
+        return decrypted_files
+
+    @staticmethod
+    def decrypt(private_key: RSAPrivateKey, data: bytes):
+        return private_key.decrypt(
+            ciphertext=data,
+            padding=asymmetric_padding.OAEP(
+                mgf=asymmetric_padding.MGF1(algorithm=hashes.SHA512()),
+                algorithm=hashes.SHA512(),
+                label=None
+            )
+        )

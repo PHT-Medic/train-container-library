@@ -7,9 +7,10 @@ from cryptography.exceptions import InvalidTag
 from cryptography.fernet import InvalidToken, Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from train_lib.security.hashing import hash_immutable_files, hash_results
-from train_lib.security.encryption import FileEncryptor
+from train_lib.security.encryption import SymmetricFileEncryptor, RSAFileEncryptor
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 from cryptography.hazmat.primitives import padding
 
@@ -24,7 +25,7 @@ def config_dict_as_json():
 def test_encryption_decryption(config_dict_as_json):
     key = AESCCM.generate_key(256)
     iv = os.urandom(13)
-    file_encryptor = FileEncryptor(key)
+    file_encryptor = SymmetricFileEncryptor(key)
 
     files = [BytesIO(config_dict_as_json.encode("utf-8")), BytesIO(b"test data")]
     # Test in memory encryption
@@ -48,7 +49,7 @@ def test_encryption_decryption(config_dict_as_json):
 def test_aes_encryption():
     key = os.urandom(32)
     iv = os.urandom(16)
-    file_encryptor = FileEncryptor(key=key)
+    file_encryptor = SymmetricFileEncryptor(key=key)
 
     print(key.hex())
     print(iv.hex())
@@ -69,8 +70,8 @@ def test_decryption_fails_with_wrong_key():
     key = AESCCM.generate_key(256)
     iv = os.urandom(13)
     key_2 = AESCCM.generate_key(256)
-    file_encryptor_1 = FileEncryptor(key)
-    file_encryptor_2 = FileEncryptor(key_2)
+    file_encryptor_1 = SymmetricFileEncryptor(key)
+    file_encryptor_2 = SymmetricFileEncryptor(key_2)
 
     files = [BytesIO(b"test data")]
 
@@ -133,3 +134,14 @@ def test_hash_immutable_files():
 
     for file in files1:
         file.seek(0)
+
+
+def test_rsa_enc_dec():
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = private_key.public_key()
+    rsa_encryptor = RSAFileEncryptor(public_key=public_key)
+
+    files = [BytesIO(b"test data")]
+    encrypted_files = rsa_encryptor.encrypt_files(files)
+
+    decrypted_files = rsa_encryptor.decrypt_files(private_key, encrypted_files)

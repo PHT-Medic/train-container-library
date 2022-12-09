@@ -71,3 +71,16 @@ def hash_results(result_files: Union[List[str], List[BinaryIO]], session_id: byt
                 digest.update(f.read())
     digest.update(session_id)
     return digest.finalize()
+
+def build_signature_hash(train_hash: str, user_signature: str):
+    """
+    Creates a hash of the train hash and the user signature
+    :param train_hash:
+    :param user_signature:
+    :return:
+    """
+    digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
+    digest.update(bytes.fromhex(train_hash))
+    digest.update(bytes.fromhex(user_signature))
+    return digest.finalize()
+

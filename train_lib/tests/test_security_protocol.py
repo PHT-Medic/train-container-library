@@ -23,6 +23,7 @@ from train_lib.security.protocol import SecurityProtocol
 from train_lib.security.errors import ValidationError
 from train_lib.docker_util import docker_ops
 from train_lib.docker_util.validate_master_image import validate_train_image
+from train_lib.security.encryption import RSAFileEncryptor
 
 
 @pytest.fixture
@@ -43,6 +44,7 @@ def key_pairs():
     station_2_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     station_3_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     user_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    builder_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
     # Create public keys
 
@@ -50,6 +52,7 @@ def key_pairs():
     station_2_pk = station_2_sk.public_key()
     station_3_pk = station_3_sk.public_key()
     user_pk = user_sk.public_key()
+    builder_pk = builder_sk.public_key()
 
     # serialize the keys to bytes
 
@@ -93,6 +96,17 @@ def key_pairs():
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
+    builder_sk = builder_sk.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
+    builder_pk = builder_pk.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
     key_pairs = {
         "station_1": {
             "private_key": station_1_sk.hex(),
@@ -110,6 +124,10 @@ def key_pairs():
             "private_key": user_sk.hex(),
             "public_key": user_pk.hex()
         },
+        "builder": {
+            "private_key": builder_sk.hex(),
+            "public_key": builder_pk.hex()
+        }
     }
 
     return key_pairs
@@ -168,13 +186,33 @@ def train_config(key_pairs, train_files):
     immutable_hash = hash_immutable_files(immutable_files=files, binary_files=True, user_id=user_id,
                                           session_id=session_id, ordered_file_list=filenames,
                                           immutable_file_names=filenames)
-
+    # sign the immutable hash
     user_private_key = serialization.load_pem_private_key(bytes.fromhex(key_pairs["user"]["private_key"]),
                                                           password=None,
                                                           backend=default_backend())
+
     user_signature = user_private_key.sign(immutable_hash,
                                            padding.PKCS1v15(),
                                            hashes.SHA512())
+
+    # sign hash and use signature with builder key
+    builder_private_key = serialization.load_pem_private_key(bytes.fromhex(key_pairs["builder"]["private_key"]),
+                                                             password=None, backend=default_backend())
+
+    digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
+    digest.update(immutable_hash)
+    digest.update(user_signature)
+
+    builder_signature_data = digest.finalize()
+
+    builder_signature = builder_private_key.sign(
+        data=builder_signature_data,
+        padding=padding.PSS(
+            mgf=padding.MGF1(hashes.SHA512()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        algorithm=utils.Prehashed(hashes.SHA512())
+    )
 
     config_dict = {
         "@id": "test_train_id",
@@ -209,6 +247,10 @@ def train_config(key_pairs, train_files):
                 "index": 2,
             }
         ],
+        "build": {
+            "signature": builder_signature.hex(),
+            "rsa_public_key": key_pairs["builder"]["public_key"],
+        },
         "file_list": filenames,
         "hash": immutable_hash.hex(),
         "signature": user_signature.hex(),
@@ -247,11 +289,13 @@ def query_json():
 
 
 @pytest.fixture
-def train_file_archive(train_files):
+def train_file_archive(train_files, key_pairs):
     archive = BytesIO()
     tar = tarfile.open(fileobj=archive, mode="w")
 
     file_names, files = train_files
+    file_encryptor = RSAFileEncryptor(key_pairs["station_1"]["public_key"])
+    files = file_encryptor.encrypt_files(files)
     for i, file in enumerate(files):
         file.seek(0)
         f = tarfile.TarInfo(name=file_names[i])
@@ -268,7 +312,7 @@ def train_file_archive(train_files):
 
 @pytest.fixture
 def master_image():
-    return "dev-harbor.grafm.de/master/python/base:latest"
+    return "harbor.personalhealthtrain.de/master/python/base:latest"
 
 
 @pytest.fixture
@@ -777,4 +821,3 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
             post_run_config = extract_train_config(image_name)
 
             assert post_run_config.route[i].signature
-
