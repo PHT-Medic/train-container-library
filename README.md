@@ -14,6 +14,13 @@ Python library for validating and interacting with pht-train images/containers.
 pip install pht-train-container-library
 ```
 
+
+### Development installataion
+
+```shell
+pipenv install --dev
+```
+
 ## Security Protocol
 
 The pht security protocol adapted from `docs/Secure_PHT_latest__official.pdf` performs two main tasks:
