@@ -14,8 +14,7 @@ on:
 
 jobs:
   test:
-
-    runs-on: [self-hosted, docker]
+    runs-on: ubuntu-latest
     env:
       FHIR_SERVER_URL: ${{ secrets.FHIR_SERVER_URL }}
       FHIR_USER: ${{ secrets.FHIR_USER }}
