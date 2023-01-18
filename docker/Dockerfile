@@ -1,21 +1,22 @@
-FROM python:3.11-slim
+FROM bitnami/python:3.11
 MAINTAINER michael.graf@uni-tuebingen.de
 
 # update the image
 RUN apt -y update && apt-get -y install software-properties-common && \
+    apt-get upgrade -yqq && \
     apt-get install -yqq --no-install-recommends --no-install-suggests \
-        git \
         libffi-dev \
         libpq-dev \
         build-essential \
         apt-utils \
-        netcat \
         locales \
         curl && \
-    apt-get upgrade -yqq && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* \
+    rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/cache/apt/archives/*
+
+# install python
+
 
 
 # set poetry environment variables
