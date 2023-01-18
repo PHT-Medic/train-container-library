@@ -150,6 +150,25 @@ if __name__ == '__main__':
 
 
 @pytest.fixture
+def query_json():
+    minimal_query = {
+        "query": {
+            "resource": "Patient",
+            "parameters": [{"variable": "gender", "condition": "male"}],
+        },
+        "data": {
+            "output_format": "json",
+            "filename": "patients.json",
+            "variables": ["id", "birthDate", "gender"],
+        },
+    }
+    # transform  to BytesIo containing binary json data
+    query = BytesIO(json.dumps(minimal_query, indent=2).encode("utf-8"))
+
+    return query
+
+
+@pytest.fixture
 def train_config(key_pairs, train_files):
     filenames, files = train_files
     session_id = os.urandom(64)
@@ -161,7 +180,7 @@ def train_config(key_pairs, train_files):
     }
 
     user_id = "test-user-id"
-
+    print("filenames", filenames)
     immutable_hash = hash_immutable_files(
         immutable_files=files,
         binary_files=True,
@@ -170,6 +189,8 @@ def train_config(key_pairs, train_files):
         ordered_file_list=filenames,
         immutable_file_names=filenames,
     )
+
+    print("Immutable Hash: ", immutable_hash)
 
     user_private_key = serialization.load_pem_private_key(
         bytes.fromhex(key_pairs["user"]["private_key"]),
@@ -220,25 +241,6 @@ def train_config(key_pairs, train_files):
     }
 
     return TrainConfig(**config_dict)
-
-
-@pytest.fixture
-def query_json():
-    minimal_query = {
-        "query": {
-            "resource": "Patient",
-            "parameters": [{"variable": "gender", "condition": "male"}],
-        },
-        "data": {
-            "output_format": "json",
-            "filename": "patients.json",
-            "variables": ["id", "birthDate", "gender"],
-        },
-    }
-    # transform  to BytesIo containing binary json data
-    query = BytesIO(json.dumps(minimal_query, indent=2).encode("utf-8"))
-
-    return query
 
 
 @pytest.fixture

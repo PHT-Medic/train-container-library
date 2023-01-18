@@ -40,7 +40,7 @@ line-length = 120
 # Enable Pyflakes `E` and `F` codes by default.
 select = ["E", "F", "I001"]
 ignore = []
-per-file-ignores = { "*/__init__.py" = ["F401"] }
+per-file-ignores = { "**/__init__.py" = ["F401"] }
 
 # Exclude a variety of commonly ignored directories.
 exclude = [

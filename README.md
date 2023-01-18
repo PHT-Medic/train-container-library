@@ -2,7 +2,9 @@
 [![CodeQL](https://github.com/PHT-Medic/train-container-library/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/PHT-Medic/train-container-library/actions/workflows/codeql-analysis.yml)
 [![main-ci](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml/badge.svg)](https://github.com/PHT-EU/train-container-library/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/PHT-Medic/train-container-library/branch/master/graph/badge.svg?token=11RYRZK2FO)](https://codecov.io/gh/PHT-Medic/train-container-library)
-[![PyPI version](https://badge.fury.io/py/pht-train-container-library.svg)](https://badge.fury.io/py/pht-train-container-library)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pht-train-container-library)
+![PyPI - Downloads](https://img.shields.io/pypi/dw/pht-train-container-library)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # &#128646; Train Container Library
 

@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives import hashes
 
 
 def hash_immutable_files(
-    immutable_files: Union[List[str], List[BinaryIO]],
+    immutable_files: Union[List[BinaryIO], List[str]],
     user_id: str,
     session_id: bytes,
     binary_files=False,
@@ -29,13 +29,13 @@ def hash_immutable_files(
         if immutable_file_names:
             for f in ordered_file_list:
                 # TODO ugly workaround fix this
-                if f[:2] == "./":
+                if f.startswith("./"):
                     f = f[2:]
 
                 index = immutable_file_names.index(f)
                 if f == "query.json":
                     query_file = immutable_files[index].read()
-
+                    continue
                 data = immutable_files[index].read()
                 digest.update(data)
         else:
@@ -49,9 +49,6 @@ def hash_immutable_files(
     digest.update(session_id)
     if query_file:
         digest.update(query_file)
-    # hash query dict
-    if query:
-        digest.update(query)
     return digest.finalize()
 
 

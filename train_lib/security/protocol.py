@@ -424,6 +424,7 @@ class SecurityProtocol:
                 query=query,
             )
         elif files:
+
             current_hash = hash_immutable_files(
                 immutable_files=files,
                 user_id=str(self.config.creator.id),
