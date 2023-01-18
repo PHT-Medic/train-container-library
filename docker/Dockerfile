@@ -11,7 +11,11 @@ RUN apt -y update && apt-get -y install software-properties-common && \
         apt-utils \
         netcat \
         locales \
-        curl
+        curl && \
+    apt-get upgrade -yqq && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* \
+    rm -rf /var/cache/apt/archives/*
 
 
 # set poetry environment variables
