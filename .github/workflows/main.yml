@@ -43,7 +43,7 @@ jobs:
           fail_ci_if_error: true
   build:
 
-    runs-on: [ self-hosted, docker ]
+    runs-on: ubuntu-latest
     env:
       IMAGE_NAME: protocol
 
@@ -55,7 +55,7 @@ jobs:
           python-version: 3.9
 
       - name: Build protocol image
-        run: docker build . --no-cache --file ./docker/Dockerfile --tag $IMAGE_NAME --label "runnumber=${GITHUB_RUN_ID}"
+        run: docker build . --file ./docker/Dockerfile --tag $IMAGE_NAME --label "runnumber=${GITHUB_RUN_ID}"
       
 
       - name: Scan image

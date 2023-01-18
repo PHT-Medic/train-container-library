@@ -18,7 +18,13 @@ if __name__ == "__main__":
     station_id = os.getenv("STATION_ID")
     private_key_path = os.getenv("PRIVATE_KEY_PATH")
 
-    assert station_id and private_key_path
+    if not station_id:
+        raise ValueError("STATION_ID environment variable is not set")
+    if not private_key_path:
+        raise ValueError("PRIVATE_KEY_PATH environment variable is not set")
+
+    if not os.path.isfile(private_key_path):
+        raise FileNotFoundError(f"Private key file not found at {private_key_path}")
 
     image = args[1]
     config = extract_train_config(image)

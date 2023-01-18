@@ -1,7 +1,7 @@
-FROM ubuntu
+FROM python:3.11-slim
 MAINTAINER michael.graf@uni-tuebingen.de
 
-# install python3.8 and os dependencies
+# update the image
 RUN apt -y update && apt-get -y install software-properties-common && \
     apt-get install -yqq --no-install-recommends --no-install-suggests \
         git \
@@ -11,17 +11,25 @@ RUN apt -y update && apt-get -y install software-properties-common && \
         apt-utils \
         netcat \
         locales \
-        curl && \
-    # install python
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get install -y python3.8 && apt install python-is-python3 && apt install -y python3-pip && \
-    rm -rf /var/lib/apt/lists
+        curl
+
+
+# set poetry environment variables
+ENV POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_VIRTUALENVS_IN_PROJECT=false \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VERSION=1.3.0
+
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
+
+ENV PATH="$PATH:$POETRY_HOME/bin"
 
 COPY . /opt/protocol
 WORKDIR /opt/protocol
-RUN python -m pip install pipenv && \
-    pipenv install --deploy --system && \
-    pip install .
+RUN poetry install
 RUN chmod +x /opt/protocol/docker/entrypoint/entrypoint.sh && \
     chmod +x /opt/protocol/docker/entrypoint/run_protocol.py
 
