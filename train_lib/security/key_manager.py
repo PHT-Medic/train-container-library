@@ -1,14 +1,9 @@
+import os
 from io import BytesIO
-from typing import Union, Tuple
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
-from cryptography.fernet import Fernet
-import os
-import json
-
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from train_lib.security.train_config import TrainConfig
@@ -22,8 +17,9 @@ class KeyManager:
     def __init__(self, train_config: TrainConfig):
         """
         Initialize a KeyManager instance that handles security relevant values based on a train configuration
-        
-        :param train_config: either a path to a json file storing the configuration values or a dictionary with these values 
+
+        :param train_config: either a path to a json file storing the configuration values or a dictionary with these
+            values
         """
         self.config = train_config
 
@@ -51,8 +47,12 @@ class KeyManager:
         """
         return os.urandom(32)
 
-    def decrypt_symmetric_key(self, encrypted_key: str, private_key_path: str,
-                              private_key_password: str = None) -> bytes:
+    def decrypt_symmetric_key(
+        self,
+        encrypted_key: str,
+        private_key_path: str,
+        private_key_password: str = None,
+    ) -> bytes:
         """
         Decrypts the symmetric key using a stored private key
         :arg encrypted_key: the encrypted symmetric key to decrypt in hex format
@@ -60,15 +60,17 @@ class KeyManager:
         :arg private_key_password: optional password to decrypt the private key
         :return: symmetric fernet key used to encrypt and decrypt files
         """
-        private_key = self.load_private_key(key_path=private_key_path, password=private_key_password)
+        private_key = self.load_private_key(
+            key_path=private_key_path, password=private_key_password
+        )
 
         symmetric_key = private_key.decrypt(
             ciphertext=bytes.fromhex(encrypted_key),
             padding=padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA512()),
                 algorithm=hashes.SHA512(),
-                label=None
-            )
+                label=None,
+            ),
         )
         return symmetric_key
 
@@ -99,22 +101,29 @@ class KeyManager:
 
         encrypted_key = public_key.encrypt(
             sym_key,
-            padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),
-                         algorithm=hashes.SHA512(),
-                         label=None)
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA512()),
+                algorithm=hashes.SHA512(),
+                label=None,
+            ),
         )
         return encrypted_key.hex()
 
     def _rsa_pk_encrypt(self, val, public_key):
-        encrypted = public_key.encrypt(val,
-                                       padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA512()),
-                                                    algorithm=hashes.SHA512(),
-                                                    label=None)
-                                       )
+        encrypted = public_key.encrypt(
+            val,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA512()),
+                algorithm=hashes.SHA512(),
+                label=None,
+            ),
+        )
         return encrypted.hex()
 
     @staticmethod
-    def load_private_key(env_key: str = None, key_path: str = None, password: str = None) -> RSAPrivateKey:
+    def load_private_key(
+        env_key: str = None, key_path: str = None, password: str = None
+    ) -> RSAPrivateKey:
         """
         Loads the private key from the path provided provided in the environment variables of the currently
         running image
@@ -124,21 +133,28 @@ class KeyManager:
         """
 
         if env_key and key_path:
-            raise ValueError(f"Multiple private Key locations specified: \n {env_key} \n {key_path}")
+            raise ValueError(
+                f"Multiple private Key locations specified: \n {env_key} \n {key_path}"
+            )
         # Load key from hex string stored in environment variable
         if env_key:
-            private_key = serialization.load_pem_private_key(bytes.fromhex(os.getenv(env_key)),
-                                                             password=None,
-                                                             backend=default_backend())
+            private_key = serialization.load_pem_private_key(
+                bytes.fromhex(os.getenv(env_key)),
+                password=None,
+                backend=default_backend(),
+            )
         # Load key from file
         elif key_path:
             with open(key_path, "rb") as sk_f:
-                private_key = serialization.load_pem_private_key(sk_f.read(),
-                                                                 password=password.encode() if password else None,
-                                                                 backend=default_backend()
-                                                                 )
+                private_key = serialization.load_pem_private_key(
+                    sk_f.read(),
+                    password=password.encode() if password else None,
+                    backend=default_backend(),
+                )
         else:
-            raise ValueError("No environment variable or file containing a private key specified")
+            raise ValueError(
+                "No environment variable or file containing a private key specified"
+            )
 
         return private_key
 
@@ -149,6 +165,7 @@ class KeyManager:
         :param key: string representation of a public key
         :return: public key object for asymmetric encryption
         """
-        public_key = serialization.load_pem_public_key(bytes.fromhex(key),
-                                                       backend=default_backend())
+        public_key = serialization.load_pem_public_key(
+            bytes.fromhex(key), backend=default_backend()
+        )
         return public_key

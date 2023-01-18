@@ -3,7 +3,7 @@ import random
 
 def ipow(a, b, n):
     """calculates (a**b) % n via binary exponentiation, yielding intermediate
-       results as Rabin-Miller requires"""
+    results as Rabin-Miller requires"""
     A = a = int(a % n)
     yield A
     t = 1
@@ -23,12 +23,37 @@ def ipow(a, b, n):
 
 def rabin_miller_witness(test, possible):
     """Using Rabin-Miller witness test, will return True if possible is
-       definitely not prime (composite), False if it may be prime."""
+    definitely not prime (composite), False if it may be prime."""
     return 1 not in ipow(test, possible - 1, possible)
 
 
-smallprimes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43,
-               47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97)
+smallprimes = (
+    2,
+    3,
+    5,
+    7,
+    11,
+    13,
+    17,
+    19,
+    23,
+    29,
+    31,
+    37,
+    41,
+    43,
+    47,
+    53,
+    59,
+    61,
+    67,
+    71,
+    73,
+    79,
+    83,
+    89,
+    97,
+)
 
 
 def default_k(bits):
@@ -54,14 +79,14 @@ def is_probably_prime(possible, k=None):
 
 def generate_prime(bits, k=None):
     """Will generate an integer of b bits that is probably prime
-       (after k trials). Reasonably fast on current hardware for
-       values of up to around 512 bits."""
+    (after k trials). Reasonably fast on current hardware for
+    values of up to around 512 bits."""
     assert bits >= 8
 
     if k is None:
         k = default_k(bits)
 
     while True:
-        possible = random.randrange(2 ** (bits - 1) + 1, 2 ** bits) | 1
+        possible = random.randrange(2 ** (bits - 1) + 1, 2**bits) | 1
         if is_probably_prime(possible, k):
             return possible

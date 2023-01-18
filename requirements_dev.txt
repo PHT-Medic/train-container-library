@@ -1,4 +1,0 @@
-coverage
-pytest
-hvac
-bump2version

@@ -1,9 +1,7 @@
 import tarfile
 from io import BytesIO
-import json
 
 import docker
-
 from train_lib.security.train_config import TrainConfig
 
 
@@ -22,7 +20,9 @@ def extract_train_config(img: str, config_path: str = "/opt/train_config.json"):
     return train_config
 
 
-def extract_query_json(img: str, query_file_path: str = "/opt/pht_train_query.json") -> bytes:
+def extract_query_json(
+    img: str, query_file_path: str = "/opt/pht_train/query.json"
+) -> bytes:
     """
     Extract query.json file from the specified image and return it as a dictionary
     :param img: docker image identifier
@@ -31,7 +31,7 @@ def extract_query_json(img: str, query_file_path: str = "/opt/pht_train_query.js
     """
 
     with extract_archive(img, query_file_path) as query_archive:
-        query_file = query_archive.extractfile("pht_train_query.json")
+        query_file = query_archive.extractfile("query.json")
         data = query_file.read()
     return data
 

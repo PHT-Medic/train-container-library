@@ -1,5 +1,5 @@
-from typing import List, Optional, Union
 from enum import Enum
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -12,14 +12,13 @@ class HexString(str):
     @classmethod
     def validate(cls, v):
         if not isinstance(v, str) or isinstance(v, bytes):
-            raise ValueError(f'{v} only string and byte values allowed as input')
+            raise ValueError(f"{v} only string and byte values allowed as input")
 
         if isinstance(v, str):
             try:
-                hex_bytes = bytes.fromhex(v)
                 return cls(v)
             except ValueError:
-                raise ValueError(f'{v} is not a valid hex string')
+                raise ValueError(f"{v} is not a valid hex string")
         if isinstance(v, bytes):
             return cls(v.hex())
 
@@ -28,8 +27,8 @@ class HexString(str):
 
 
 class Ecosystem(str, Enum):
-    TUE = 'tue'
-    AAC = 'padme'
+    TUE = "tue"
+    AAC = "padme"
 
 
 class StationPublicKeys(BaseModel):
@@ -71,8 +70,8 @@ class RouteEntry(BaseModel):
 
 
 class TrainSourceType(str, Enum):
-    DOCKER = 'docker_repository'
-    GIT = 'git_repository'
+    DOCKER = "docker_repository"
+    GIT = "git_repository"
 
 
 class TrainSource(BaseModel):
@@ -86,8 +85,8 @@ class TrainConfig(BaseModel):
     source: TrainSource
     creator: Creator
     proposal_id: Union[int, str]
-    id: str = Field(alias='@id')
-    context: dict = Field(default=None, alias='@context')
+    id: str = Field(alias="@id")
+    context: dict = Field(default=None, alias="@context")
     session_id: HexString
     route: List[RouteEntry]
     file_list: List[str]
@@ -99,5 +98,6 @@ class TrainConfig(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         validate_assignment = True
+
 
 # https://github.com/samuelcolvin/pydantic/issues/889#issuecomment-850312496

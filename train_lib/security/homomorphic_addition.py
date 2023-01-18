@@ -1,28 +1,27 @@
-import math
 from random import SystemRandom
 
-class PublicKey(object):
 
+class PublicKey(object):
     @classmethod
     def from_n(cls, n, g):
         return cls(n, g)
 
-    def __init__(self, n,g):
+    def __init__(self, n, g):
         self.n = n
         self.n_sq = n * n
         self.g = g
 
     def __repr__(self):
-        return '<PublicKey: %s>' % self.n
+        return "<PublicKey: %s>" % self.n
 
 
 def invmod(a, p, maxiter=1000000):
     """The multiplicitive inverse of a in the integers modulo p:
-         a * b == 1 mod p
-       Returns b.
-       (http://code.activestate.com/recipes/576737-inverse-modulo-p/)"""
+      a * b == 1 mod p
+    Returns b.
+    (http://code.activestate.com/recipes/576737-inverse-modulo-p/)"""
     if a == 0:
-        raise ValueError('0 has no inverse mod %d' % p)
+        raise ValueError("0 has no inverse mod %d" % p)
     r = a
     d = 1
     for i in range(min(p, maxiter)):
@@ -31,7 +30,7 @@ def invmod(a, p, maxiter=1000000):
         if r == 1:
             break
     else:
-        raise ValueError('%d has no inverse mod %d' % (a, p))
+        raise ValueError("%d has no inverse mod %d" % (a, p))
     return d
 
 
@@ -52,7 +51,7 @@ def secure_addition(result_local, result_prev, n=None, g=None):
     if not n or not g:
         raise ValueError("Empty secure addition key")
 
-    pk = PublicKey.from_n(n,g)
+    pk = PublicKey.from_n(n, g)
 
     if result_prev is None:
         pt = 0

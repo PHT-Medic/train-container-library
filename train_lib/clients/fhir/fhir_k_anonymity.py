@@ -1,7 +1,8 @@
 from typing import List
+
 import pandas as pd
+from pandas.api.types import is_categorical_dtype, is_numeric_dtype, is_string_dtype
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
-from pandas.api.types import is_numeric_dtype, is_string_dtype, is_categorical_dtype
 
 
 def is_k_anonymized(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
@@ -15,9 +16,9 @@ def is_k_anonymized(df: pd.DataFrame, k: int = 3, id_cols: List[str] = None):
 
     for index, row in df.iterrows():
         if id_cols:
-            query = ' & '.join([f'{col} == "{row[col]}"' for col in id_cols])
+            query = " & ".join([f'{col} == "{row[col]}"' for col in id_cols])
         else:
-            query = ' & '.join([f'{col} == "{row[col]}"' for col in df.columns])
+            query = " & ".join([f'{col} == "{row[col]}"' for col in df.columns])
         rows = df.query(query)
         if rows.shape[0] < k:
             return False
@@ -64,9 +65,9 @@ def generalize_datetime_column(date_col: pd.Series, level: int = 2):
     col = pd.to_datetime(date_col)
 
     if level == 2:
-        generalized_col = col.apply(lambda x: x.strftime('m-%Y'))
+        generalized_col = col.apply(lambda x: x.strftime("m-%Y"))
         return pd.to_datetime(generalized_col)
 
     elif level == 3:
-        generalized_col = col.apply(lambda x: x.strftime('%Y'))
+        generalized_col = col.apply(lambda x: x.strftime("%Y"))
         return pd.to_datetime(generalized_col)

@@ -1,13 +1,13 @@
 import json
 import os
-from unittest import mock
-import pytest
-from train_lib.clients import PHTFhirClient
-from dotenv import load_dotenv, find_dotenv
 from io import BytesIO
+from unittest import mock
+
+import pytest
+from dotenv import find_dotenv, load_dotenv
+
+from train_lib.clients import PHTFhirClient
 from train_lib.clients.fhir import build_query_string, load_query_file
-import asyncio
-import xmltodict
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def pht_fhir_client():
         username=os.getenv("FHIR_USER"),
         password=os.getenv("FHIR_PW"),
         fhir_server_type=os.getenv("FHIR_SERVER_TYPE"),
-        disable_k_anon=True
+        disable_k_anon=True,
     )
     return client
 
@@ -28,17 +28,12 @@ def minimal_query():
     return {
         "query": {
             "resource": "Patient",
-            "parameters": [
-                {
-                    "variable": "gender",
-                    "condition": "male"
-                }
-            ]
+            "parameters": [{"variable": "gender", "condition": "male"}],
         },
         "data": {
             "output_format": "json",
             "filename": "patients.json",
-        }
+        },
     }
 
 
@@ -48,32 +43,30 @@ def advanced_query():
         "query": {
             "resource": "Patient",
             "parameters": [
-                {
-                    "variable": "gender",
-                    "condition": ["male", "female"]
-                },
-                {
-                    "variable": "birthdate",
-                    "condition": "gt1980-08-12"
-                }
+                {"variable": "gender", "condition": ["male", "female"]},
+                {"variable": "birthdate", "condition": "gt1980-08-12"},
             ],
             "has": [
                 {
                     "resource": "Observation",
                     "property": "code",
-                    "params": ["I63.0", "I63.1", "I63.2", "I63.3", "I63.4", "I63.5", "I63.6", "I63.7", "I63.8", "I63.9"]
+                    "params": [
+                        "I63.0",
+                        "I63.1",
+                        "I63.2",
+                        "I63.3",
+                        "I63.4",
+                        "I63.5",
+                        "I63.6",
+                        "I63.7",
+                        "I63.8",
+                        "I63.9",
+                    ],
                 },
-                {
-                    "resource": "Condition",
-                    "property": "code",
-                    "params": "D70.0"
-                }
-            ]
+                {"resource": "Condition", "property": "code", "params": "D70.0"},
+            ],
         },
-        "data": {
-            "output_format": "json",
-            "filename": "patients.json"
-        }
+        "data": {"output_format": "json", "filename": "patients.json"},
     }
 
 
@@ -85,90 +78,99 @@ def test_client_from_env():
     client_secret = "test_client_secret"
     oidc_url = "test_oidc_url"
 
-    with mock.patch.dict(os.environ,
-                         {"FHIR_SERVER_URL": "test_address",
-                          "FHIR_USER": user,
-                          "FHIR_PW": password,
-                          "FHIR_TOKEN": ""}
-                         ):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": user,
+            "FHIR_PW": password,
+            "FHIR_TOKEN": "",
+        },
+    ):
         client = PHTFhirClient.from_env()
 
         assert client.username == user
         assert client.password == password
 
-    with mock.patch.dict(os.environ,
-                         {
-                             "FHIR_SERVER_URL": "test_address",
-                             "FHIR_USER": user,
-                             "FHIR_PW": "",
-                             "FHIR_TOKEN": ""
-
-                         }):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": user,
+            "FHIR_PW": "",
+            "FHIR_TOKEN": "",
+        },
+    ):
         with pytest.raises(EnvironmentError):
             client = PHTFhirClient.from_env()
 
-    with mock.patch.dict(os.environ,
-                         {
-                             "FHIR_SERVER_URL": "test_address",
-                             "FHIR_USER": "",
-                             "FHIR_PW": "",
-                             "FHIR_TOKEN": token
-
-                         }):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": "",
+            "FHIR_PW": "",
+            "FHIR_TOKEN": token,
+        },
+    ):
         client = PHTFhirClient.from_env()
         assert client.token == token
 
-    with mock.patch.dict(os.environ,
-                         {
-                             "FHIR_SERVER_URL": "test_address",
-                             "FHIR_USER": user,
-                             "FHIR_PW": "",
-                             "FHIR_TOKEN": token
-
-                         }):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": user,
+            "FHIR_PW": "",
+            "FHIR_TOKEN": token,
+        },
+    ):
         with pytest.raises(EnvironmentError):
             client = PHTFhirClient.from_env()
 
-    with mock.patch.dict(os.environ,
-                         {
-                             "FHIR_SERVER_URL": "test_address",
-                             "FHIR_USER": "",
-                             "FHIR_PW": "",
-                             "FHIR_TOKEN": "",
-                             "CLIENT_ID": client_id,
-                             "CLIENT_SECRET": client_secret,
-                             "OIDC_PROVIDER_URL": oidc_url
-
-                         }):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": "",
+            "FHIR_PW": "",
+            "FHIR_TOKEN": "",
+            "CLIENT_ID": client_id,
+            "CLIENT_SECRET": client_secret,
+            "OIDC_PROVIDER_URL": oidc_url,
+        },
+    ):
         client = PHTFhirClient.from_env()
 
         assert client.client_id == client_id
 
-    with mock.patch.dict(os.environ,
-                         {
-                             "FHIR_SERVER_URL": "test_address",
-                             "FHIR_USER": "",
-                             "FHIR_PW": "",
-                             "FHIR_TOKEN": "",
-                             "CLIENT_ID": client_id,
-                             "CLIENT_SECRET": "",
-                             "OIDC_PROVIDER_URL": oidc_url
-
-                         }):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": "",
+            "FHIR_PW": "",
+            "FHIR_TOKEN": "",
+            "CLIENT_ID": client_id,
+            "CLIENT_SECRET": "",
+            "OIDC_PROVIDER_URL": oidc_url,
+        },
+    ):
         with pytest.raises(EnvironmentError):
             client = PHTFhirClient.from_env()
 
-    with mock.patch.dict(os.environ,
-                         {
-                             "FHIR_SERVER_URL": "test_address",
-                             "FHIR_USER": "hello",
-                             "FHIR_PW": "",
-                             "FHIR_TOKEN": "",
-                             "CLIENT_ID": client_id,
-                             "CLIENT_SECRET": client_secret,
-                             "OIDC_PROVIDER_URL": oidc_url
-
-                         }):
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FHIR_SERVER_URL": "test_address",
+            "FHIR_USER": "hello",
+            "FHIR_PW": "",
+            "FHIR_TOKEN": "",
+            "CLIENT_ID": client_id,
+            "CLIENT_SECRET": client_secret,
+            "OIDC_PROVIDER_URL": oidc_url,
+        },
+    ):
         with pytest.raises(EnvironmentError):
             client = PHTFhirClient.from_env()
 
@@ -178,50 +180,37 @@ def test_query_marius(pht_fhir_client: PHTFhirClient):
         "query": {
             "resource": "Patient",
             "parameters": [
-                {
-                    "variable": "gender",
-                    "condition": "male"
-                },
-                {
-                    "variable": "birthdate",
-                    "condition": "sa1980-08-12"
-                }
+                {"variable": "gender", "condition": "male"},
+                {"variable": "birthdate", "condition": "sa1980-08-12"},
             ],
             "has": [
                 {
                     "resource": "Condition",
                     "property": "code",
-                    "params": ["E70.0", "E70.1", "E84.0", "E84.1", "E84.8", "E84.80", "E84.87", "E84.88", "E84.9"]
+                    "params": [
+                        "E70.0",
+                        "E70.1",
+                        "E84.0",
+                        "E84.1",
+                        "E84.8",
+                        "E84.80",
+                        "E84.87",
+                        "E84.88",
+                        "E84.9",
+                    ],
                 }
-            ]
+            ],
         },
-        "data": {
-            "output_format": "xml",
-            "filename": "patients.xml"
-        }
+        "data": {"output_format": "xml", "filename": "patients.xml"},
     }
 
     query2 = {
         "query": {
             "resource": "Patient",
-            "parameters": [
-                {
-                    "variable": "birthdate",
-                    "condition": "gt1960-08-12"
-                }
-            ],
-            "has": [
-                {
-                    "resource": "Condition",
-                    "property": "code",
-                    "params": ["E70.0"]
-                }
-            ]
+            "parameters": [{"variable": "birthdate", "condition": "gt1960-08-12"}],
+            "has": [{"resource": "Condition", "property": "code", "params": ["E70.0"]}],
         },
-        "data": {
-            "output_format": "xml",
-            "filename": "patients.xml"
-        }
+        "data": {"output_format": "xml", "filename": "patients.xml"},
     }
     query_string = build_query_string(query["query"])
     print(query_string)
@@ -273,7 +262,9 @@ def test_load_query_file(minimal_query, tmp_path):
         loaded_query = load_query_file(1234567)
 
 
-def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advanced_query):
+def test_build_query_string(
+    pht_fhir_client: PHTFhirClient, minimal_query, advanced_query
+):
     string_query = "Patient?gender=male"
 
     query_string = build_query_string(minimal_query["query"])
@@ -282,14 +273,8 @@ def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advan
         "query": {
             "resource": "Patient",
             "parameters": [
-                {
-                    "variable": "gender",
-                    "condition": "male"
-                },
-                {
-                    "variable": "birthdate",
-                    "condition": "sa1980-08-12"
-                }
+                {"variable": "gender", "condition": "male"},
+                {"variable": "birthdate", "condition": "sa1980-08-12"},
             ],
             "has": [
                 {
@@ -305,8 +290,8 @@ def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advan
                         "I63.6",
                         "I63.7",
                         "I63.8",
-                        "I63.9"
-                    ]
+                        "I63.9",
+                    ],
                 },
                 {
                     "resource": "Condition",
@@ -324,22 +309,22 @@ def test_build_query_string(pht_fhir_client: PHTFhirClient, minimal_query, advan
                         "D70.3",
                         "D70.5",
                         "D70.6",
-                        "D70.7"
-                    ]
-                }
-            ]
+                        "D70.7",
+                    ],
+                },
+            ],
         },
-        "data": {
-            "output_format": "json",
-            "filename": "patients.json"
-        }
+        "data": {"output_format": "json", "filename": "patients.json"},
     }
 
     print(build_query_string(query_dict["query"]))
 
     assert string_query == query_string
 
-    advanced_query_string = "Patient?gender=male,female&birthdate=gt1980-08-12&_has:Observation:patient:code=I63.0,I63.1,I63.2,I63.3,I63.4,I63.5,I63.6,I63.7,I63.8,I63.9&_has:Condition:patient:code=D70.0"
+    advanced_query_string = (
+        "Patient?gender=male,female&birthdate=gt1980-08-12&_has:Observation:patient:code=I63.0,"
+        "I63.1,I63.2,I63.3,I63.4,I63.5,I63.6,I63.7,I63.8,I63.9&_has:Condition:patient:code=D70.0"
+    )
 
     query_string = build_query_string(advanced_query["query"])
 
@@ -354,13 +339,8 @@ def test_query_with_client(pht_fhir_client: PHTFhirClient, minimal_query):
 
 def test_query_xml(pht_fhir_client: PHTFhirClient):
     xml_query = {
-        "query": {
-            "resource": "Patient"
-        },
-        "data": {
-            "output_format": "xml",
-            "filename": "conditions.xml"
-        }
+        "query": {"resource": "Patient"},
+        "data": {"output_format": "xml", "filename": "conditions.xml"},
     }
     query_result = pht_fhir_client.execute_query(query=xml_query)
     assert query_result
@@ -377,13 +357,11 @@ def test_query_xml(pht_fhir_client: PHTFhirClient):
 
 def test_query_json(pht_fhir_client: PHTFhirClient):
     json_query = {
-        "query": {
-            "resource": "Patient"
-        },
+        "query": {"resource": "Patient"},
         "data": {
             "output_format": "json",
             "filename": "patients.json",
-        }
+        },
     }
     query_result = pht_fhir_client.execute_query(query=json_query)
     assert len(query_result["entry"]) >= 1

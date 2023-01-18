@@ -15,10 +15,36 @@ pip install pht-train-container-library
 ```
 
 
-### Development installataion
+## Setup development environment
+Make sure you have [poetry](https://python-poetry.org/docs/#installation) and [pre-commit](https://pre-commit.com/#install) installed.
+
+Install the dependencies and pre-commit hooks:
+```shell
+poetry install --with dev
+```
 
 ```shell
-pipenv install --dev
+poetry run pre-commit install
+```
+
+### Run tests
+
+```shell
+poetry run pytest
+```
+
+### Linting and formatting
+
+These commands are also run as pre-commit hooks.
+
+Linting with ruff:
+```shell
+poetry run ruff . --fix
+```
+
+Formatting with black:
+```shell
+poetry run black .
 ```
 
 ## Security Protocol

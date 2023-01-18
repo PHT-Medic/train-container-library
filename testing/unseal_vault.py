@@ -1,7 +1,7 @@
 import os
 
 import hvac
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 
 def unseal_vault(vault_url=None):
@@ -16,6 +16,7 @@ def unseal_vault(vault_url=None):
             response = client.sys.submit_unseal_key(key=unseal_key)
             print(response)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     load_dotenv(find_dotenv())
     unseal_vault()

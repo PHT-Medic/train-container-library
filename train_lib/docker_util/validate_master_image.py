@@ -28,16 +28,24 @@ def _compare_image_file_system(master_image_name: str, train_image_name: str):
     :return:
     """
 
-    container_diff_args = ["container-diff", "diff", f"daemon://{master_image_name}",
-                           f"daemon://{train_image_name}", "--type=file"]
+    container_diff_args = [
+        "container-diff",
+        "diff",
+        f"daemon://{master_image_name}",
+        f"daemon://{train_image_name}",
+        "--type=file",
+    ]
     output = subprocess.run(container_diff_args, capture_output=True)
     file_system_diff = output.stdout.decode().splitlines()
     valid, msg = _validate_file_system_changes(file_system_diff)
     if valid:
         return 0, "No file system anomalies detected"
     else:
-        return 1, "Invalid file system changes detected, files can only be added into " \
-                  f"/opt/pht_train, but found {msg}"
+        return (
+            1,
+            "Invalid file system changes detected, files can only be added into "
+            f"/opt/pht_train, but found {msg}",
+        )
 
 
 def _validate_file_system_changes(file_system_diff: List[str]) -> Tuple[bool, str]:
@@ -63,11 +71,11 @@ def _validate_file_system_changes(file_system_diff: List[str]) -> Tuple[bool, st
         elif "These entries have been changed" in content:
             changed_ind = ind
     # Find the files added to the image file system and make sure they are located exclusively under /opt/pht_train
-    if len(file_system_diff[add_ind: deleted_ind]) > 2:
+    if len(file_system_diff[add_ind:deleted_ind]) > 2:
         print("Added files detected.")
         valid = True
         invalid_files = []
-        for file in file_system_diff[add_ind + 2: deleted_ind]:
+        for file in file_system_diff[add_ind + 2 : deleted_ind]:
             valid_file, file = _validate_added_file(file)
             if not valid_file:
                 valid = False
@@ -77,9 +85,9 @@ def _validate_file_system_changes(file_system_diff: List[str]) -> Tuple[bool, st
             return False, f"Incorrectly added files:\n{invalid_file_string} "
     # If the length of the deleted files section is greater than two, files have been deleted from the master image
     # -> image invalid
-    if len(file_system_diff[deleted_ind: changed_ind]) > 2:
+    if len(file_system_diff[deleted_ind:changed_ind]) > 2:
         print("Deleted Files detected")
-        print(file_system_diff[deleted_ind: changed_ind])
+        print(file_system_diff[deleted_ind:changed_ind])
         valid = False
         return valid, "Files deleted from master image"
     # If the length of the deleted files section is greater than two, files have been changed from the master image

@@ -1,24 +1,35 @@
-from typing import Union, List
-from io import BytesIO
-import os
+import collections
 import json
+import os
+from io import BytesIO
+from typing import List, Union
+
 import pandas as pd
-from requests.auth import HTTPBasicAuth
 import requests
-from loguru import logger
 import xmltodict
+from loguru import logger
+from oauthlib.oauth2 import BackendApplicationClient
+from requests.auth import HTTPBasicAuth
+from requests_oauthlib import OAuth2Session
 
 from .fhir_query_builder import build_query_string
-from requests_oauthlib import OAuth2Session
-from oauthlib.oauth2 import BackendApplicationClient
-import collections
 
 
 class PHTFhirClient:
-    def __init__(self, server_url: str = None, username: str = None, password: str = None, token: str = None,
-                 client_id: str = None, client_secret: str = None, oidc_provider_url: str = None,
-                 fhir_server_type: str = None, disable_auth: bool = False, k_anon: int = 5,
-                 disable_k_anon: bool = False):
+    def __init__(
+        self,
+        server_url: str = None,
+        username: str = None,
+        password: str = None,
+        token: str = None,
+        client_id: str = None,
+        client_secret: str = None,
+        oidc_provider_url: str = None,
+        fhir_server_type: str = None,
+        disable_auth: bool = False,
+        k_anon: int = 5,
+        disable_k_anon: bool = False,
+    ):
         """
         Fhir client for executing predefined queries contained in PHT trains. Supports IBM, Blaze, and HAPI FHIR servers
 
@@ -41,7 +52,9 @@ class PHTFhirClient:
         self.client_secret = client_secret
         self.oidc_provider_url = oidc_provider_url
 
-        self.fhir_server_type = fhir_server_type if fhir_server_type else os.getenv("FHIR_SERVER_TYPE")
+        self.fhir_server_type = (
+            fhir_server_type if fhir_server_type else os.getenv("FHIR_SERVER_TYPE")
+        )
         self.output_format = None
         self.disable_auth = disable_auth
         self.disable_k_anon = disable_k_anon
@@ -51,16 +64,22 @@ class PHTFhirClient:
         if (self.username and self.password) and self.token:
             raise ValueError("Only one of username:pw or token auth can be selected")
         if not ((self.username and self.password) or self.token) and disable_auth:
-            raise ValueError("Insufficient login information, either token or username and password need to be set.")
+            raise ValueError(
+                "Insufficient login information, either token or username and password need to be set."
+            )
         if not self.server_url:
             raise ValueError("No FHIR server address given.")
 
     @classmethod
     def from_dict(cls, fhir_config: dict):
         # attempt to find the API address from the different options for environtment variables
-        api_url = fhir_config.get("FHIR_SERVER_URL", os.getenv("FHIR_ADDRESS", os.getenv("FHIR_API_URL")))
+        api_url = fhir_config.get(
+            "FHIR_SERVER_URL", os.getenv("FHIR_ADDRESS", os.getenv("FHIR_API_URL"))
+        )
         if not api_url:
-            raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
+            raise EnvironmentError(
+                "No FHIR Address could be found in the clients environment variables."
+            )
 
         server_type = fhir_config.get("FHIR_SERVER_TYPE", "blaze")
 
@@ -69,13 +88,22 @@ class PHTFhirClient:
         if username:
             password = fhir_config.get("FHIR_PW")
             if not password:
-                raise EnvironmentError("Username given but no password found in environment variables.")
+                raise EnvironmentError(
+                    "Username given but no password found in environment variables."
+                )
 
-            return cls(server_url=api_url, username=username, password=password, fhir_server_type=server_type)
+            return cls(
+                server_url=api_url,
+                username=username,
+                password=password,
+                fhir_server_type=server_type,
+            )
 
         token = fhir_config.get("FHIR_TOKEN")
         if username and token:
-            raise EnvironmentError("Conflicting auth information: both username and token are set.")
+            raise EnvironmentError(
+                "Conflicting auth information: both username and token are set."
+            )
 
         if token:
             return cls(server_url=api_url, token=token, fhir_server_type=server_type)
@@ -85,19 +113,32 @@ class PHTFhirClient:
         oidc_provider = fhir_config.get("OIDC_PROVIDER_URL")
 
         if username and client_id:
-            raise EnvironmentError("Conflicting auth information: both username and client id are set.")
+            raise EnvironmentError(
+                "Conflicting auth information: both username and client id are set."
+            )
 
         if token and client_id:
-            raise EnvironmentError("Conflicting auth information: both token and client id are set.")
+            raise EnvironmentError(
+                "Conflicting auth information: both token and client id are set."
+            )
 
         if client_id:
             if not client_secret:
-                raise EnvironmentError("No client secret set for oauth2 authentication flow.")
+                raise EnvironmentError(
+                    "No client secret set for oauth2 authentication flow."
+                )
             if not oidc_provider:
-                raise EnvironmentError("No provider URL given for oauth2 authentication flow.")
+                raise EnvironmentError(
+                    "No provider URL given for oauth2 authentication flow."
+                )
 
-            return cls(server_url=api_url, client_id=client_id, client_secret=client_secret,
-                       oidc_provider_url=oidc_provider, fhir_server_type=server_type)
+            return cls(
+                server_url=api_url,
+                client_id=client_id,
+                client_secret=client_secret,
+                oidc_provider_url=oidc_provider,
+                fhir_server_type=server_type,
+            )
 
         logger.info("No authentication info given, attempting access without it.")
         return cls(server_url=api_url, fhir_server_type=server_type, disable_auth=True)
@@ -111,9 +152,13 @@ class PHTFhirClient:
         """
 
         # attempt to find the API address from the different options for environtment variables
-        api_url = os.getenv("FHIR_SERVER_URL", os.getenv("FHIR_ADDRESS", os.getenv("FHIR_API_URL")))
+        api_url = os.getenv(
+            "FHIR_SERVER_URL", os.getenv("FHIR_ADDRESS", os.getenv("FHIR_API_URL"))
+        )
         if not api_url:
-            raise EnvironmentError("No FHIR Address could be found in the clients environment variables.")
+            raise EnvironmentError(
+                "No FHIR Address could be found in the clients environment variables."
+            )
 
         server_type = os.getenv("FHIR_SERVER_TYPE", "blaze")
 
@@ -122,13 +167,22 @@ class PHTFhirClient:
         if username:
             password = os.getenv("FHIR_PW")
             if not password:
-                raise EnvironmentError("Username given but no password found in environment variables.")
+                raise EnvironmentError(
+                    "Username given but no password found in environment variables."
+                )
 
-            return cls(server_url=api_url, username=username, password=password, fhir_server_type=server_type)
+            return cls(
+                server_url=api_url,
+                username=username,
+                password=password,
+                fhir_server_type=server_type,
+            )
 
         token = os.getenv("FHIR_TOKEN")
         if username and token:
-            raise EnvironmentError("Conflicting auth information: both username and token are set.")
+            raise EnvironmentError(
+                "Conflicting auth information: both username and token are set."
+            )
 
         if token:
             return cls(server_url=api_url, token=token, fhir_server_type=server_type)
@@ -138,25 +192,42 @@ class PHTFhirClient:
         oidc_provider = os.getenv("OIDC_PROVIDER_URL")
 
         if username and client_id:
-            raise EnvironmentError("Conflicting auth information: both username and client id are set.")
+            raise EnvironmentError(
+                "Conflicting auth information: both username and client id are set."
+            )
 
         if token and client_id:
-            raise EnvironmentError("Conflicting auth information: both token and client id are set.")
+            raise EnvironmentError(
+                "Conflicting auth information: both token and client id are set."
+            )
 
         if client_id:
             if not client_secret:
-                raise EnvironmentError("No client secret set for oauth2 authentication flow.")
+                raise EnvironmentError(
+                    "No client secret set for oauth2 authentication flow."
+                )
             if not oidc_provider:
-                raise EnvironmentError("No provider URL given for oauth2 authentication flow.")
+                raise EnvironmentError(
+                    "No provider URL given for oauth2 authentication flow."
+                )
 
-            return cls(server_url=api_url, client_id=client_id, client_secret=client_secret,
-                       oidc_provider_url=oidc_provider, fhir_server_type=server_type)
+            return cls(
+                server_url=api_url,
+                client_id=client_id,
+                client_secret=client_secret,
+                oidc_provider_url=oidc_provider,
+                fhir_server_type=server_type,
+            )
 
         logger.info("No authentication info given, attempting access without it.")
         return cls(server_url=api_url, fhir_server_type=server_type, disable_auth=True)
 
-    def execute_query(self, query_file: Union[str, os.PathLike, BytesIO] = None,
-                      query: dict = None, store_results: bool = False) -> pd.DataFrame:
+    def execute_query(
+        self,
+        query_file: Union[str, os.PathLike, BytesIO] = None,
+        query: dict = None,
+        store_results: bool = False,
+    ) -> pd.DataFrame:
         """
         Asynchronously build the query string and execute it against the given fhir server either based on a query.json
         file or based on a dictionary containing the query file content.
@@ -183,8 +254,9 @@ class PHTFhirClient:
         if self.output_format == "xml":
             query_results = self._get_query_results_from_api_xml(url, auth)
         else:
-            query_results = self._get_query_results_from_api_json(url=url, auth=auth,
-                                                                  selected_variables=selected_variables)
+            query_results = self._get_query_results_from_api_json(
+                url=url, auth=auth, selected_variables=selected_variables
+            )
 
         filename = query_file_content["data"]["filename"]
 
@@ -193,7 +265,9 @@ class PHTFhirClient:
 
         return query_results
 
-    def store_query_results(self, query_results, filename: str, storage_dir: str = None) -> str:
+    def store_query_results(
+        self, query_results, filename: str, storage_dir: str = None
+    ) -> str:
         """
         Store the results from the query according to the output format specified in the query file
 
@@ -205,7 +279,9 @@ class PHTFhirClient:
 
         storage_dir = storage_dir if storage_dir else os.getenv("TRAIN_DATA_DIR")
         if not storage_dir:
-            logger.warning("No storage directory specified, saving results to current working directory.")
+            logger.warning(
+                "No storage directory specified, saving results to current working directory."
+            )
             results_path = filename
         else:
             results_path = os.path.join(storage_dir, filename)
@@ -225,8 +301,13 @@ class PHTFhirClient:
         logger.info("Stored query results in {}", results_path)
         return results_path
 
-    def _get_query_results_from_api_json(self, url: str, auth: requests.auth.AuthBase = None,
-                                         selected_variables: List[str] = None, k_anonymity: int = 5):
+    def _get_query_results_from_api_json(
+        self,
+        url: str,
+        auth: requests.auth.AuthBase = None,
+        selected_variables: List[str] = None,
+        k_anonymity: int = 5,
+    ):
         """
         Blocking version of the querying a fhir server with the given search url. Processes all next relations in the
         response to get the full response in a single file.
@@ -247,7 +328,9 @@ class PHTFhirClient:
         print(response)
         if response.get("entry"):
             if (len(response["entry"]) < self.k_anon) and not self.disable_k_anon:
-                raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+                raise ValueError(
+                    "Too few results match the query. Response blocked by k-anonymity policy."
+                )
         else:
             raise ValueError("No results match the query.")
         link = response.get("link", None)
@@ -260,7 +343,14 @@ class PHTFhirClient:
 
             while response.get("link", None):
 
-                next_page = next((link for link in response["link"] if link.get("relation", None) == "next"), None)
+                next_page = next(
+                    (
+                        link
+                        for link in response["link"]
+                        if link.get("relation", None) == "next"
+                    ),
+                    None,
+                )
                 if next_page:
                     response = requests.get(next_page["url"], auth=auth).json()
                     entries.extend(response["entry"])
@@ -270,7 +360,9 @@ class PHTFhirClient:
             initial_response["entry"] = entries
             return initial_response
 
-    def _get_query_results_from_api_xml(self, url: str, auth: requests.auth.AuthBase = None) -> str:
+    def _get_query_results_from_api_xml(
+        self, url: str, auth: requests.auth.AuthBase = None
+    ) -> str:
         server_response = requests.get(url, auth=auth)
         initial_response = xmltodict.parse(server_response.text)
         entries = initial_response["Bundle"]["entry"]
@@ -307,7 +399,9 @@ class PHTFhirClient:
         initial_response["Bundle"]["entry"] = entries
 
         if (len(entries) < self.k_anon) and not self.disable_k_anon:
-            raise ValueError("Too few results match the query. Response blocked by k-anonymity policy.")
+            raise ValueError(
+                "Too few results match the query. Response blocked by k-anonymity policy."
+            )
         full_response_xml = xmltodict.unparse(initial_response, pretty=True)
         return full_response_xml
 
@@ -319,8 +413,9 @@ class PHTFhirClient:
         r = requests.get(api_url, auth=auth)
         r.raise_for_status()
 
-    def _process_fhir_response(self, response: dict, selected_variables: List[str] = None) -> \
-            Union[pd.DataFrame, List[dict], None]:
+    def _process_fhir_response(
+        self, response: dict, selected_variables: List[str] = None
+    ) -> Union[pd.DataFrame, List[dict], None]:
         """
         Parses the fhir response into a dataframe. If selected variables are given only these are parsed from the
         response and returned
@@ -422,7 +517,7 @@ class PHTFhirClient:
             token = oauth.fetch_token(
                 token_url=self.oidc_provider_url,
                 client_secret=self.client_secret,
-                client_id=self.client_id
+                client_id=self.client_id,
             )
             self.token = token["access_token"]
             return BearerAuth(token=self.token)

@@ -1,8 +1,8 @@
-import pandas as pd
-import os
-import json
 import datetime
+import json
+import os
 
+import pandas as pd
 
 RESULTS_PATH = "/opt/pht_results/average_age.json"
 
@@ -35,7 +35,9 @@ def calculate_new_average(average_age_dict, data_path, results_path):
     # previous results exist load them otherwise create a new dictionary containing the results
     if average_age_dict:
         prev_average = average_age_dict["average_age"]
-        new_average = (prev_average + local_average) / 2 if prev_average else local_average
+        new_average = (
+            (prev_average + local_average) / 2 if prev_average else local_average
+        )
         average_age_dict["average_age"] = new_average
     else:
         new_average = local_average
@@ -55,5 +57,5 @@ def main():
     calculate_new_average(prev_results, data_path, RESULTS_PATH)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

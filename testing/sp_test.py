@@ -1,17 +1,16 @@
-import pprint
-
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding, utils, rsa
-
-from train_lib.security.protocol import SecurityProtocol
-from train_lib.docker_util.docker_ops import *
 import json
+import pprint
+import time
 from tarfile import TarInfo
 from timeit import default_timer as timer
-import time
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, utils
 from dotenv import find_dotenv, load_dotenv
-from train_lib.security.hashing import hash_immutable_files
+
+from train_lib.docker_util.docker_ops import *
+from train_lib.security.protocol import SecurityProtocol
 
 IMG = "staging-harbor.tada5hi.net/b0f0imz4srdr7bnl0z8en/b092b95e-7d81-403a-b504-3965d6877908"
 
@@ -21,8 +20,6 @@ def main():
     train_config = extract_train_config(IMG)
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     pprint.pp(train_config)
-
-
 
     query = extract_query_json(IMG)
     print(json.loads(query))
@@ -64,13 +61,16 @@ def update_config_with_correct_signature():
     train_config = extract_train_config(IMG)
     train_hash = bytes.fromhex(train_config["e_h"])
     with open("../test/keys/user_private_key.pem", "rb") as pk:
-        private_key = serialization.load_pem_private_key(pk.read(), password=None,
-                                                         backend=default_backend())
-        sig = private_key.sign(train_hash,
-                               padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                           salt_length=padding.PSS.MAX_LENGTH),
-                               utils.Prehashed(hashes.SHA512())
-                               )
+        private_key = serialization.load_pem_private_key(
+            pk.read(), password=None, backend=default_backend()
+        )
+        sig = private_key.sign(
+            train_hash,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
+            ),
+            utils.Prehashed(hashes.SHA512()),
+        )
         train_config["e_h_sig"] = sig.hex()
 
     # Create archive containing the updated configuration file
@@ -90,7 +90,7 @@ def update_config_with_correct_signature():
     add_archive(IMG, archive_obj, path="/opt")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # update_config_with_correct_signature()
     main()
 

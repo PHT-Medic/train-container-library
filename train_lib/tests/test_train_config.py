@@ -1,5 +1,7 @@
-import pytest
 import os
+
+import pytest
+
 from train_lib.security.train_config import TrainConfig
 
 
@@ -30,7 +32,7 @@ def config_dict():
                 "rsa_public_key": os.urandom(32).hex(),
                 "eco_system": "tue",
                 "index": 1,
-            }
+            },
         ],
         "file_list": ["test_train/entrypoint.py", "test_train/requirements.txt"],
         "hash": os.urandom(16).hex(),

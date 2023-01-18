@@ -1,6 +1,6 @@
-import os
-from typing import Union, List
 import json
+import os
+from typing import List, Union
 
 
 def build_query_string(query_dict: dict) -> str:
@@ -22,7 +22,9 @@ def build_query_string(query_dict: dict) -> str:
     if query_dict.get("has", None):
         if query_dict.get("parameters", None):
             query_string += "&"
-        query_string += process_reverse_chain_params(query_dict["resource"], query_dict["has"])
+        query_string += process_reverse_chain_params(
+            query_dict["resource"], query_dict["has"]
+        )
 
     return query_string
 
@@ -36,7 +38,9 @@ def process_main_resource_parameters(resource_params: List[dict]) -> str:
     param_search_string = ""
     for i, parameter in enumerate(resource_params):
         if isinstance(parameter["condition"], list):
-            param_search_string += f"{parameter['variable']}={','.join(parameter['condition'])}"
+            param_search_string += (
+                f"{parameter['variable']}={','.join(parameter['condition'])}"
+            )
         else:
             param_search_string += f"{parameter['variable']}={parameter['condition']}"
         # dont add an additional & at the end

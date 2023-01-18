@@ -1,9 +1,6 @@
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
-from cryptography.hazmat.primitives import serialization, hashes
-from train_lib.security.protocol import SecurityProtocol
-import os
-from train_lib.security.hashing import hash_immutable_files
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
 
 
 def generate_user_key_pair():
@@ -11,14 +8,14 @@ def generate_user_key_pair():
     pem = user_private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
+        encryption_algorithm=serialization.NoEncryption(),
     )
     with open("user_private_key.pem", "wb") as f:
         f.write(pem)
     user_public_key = user_private_key.public_key()
     public_pem = user_public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
     with open("user_public_key.pem", "wb") as f:
@@ -28,14 +25,15 @@ def generate_user_key_pair():
 def sign(rsa_private_key: rsa.RSAPrivateKey, digest: bytes):
     sig = rsa_private_key.sign(
         digest,
-        padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                    salt_length=padding.PSS.MAX_LENGTH),
-        utils.Prehashed(hashes.SHA512())
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
+        ),
+        utils.Prehashed(hashes.SHA512()),
     )
     return sig.hex()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # generate_user_key_pair()
     # with open("../../airflow-rest-api/Stations Keys/S_1_sk.pem", "rb") as pk:
     #     private_key = serialization.load_pem_private_key(pk.read(), password=None,
@@ -50,16 +48,19 @@ if __name__ == '__main__':
     # # hash = hash_immutable_files(files, "1", session_id)
 
     train_hash = bytes.fromhex(
-        "e7b426319f61806f82c96cf7dc897bccdb91cd7f6b96995713325ab05349c5ae00dd0c361292935d42625f71b9393eec298b9195fbe372697ae6a7464f69615c")
+        "e7b426319f61806f82c96cf7dc897bccdb91cd7f6b96995713325ab05349c5ae00dd0c361292935d42625f71b9393eec298b9195fbe372697ae6a7464f69615c"
+    )
     print("Hash: ", train_hash.hex())
     with open("./user_private_key.pem", "rb") as pk:
-        private_key = serialization.load_pem_private_key(pk.read(), password=None, backend=default_backend())
+        private_key = serialization.load_pem_private_key(
+            pk.read(), password=None, backend=default_backend()
+        )
         sig = private_key.sign(
             train_hash,
             padding.PSS(
-                mgf=padding.MGF1(hashes.SHA512()),
-                salt_length=padding.PSS.MAX_LENGTH),
-            utils.Prehashed(hashes.SHA512())
+                mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
+            ),
+            utils.Prehashed(hashes.SHA512()),
         )
         print("Signature: ", sig.hex())
     # with open("./demo_key.pem", "rb") as pk:
@@ -74,19 +75,30 @@ if __name__ == '__main__':
     #     print("Demo Signature: ", sig.hex())
     with open("./user_public_key.pem", "rb") as pk:
         pk_pem = pk.read().hex()
-        public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(bytes.fromhex(pk_pem),
-                                                                         backend=default_backend())
+        public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(
+            bytes.fromhex(pk_pem), backend=default_backend()
+        )
         print("Public Key:", pk_pem)
 
     public_key.verify(
         sig,
         train_hash,
-                      padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH),
-                      utils.Prehashed(hashes.SHA512()))
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
+        ),
+        utils.Prehashed(hashes.SHA512()),
+    )
 
     with open("./S_2_sk.pem", "rb") as station_sk:
-        private_key = serialization.load_pem_private_key(station_sk.read(), password=None,
-                                                         backend=default_backend())
+        private_key = serialization.load_pem_private_key(
+            station_sk.read(), password=None, backend=default_backend()
+        )
 
-        print(private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.PKCS1).hex())
+        print(
+            private_key.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.PKCS1,
+            )
+            .hex()
+        )

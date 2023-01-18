@@ -1,22 +1,31 @@
-import json
+import os
 import tarfile
 import time
-from tarfile import TarInfo
-import docker
 from enum import Enum
 from io import BytesIO
+from tarfile import TarInfo
+from typing import BinaryIO, List
 
-from loguru import logger
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, utils
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.asymmetric import utils, padding
+from loguru import logger
 
-from train_lib.security.train_config import RouteEntry, TrainConfig
-from train_lib.security.key_manager import KeyManager
+import docker
+
+# from train_lib.docker_util.docker_ops import *
+from train_lib.docker_util.docker_ops import (
+    extract_archive,
+    extract_query_json,
+    files_from_archive,
+    result_files_from_archive,
+)
 from train_lib.security.encryption import FileEncryptor
 from train_lib.security.errors import ValidationError
-from train_lib.security.hashing import *
-# from train_lib.docker_util.docker_ops import *
-from train_lib.docker_util.docker_ops import files_from_archive, result_files_from_archive, extract_archive, extract_query_json
+from train_lib.security.hashing import hash_immutable_files, hash_results
+from train_lib.security.key_manager import KeyManager
+from train_lib.security.train_config import RouteEntry, TrainConfig
 
 
 class TrainPaths(Enum):
@@ -39,12 +48,21 @@ class SecurityProtocol:
     :param train_dir: path to the directory containing the immutable files defining a train
     """
 
-    def __init__(self, station_id: str, config: TrainConfig, results_dir: str = None, train_dir: str = None,
-                 docker_client=None):
+    def __init__(
+        self,
+        station_id: str,
+        config: TrainConfig,
+        results_dir: str = None,
+        train_dir: str = None,
+        docker_client=None,
+    ):
         self.station_id = station_id
 
         self.config = config
-        self.route_stop = next((stop for stop in self.config.route if stop.station == self.station_id), None)
+        self.route_stop = next(
+            (stop for stop in self.config.route if stop.station == self.station_id),
+            None,
+        )
         if not self.route_stop:
             raise ValidationError(f"Station {self.station_id} not found in route")
         self.key_manager = KeyManager(train_config=config)
@@ -53,10 +71,14 @@ class SecurityProtocol:
         self.docker_client = docker_client
         # self.redis = redis.Redis(decode_responses=True)
 
-    def pre_run_protocol(self, img: str = None, private_key_path: str = None,
-                         private_key_password: str = None,
-                         immutable_dir: str = "/opt/pht_train",
-                         mutable_dir: str = "/opt/pht_results"):
+    def pre_run_protocol(
+        self,
+        img: str = None,
+        private_key_path: str = None,
+        private_key_password: str = None,
+        immutable_dir: str = "/opt/pht_train",
+        mutable_dir: str = "/opt/pht_results",
+    ):
         """
         Decrypts the files contained in the train. And performs the steps necessary to validate a train before it is
         being run
@@ -68,11 +90,15 @@ class SecurityProtocol:
         :param mutable_dir:
         :return:
         """
-        logger.info(f"Executing pre-run protocol at station {self.station_id} for image: {img}")
+        logger.info(
+            f"Executing pre-run protocol at station {self.station_id} for image: {img}"
+        )
         # Execute the protocol with directly passed files and the instances config file
         logger.info("Extracting files from image...")
         # Get the content of the immutable files from the image as ByteObjects
-        immutable_files, file_names = files_from_archive(extract_archive(img, immutable_dir))
+        immutable_files, file_names = files_from_archive(
+            extract_archive(img, immutable_dir)
+        )
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
@@ -87,19 +113,23 @@ class SecurityProtocol:
             files=immutable_files,
             immutable_file_names=file_names,
             ordered_file_list=self.config.file_list,
-            query=query
+            query=query,
         )
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
             key = self.key_manager.decrypt_symmetric_key(
                 encrypted_key=self.route_stop.encrypted_key,
                 private_key_path=private_key_path,
-                private_key_password=private_key_password
+                private_key_password=private_key_password,
             )
             file_encryptor = FileEncryptor(key)
             # Decrypt all previously encrypted files
-            mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, mutable_dir))
-            decrypted_files = file_encryptor.decrypt_files(mutable_files, binary_files=True)
+            mutable_files, mf_members, mf_dir = result_files_from_archive(
+                extract_archive(img, mutable_dir)
+            )
+            decrypted_files = file_encryptor.decrypt_files(
+                mutable_files, binary_files=True
+            )
             self.validate_previous_results(files=decrypted_files)
             archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
             logger.info("Adding decrypted files to image")
@@ -108,7 +138,12 @@ class SecurityProtocol:
 
         logger.info("Pre-run protocol success")
 
-    def post_run_protocol(self, img: str = None, private_key_path: str = None, private_key_password: str = None):
+    def post_run_protocol(
+        self,
+        img: str = None,
+        private_key_path: str = None,
+        private_key_password: str = None,
+    ):
         """
         Updates the necessary values in the train_config.json and encrypts the updated files after a successful train
         execution.
@@ -120,23 +155,35 @@ class SecurityProtocol:
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
-        logger.info(f"Executing pre-run protocol at station {self.station_id} for image: {img}")
+        logger.info(
+            f"Executing pre-run protocol at station {self.station_id} for image: {img}"
+        )
         # Get the mutable files and tar archive structure
-        mutable_files, mf_members, mf_dir = result_files_from_archive(extract_archive(img, TrainPaths.RESULT_DIR.value))
+        mutable_files, mf_members, mf_dir = result_files_from_archive(
+            extract_archive(img, TrainPaths.RESULT_DIR.value)
+        )
         # Run the post run protocol
-        encrypted_mutable_files = self._post_run_outside_container(mutable_files, private_key_path,
-                                                                   private_key_password)
-        results_archive = self._make_results_archive(mf_dir, mf_members, encrypted_mutable_files)
+        encrypted_mutable_files = self._post_run_outside_container(
+            mutable_files, private_key_path, private_key_password
+        )
+        results_archive = self._make_results_archive(
+            mf_dir, mf_members, encrypted_mutable_files
+        )
         results_archive.seek(0)
 
         self.config = TrainConfig(**self.config.dict(by_alias=True))
         # update the container with the encrypted files
-        self._update_image(img, results_archive, results_path="/opt", config_path="/opt")
+        self._update_image(
+            img, results_archive, results_path="/opt", config_path="/opt"
+        )
         logger.info(f"Successfully executed post run protocol on img: {img}")
 
-    def _post_run_outside_container(self, mutable_files: List[BytesIO],
-                                    private_key_path: str,
-                                    private_key_password: str = None) -> List[BytesIO]:
+    def _post_run_outside_container(
+        self,
+        mutable_files: List[BytesIO],
+        private_key_path: str,
+        private_key_password: str = None,
+    ) -> List[BytesIO]:
         """
         Performs the post run protocol on the mutable files contained in an image. Consisting of encrypting the
         mutable files and updateing the train_config.json. The extracted mutable files are encrypted and the
@@ -149,18 +196,25 @@ class SecurityProtocol:
         """
         logger.info(f"prev results hash {self.config.result_hash}")
         # Update the hash value of the mutable files
-        e_d = hash_results(result_files=mutable_files,
-                           session_id=bytes.fromhex(self.config.session_id),
-                           binary_files=True)
+        e_d = hash_results(
+            result_files=mutable_files,
+            session_id=bytes.fromhex(self.config.session_id),
+            binary_files=True,
+        )
         self.config.result_hash = e_d.hex()
         logger.info(f"new results hash: {self.config.result_hash}")
 
         # Load the local private key and sign the hash of the results files
-        sk = self.key_manager.load_private_key(key_path=private_key_path, password=private_key_password)
-        e_d_sig = sk.sign(e_d,
-                          padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                      salt_length=padding.PSS.MAX_LENGTH),
-                          utils.Prehashed(hashes.SHA512()))
+        sk = self.key_manager.load_private_key(
+            key_path=private_key_path, password=private_key_password
+        )
+        e_d_sig = sk.sign(
+            e_d,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
+            ),
+            utils.Prehashed(hashes.SHA512()),
+        )
         self.config.result_signature = e_d_sig.hex()
 
         # Update the digital signature of the train
@@ -171,7 +225,9 @@ class SecurityProtocol:
         # Encrypt the files
         new_sym_key = self.key_manager.generate_symmetric_key()
         file_encryptor = FileEncryptor(new_sym_key)
-        encrypted_results = file_encryptor.encrypt_files(mutable_files, binary_files=True)
+        encrypted_results = file_encryptor.encrypt_files(
+            mutable_files, binary_files=True
+        )
 
         # Encrypt the new symmetric key with the available public keys and store them in the image
         self._update_symmetric_keys(new_sym_key)
@@ -179,7 +235,9 @@ class SecurityProtocol:
 
         return encrypted_results
 
-    def _update_image(self, img, results_archive: BytesIO, results_path: str, config_path: str = None):
+    def _update_image(
+        self, img, results_archive: BytesIO, results_path: str, config_path: str = None
+    ):
         """
         Update the base image with the encrypted results files and the updated train_config.json and tag it as
         latest
@@ -191,7 +249,7 @@ class SecurityProtocol:
         """
         # If a config path is given update the train config inside the container
         client = self.docker_client if self.docker_client else docker.from_env()
-        base_image = img.split(":")[0] + ":" + "base"
+        # base_image = img.split(":")[0] + ":" + "base"
         container = client.containers.create(img)
 
         if config_path:
@@ -293,13 +351,18 @@ class SecurityProtocol:
 
         # Update the values hash and signature of the results
         files = self._parse_files(self.results_dir)
-        e_d = hash_results(files, bytes.fromhex(self.key_manager.get_security_param("session_id")))
+        e_d = hash_results(
+            files, bytes.fromhex(self.key_manager.get_security_param("session_id"))
+        )
         self.key_manager.set_security_param("e_d", e_d.hex())
         sk = self.key_manager.load_private_key(env_key="RSA_STATION_PRIVATE_KEY")
-        e_d_sig = sk.sign(e_d,
-                          padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                      salt_length=padding.PSS.MAX_LENGTH),
-                          utils.Prehashed(hashes.SHA512()))
+        e_d_sig = sk.sign(
+            e_d,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
+            ),
+            utils.Prehashed(hashes.SHA512()),
+        )
         self.key_manager.set_security_param("e_d_sig", e_d_sig.hex())
         # Sign the train after execution
         self.sign_digital_signature(sk)
@@ -309,18 +372,31 @@ class SecurityProtocol:
 
         # Encrypt the files
         file_encryptor.encrypt_files(files)
-        self.key_manager.set_security_param("encrypted_key", self.key_manager.encrypt_symmetric_key(new_sym_key))
+        self.key_manager.set_security_param(
+            "encrypted_key", self.key_manager.encrypt_symmetric_key(new_sym_key)
+        )
         # at the last station encrypt the symmetric key using the rsa public key of the user
         user_public_key = self.key_manager.load_public_key(
-            self.key_manager.get_security_param("rsa_user_public_key"))
-        user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(new_sym_key, user_public_key)
-        self.key_manager.set_security_param("user_encrypted_sym_key", user_encrypted_sym_key)
+            self.key_manager.get_security_param("rsa_user_public_key")
+        )
+        user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(
+            new_sym_key, user_public_key
+        )
+        self.key_manager.set_security_param(
+            "user_encrypted_sym_key", user_encrypted_sym_key
+        )
 
         self.key_manager.save_config()
         logger.info("Post-protocol success")
 
-    def validate_immutable_files(self, train_dir: str = None, files: list = None, ordered_file_list: List[str] = None,
-                                 immutable_file_names: List[str] = None, query: bytes = None) -> bool:
+    def validate_immutable_files(
+        self,
+        train_dir: str = None,
+        files: list = None,
+        ordered_file_list: List[str] = None,
+        immutable_file_names: List[str] = None,
+        query: bytes = None,
+    ) -> bool:
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
 
@@ -335,13 +411,17 @@ class SecurityProtocol:
         # now check before the run that no immutable files have changed, based on stored hash
         if train_dir:
             immutable_files = self._parse_files(train_dir)
-            immutable_files = [str(file) for file in immutable_files if "train_config.json" not in str(file)]
+            immutable_files = [
+                str(file)
+                for file in immutable_files
+                if "train_config.json" not in str(file)
+            ]
 
             current_hash = hash_immutable_files(
                 immutable_files=immutable_files,
                 user_id=str(self.config.creator.id),
                 session_id=bytes.fromhex(self.config.session_id),
-                query=query
+                query=query,
             )
         elif files:
             current_hash = hash_immutable_files(
@@ -351,7 +431,7 @@ class SecurityProtocol:
                 binary_files=True,
                 ordered_file_list=ordered_file_list,
                 immutable_file_names=immutable_file_names,
-                query=query
+                query=query,
             )
 
         logger.info(f"Stored hash: {e_h}")
@@ -359,10 +439,7 @@ class SecurityProtocol:
         if e_h != current_hash:
             raise ValidationError("Immutable Files have changed")
         # Verify that the hash value corresponds with the signature
-        user_pk.verify(e_h_sig,
-                       current_hash,
-                       padding.PKCS1v15(),
-                       hashes.SHA512())
+        user_pk.verify(e_h_sig, current_hash, padding.PKCS1v15(), hashes.SHA512())
 
     def validate_previous_results(self, files: List[BinaryIO]):
         """
@@ -371,11 +448,11 @@ class SecurityProtocol:
         """
         # Get public key of the previous station
         prev_station = self._get_previous_station()
-        station_public_key = self.key_manager.load_public_key(prev_station.rsa_public_key)
+        station_public_key = self.key_manager.load_public_key(
+            prev_station.rsa_public_key
+        )
         results_hash = hash_results(
-            files,
-            session_id=bytes.fromhex(self.config.session_id),
-            binary_files=True
+            files, session_id=bytes.fromhex(self.config.session_id), binary_files=True
         )
         if results_hash != bytes.fromhex(self.config.result_hash):
             raise ValidationError("Previous results have changed")
@@ -384,9 +461,11 @@ class SecurityProtocol:
             station_public_key.verify(
                 signature=bytes.fromhex(self.config.result_signature),
                 data=results_hash,
-                padding=padding.PSS(mgf=padding.MGF1(hashes.SHA512()),
-                                    salt_length=padding.PSS.MAX_LENGTH),
-                algorithm=utils.Prehashed(hashes.SHA512())
+                padding=padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA512()),
+                    salt_length=padding.PSS.MAX_LENGTH,
+                ),
+                algorithm=utils.Prehashed(hashes.SHA512()),
             )
         except Exception as e:
             logger.error(f"Error verifying previous results: {e}")
@@ -421,15 +500,11 @@ class SecurityProtocol:
         sig = sk.sign(
             data=digest,
             padding=padding.PSS(
-                mgf=padding.MGF1(hashes.SHA512()),
-                salt_length=padding.PSS.MAX_LENGTH
+                mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
             ),
-            algorithm=utils.Prehashed(hashes.SHA512())
+            algorithm=utils.Prehashed(hashes.SHA512()),
         )
-        self.route_stop.signature = {
-            "signature": sig.hex(),
-            "digest": digest.hex()
-        }
+        self.route_stop.signature = {"signature": sig.hex(), "digest": digest.hex()}
 
         sorted_route[self.route_stop.index] = self.route_stop
 
@@ -452,8 +527,10 @@ class SecurityProtocol:
             else:
 
                 if not stop.signature:
-                    error = ValidationError(f"Missing digital signature for previous stop {stop}. \n"
-                                            f" While currently at {self.route_stop}")
+                    error = ValidationError(
+                        f"Missing digital signature for previous stop {stop}. \n"
+                        f" While currently at {self.route_stop}"
+                    )
                     logger.error(error)
                     raise error
                 pk = self.key_manager.load_public_key(stop.rsa_public_key)
@@ -462,9 +539,9 @@ class SecurityProtocol:
                     data=bytes.fromhex(stop.signature.digest),
                     padding=padding.PSS(
                         mgf=padding.MGF1(hashes.SHA512()),
-                        salt_length=padding.PSS.MAX_LENGTH
+                        salt_length=padding.PSS.MAX_LENGTH,
                     ),
-                    algorithm=utils.Prehashed(hashes.SHA512())
+                    algorithm=utils.Prehashed(hashes.SHA512()),
                 )
 
     def _is_first_station_on_route(self) -> bool:
@@ -496,8 +573,11 @@ class SecurityProtocol:
 
     def _update_symmetric_keys(self, new_sym_key: bytes):
         for i, station in enumerate(self.config.route):
-            station.encrypted_key = self.key_manager.encrypt_symmetric_key(new_sym_key, station.rsa_public_key)
+            station.encrypted_key = self.key_manager.encrypt_symmetric_key(
+                new_sym_key, station.rsa_public_key
+            )
             self.config.route[i] = station
 
-        self.config.creator.encrypted_key = self.key_manager.encrypt_symmetric_key(new_sym_key,
-                                                                                   self.config.creator.rsa_public_key)
+        self.config.creator.encrypted_key = self.key_manager.encrypt_symmetric_key(
+            new_sym_key, self.config.creator.rsa_public_key
+        )

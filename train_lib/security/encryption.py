@@ -1,11 +1,11 @@
+import logging
 import os
 from io import BytesIO
+from typing import BinaryIO, List, Union
 
-from typing import List, Union, BinaryIO
-from cryptography.hazmat.primitives.ciphers.aead import AESCCM
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
-import logging
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 IV_LENGTH = 16
 
@@ -19,7 +19,9 @@ class FileEncryptor:
         self.key = key
         self.iv = os.urandom(IV_LENGTH)
 
-    def encrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False) -> Union[List[BytesIO], None]:
+    def encrypt_files(
+        self, files: Union[List[str], List[BinaryIO]], binary_files=False
+    ) -> Union[List[BytesIO], None]:
         """
         Decrypt the given files using symmetric encryption
         :return:
@@ -43,7 +45,9 @@ class FileEncryptor:
                 ef.write(encr_file)
             logging.info("Done")
 
-    def decrypt_files(self, files: Union[List[str], List[BinaryIO]], binary_files=False) -> Union[List[BytesIO], None]:
+    def decrypt_files(
+        self, files: Union[List[str], List[BinaryIO]], binary_files=False
+    ) -> Union[List[BytesIO], None]:
         """
         Decrypt the given files using symmetric encryption
         :return:
