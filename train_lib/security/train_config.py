@@ -80,9 +80,11 @@ class TrainSource(BaseModel):
     tag: Optional[str] = None
     branch: Optional[str] = None
 
+
 class BuildSignature(BaseModel):
     signature: HexString
     rsa_public_key: HexString
+
 
 class TrainConfig(BaseModel):
     source: TrainSource
@@ -95,7 +97,7 @@ class TrainConfig(BaseModel):
     file_list: List[str]
     hash: HexString  # e_h
     signature: HexString  # e_h_sig
-    build: BuildSignature
+    build_signature: BuildSignature
     result_hash: Optional[HexString] = None  # e_d
     result_signature: Optional[HexString] = None  # e_d_sig
 

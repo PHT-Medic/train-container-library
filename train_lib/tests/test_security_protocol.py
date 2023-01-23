@@ -42,12 +42,15 @@ def key_pairs():
     station_3_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     user_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
+    builder_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
     # Create public keys
 
     station_1_pk = station_1_sk.public_key()
     station_2_pk = station_2_sk.public_key()
     station_3_pk = station_3_sk.public_key()
     user_pk = user_sk.public_key()
+    builder_pk = builder_sk.public_key()
 
     # serialize the keys to bytes
 
@@ -91,6 +94,17 @@ def key_pairs():
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
+    builder_sk = builder_sk.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    builder_pk = builder_pk.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
     key_pairs = {
         "station_1": {
             "private_key": station_1_sk.hex(),
@@ -105,6 +119,7 @@ def key_pairs():
             "public_key": station_3_pk.hex(),
         },
         "user": {"private_key": user_sk.hex(), "public_key": user_pk.hex()},
+        "builder": {"private_key": builder_sk.hex(), "public_key": builder_pk.hex()},
     }
 
     return key_pairs
@@ -191,7 +206,7 @@ def train_config(key_pairs, train_files):
     )
 
     print("Immutable Hash: ", immutable_hash)
-
+    # create user signature
     user_private_key = serialization.load_pem_private_key(
         bytes.fromhex(key_pairs["user"]["private_key"]),
         password=None,
@@ -199,6 +214,25 @@ def train_config(key_pairs, train_files):
     )
     user_signature = user_private_key.sign(
         immutable_hash, padding.PKCS1v15(), hashes.SHA512()
+    )
+
+    # create builder signature
+    builder_private_key = serialization.load_pem_private_key(
+        bytes.fromhex(key_pairs["builder"]["private_key"]),
+        password=None,
+        backend=default_backend(),
+    )
+
+    # create hash of user signature and immutable hash
+
+    hasher = hashes.Hash(hashes.SHA512(), backend=default_backend())
+    hasher.update(immutable_hash)
+    hasher.update(user_signature)
+    builder_hash = hasher.finalize()
+
+    # sign the hash with builder private key
+    builder_signature = builder_private_key.sign(
+        builder_hash, padding.PKCS1v15(), hashes.SHA512()
     )
 
     config_dict = {
@@ -213,6 +247,10 @@ def train_config(key_pairs, train_files):
         "creator": {
             "id": user_id,
             "rsa_public_key": key_pairs["user"]["public_key"],
+        },
+        "build_signature": {
+            "signature": builder_signature.hex(),
+            "rsa_public_key": key_pairs["builder"]["public_key"],
         },
         "route": [
             {
@@ -741,7 +779,6 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
 def test_post_run_protocol_wrong_symmetric_key(
     train_image, tmpdir, key_pairs, docker_client
 ):
-
     execute_image_and_post_run_protocol(
         test_train_image=train_image,
         docker_client=docker_client,
