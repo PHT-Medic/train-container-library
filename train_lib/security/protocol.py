@@ -4,7 +4,7 @@ import time
 from enum import Enum
 from io import BytesIO
 from tarfile import TarInfo
-from typing import BinaryIO, List
+from typing import BinaryIO, List, Tuple, Union
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -93,21 +93,32 @@ class SecurityProtocol:
         logger.info(
             f"Executing pre-run protocol at station {self.station_id} for image: {img}"
         )
+
+        # extract and decrypt symmetric key
+        key = self.key_manager.decrypt_symmetric_key(
+            encrypted_key=self.route_stop.encrypted_key,
+            private_key_path=private_key_path,
+            private_key_password=private_key_password,
+        )
+
         # Execute the protocol with directly passed files and the instances config file
         logger.info("Extracting files from image...")
         # Get the content of the immutable files from the image as ByteObjects
-        immutable_files, file_names = files_from_archive(
-            extract_archive(img, immutable_dir)
-        )
-
-        # Check that no files have been added or removed
-        assert len(immutable_files) == len(self.config.file_list)
-
         try:
             query = extract_query_json(img)
         except Exception as e:
             logger.warning(f"Error extracting query json from image: {e}")
             query = None
+
+        immutable_files, file_names, query = self.extract_immutable_files(
+            img=img, directory=immutable_dir, symmetric_key=key, query=query
+        )
+
+        # Check that no files have been added or removed
+        assert len(immutable_files) == len(self.config.file_list)
+
+        # decrypt the immutable files
+        logger.info("Decrypting immutable files...")
 
         self.validate_immutable_files(
             files=immutable_files,
@@ -115,13 +126,9 @@ class SecurityProtocol:
             ordered_file_list=self.config.file_list,
             query=query,
         )
+
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
-            key = self.key_manager.decrypt_symmetric_key(
-                encrypted_key=self.route_stop.encrypted_key,
-                private_key_path=private_key_path,
-                private_key_password=private_key_password,
-            )
             file_encryptor = FileEncryptor(key)
             # Decrypt all previously encrypted files
             mutable_files, mf_members, mf_dir = result_files_from_archive(
@@ -389,6 +396,28 @@ class SecurityProtocol:
         self.key_manager.save_config()
         logger.info("Post-protocol success")
 
+    def extract_immutable_files(
+        self, img: str, directory: str, symmetric_key: bytes, query: bytes = None
+    ):
+        """
+        Extracts the immutable files from the docker image and saves them to the specified directory
+
+        :param img: docker image to extract files from
+        :param directory: directory to save the files to
+        :return:
+        """
+        logger.info("Extracting immutable files from image...")
+        # Extract the files from the image
+        immutable_files, file_names = files_from_archive(
+            extract_archive(img, directory)
+        )
+
+        decrypted_files, query = self.decrypt_immutable_files(
+            immutable_files, symmetric_key, query
+        )
+
+        return decrypted_files, file_names, query
+
     def validate_immutable_files(
         self,
         train_dir: str = None,
@@ -439,6 +468,8 @@ class SecurityProtocol:
         logger.info(f"Current hash: {current_hash}")
         if e_h != current_hash:
             raise ValidationError("Immutable Files have changed")
+
+        self.validate_build_signature(current_hash.hex())
         # Verify that the hash value corresponds with the signature
         user_pk.verify(e_h_sig, current_hash, padding.PKCS1v15(), hashes.SHA512())
 
@@ -544,6 +575,39 @@ class SecurityProtocol:
                     ),
                     algorithm=utils.Prehashed(hashes.SHA512()),
                 )
+
+    def validate_build_signature(self, immutable_file_hash: str):
+        # Verify that the hash value corresponds with the signature
+        builder_pk = self.key_manager.load_public_key(self.config.build.rsa_public_key)
+
+        content = immutable_file_hash + self.config.signature
+        try:
+            builder_pk.verify(
+                bytes.fromhex(self.config.build.signature),
+                bytes.fromhex(content),
+                padding.PKCS1v15(),
+                hashes.SHA512(),
+            )
+        except Exception as e:
+            logger.error(f"Error verifying build signature: {e}")
+            raise ValidationError("Error validating build signature.")
+
+    def decrypt_immutable_files(
+        self, immutable_files: List[BinaryIO], symmetric_key: bytes, query: bytes = None
+    ) -> Union[Tuple[List[BytesIO], bytes], Tuple[List[BytesIO], None]]:
+        """
+        Decrypts the immutable files of the train using the private key of the currently running station
+        :param query: optional bytes for query json
+        :param symmetric_key:
+        :param immutable_files: list of binary files to decrypt
+        :return: list of decrypted files
+        """
+        fe = FileEncryptor(key=symmetric_key)
+        decrypted_files = fe.decrypt_files(immutable_files, binary_files=True)
+        if query:
+            decrypted_query = fe.decrypt(query)
+            return decrypted_files, decrypted_query
+        return decrypted_files, None
 
     def _is_first_station_on_route(self) -> bool:
         """

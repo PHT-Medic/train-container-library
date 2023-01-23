@@ -225,14 +225,11 @@ def train_config(key_pairs, train_files):
 
     # create hash of user signature and immutable hash
 
-    hasher = hashes.Hash(hashes.SHA512(), backend=default_backend())
-    hasher.update(immutable_hash)
-    hasher.update(user_signature)
-    builder_hash = hasher.finalize()
+    build_sig_data = immutable_hash.hex() + user_signature.hex()
 
     # sign the hash with builder private key
     builder_signature = builder_private_key.sign(
-        builder_hash, padding.PKCS1v15(), hashes.SHA512()
+        bytes.fromhex(build_sig_data), padding.PKCS1v15(), hashes.SHA512()
     )
 
     config_dict = {
@@ -248,7 +245,7 @@ def train_config(key_pairs, train_files):
             "id": user_id,
             "rsa_public_key": key_pairs["user"]["public_key"],
         },
-        "build_signature": {
+        "build": {
             "signature": builder_signature.hex(),
             "rsa_public_key": key_pairs["builder"]["public_key"],
         },

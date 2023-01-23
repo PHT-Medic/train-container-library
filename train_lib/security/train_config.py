@@ -97,7 +97,7 @@ class TrainConfig(BaseModel):
     file_list: List[str]
     hash: HexString  # e_h
     signature: HexString  # e_h_sig
-    build_signature: BuildSignature
+    build: BuildSignature
     result_hash: Optional[HexString] = None  # e_d
     result_signature: Optional[HexString] = None  # e_d_sig
 

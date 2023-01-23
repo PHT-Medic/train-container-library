@@ -5,7 +5,6 @@ from typing import BinaryIO, List, Union
 
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 IV_LENGTH = 16
 
@@ -69,13 +68,35 @@ class FileEncryptor:
                 ef.write(decr_file)
             logging.info("Done")
 
-    def _encrypt(self, data: bytes) -> bytes:
-        aesccm = AESCCM(self.key)
-        return aesccm.encrypt(self.iv, data, None)
+    def decrypt_file(self, file: BinaryIO) -> BytesIO:
+        """
+        Decrypt the given file using symmetric encryption
+        :return:
+        """
+        data = self._decrypt_aes(file.read())
+        return BytesIO(data)
 
-    def _decrypt(self, data: bytes) -> bytes:
-        aesccm = AESCCM(self.key)
-        return aesccm.decrypt(self.iv, data, None)
+    def decrypt(self, data: bytes) -> bytes:
+        """
+        Decrypt the given data using symmetric encryption
+        :return:
+        """
+        return self._decrypt_aes(data)
+
+    def encrypt(self, data: bytes) -> bytes:
+        """
+        Encrypt the given data using symmetric encryption
+        :return:
+        """
+        return self._encrypt_aes(data)
+
+    def encrypt_file(self, file: BinaryIO) -> BytesIO:
+        """
+        Encrypt the given file using symmetric encryption
+        :return:
+        """
+        data = self._encrypt_aes(file.read())
+        return BytesIO(data)
 
     def _encrypt_aes(self, data: bytes) -> bytes:
 
