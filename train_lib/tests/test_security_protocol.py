@@ -15,8 +15,12 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
 
 import docker
-from train_lib.docker_util import docker_ops
-from train_lib.docker_util.docker_ops import extract_query_json, extract_train_config
+from train_lib.docker_util.docker_ops import (
+    extract_archive,
+    extract_query_json,
+    extract_train_config,
+    files_from_archive,
+)
 from train_lib.security.errors import ValidationError
 from train_lib.security.hashing import hash_immutable_files
 from train_lib.security.protocol import SecurityProtocol
@@ -442,8 +446,8 @@ def test_files_changed_pre_run(train_image, tmpdir, key_pairs, docker_client):
 
     # Change the content of one the immutable files
     # changed_files_image = docker_client.containers.create(test_train_image)
-    train_file_archive = docker_ops.extract_archive(train_image, "/opt/pht_train")
-    train_files, tf_names = docker_ops.files_from_archive(train_file_archive)
+    train_file_archive = extract_archive(train_image, "/opt/pht_train")
+    train_files, tf_names = files_from_archive(train_file_archive)
 
     train_files = [BytesIO(f.read()) for f in train_files]
     train_files[0] = BytesIO(os.urandom(random.randint(5000, 20000)))

@@ -13,12 +13,9 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from loguru import logger
 
 import docker
-
-# from train_lib.docker_util.docker_ops import *
 from train_lib.docker_util.docker_ops import (
     extract_archive,
     extract_query_json,
-    files_from_archive,
     result_files_from_archive,
 )
 from train_lib.security.encryption import FileEncryptor
@@ -349,75 +346,6 @@ class SecurityProtocol:
         archive_obj.seek(0)
         return archive_obj
 
-    def _post_run_in_container(self):
-        """
-        Execute the post-run protocol inside of the container
-
-        :return:
-        """
-
-        # Update the values hash and signature of the results
-        files = self._parse_files(self.results_dir)
-        e_d = hash_results(
-            files, bytes.fromhex(self.key_manager.get_security_param("session_id"))
-        )
-        self.key_manager.set_security_param("e_d", e_d.hex())
-        sk = self.key_manager.load_private_key(env_key="RSA_STATION_PRIVATE_KEY")
-        e_d_sig = sk.sign(
-            e_d,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA512()), salt_length=padding.PSS.MAX_LENGTH
-            ),
-            utils.Prehashed(hashes.SHA512()),
-        )
-        self.key_manager.set_security_param("e_d_sig", e_d_sig.hex())
-        # Sign the train after execution
-        self.sign_digital_signature(sk)
-        # Write new values to file and encrypt files with new symmetric key
-        new_sym_key = self.key_manager.generate_symmetric_key()
-        file_encryptor = FileEncryptor(new_sym_key)
-
-        # Encrypt the files
-        file_encryptor.encrypt_files(files)
-        self.key_manager.set_security_param(
-            "encrypted_key", self.key_manager.encrypt_symmetric_key(new_sym_key)
-        )
-        # at the last station encrypt the symmetric key using the rsa public key of the user
-        user_public_key = self.key_manager.load_public_key(
-            self.key_manager.get_security_param("rsa_user_public_key")
-        )
-        user_encrypted_sym_key = self.key_manager._rsa_pk_encrypt(
-            new_sym_key, user_public_key
-        )
-        self.key_manager.set_security_param(
-            "user_encrypted_sym_key", user_encrypted_sym_key
-        )
-
-        self.key_manager.save_config()
-        logger.info("Post-protocol success")
-
-    def extract_immutable_files(
-        self, img: str, directory: str, symmetric_key: bytes, query: bytes = None
-    ):
-        """
-        Extracts the immutable files from the docker image and saves them to the specified directory
-
-        :param img: docker image to extract files from
-        :param directory: directory to save the files to
-        :return:
-        """
-        logger.info("Extracting immutable files from image...")
-        # Extract the files from the image
-        immutable_files, file_names = files_from_archive(
-            extract_archive(img, directory)
-        )
-
-        decrypted_files, query = self.decrypt_immutable_files(
-            immutable_files, symmetric_key, query
-        )
-
-        return decrypted_files, file_names, query
-
     def validate_immutable_files(
         self,
         train_dir: str = None,
@@ -425,7 +353,7 @@ class SecurityProtocol:
         ordered_file_list: List[str] = None,
         immutable_file_names: List[str] = None,
         query: bytes = None,
-    ) -> bool:
+    ):
         """
         Checks if the hash of the immutable files is the same as the one stored at the creation of the train
 
@@ -463,6 +391,8 @@ class SecurityProtocol:
                 immutable_file_names=immutable_file_names,
                 query=query,
             )
+        else:
+            raise ValueError("Either train_dir or files must be provided")
 
         logger.info(f"Stored hash: {e_h}")
         logger.info(f"Current hash: {current_hash}")
