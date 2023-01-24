@@ -1,6 +1,8 @@
 import json
 import pprint
+import tarfile
 import time
+from io import BytesIO
 from tarfile import TarInfo
 from timeit import default_timer as timer
 
@@ -9,7 +11,13 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, utils
 from dotenv import find_dotenv, load_dotenv
 
-from train_lib.docker_util.docker_ops import *
+from train_lib.docker_util.docker_ops import (
+    extract_train_config,
+    extract_query_json,
+    add_archive,
+)
+
+# from train_lib.docker_util.docker_ops import *
 from train_lib.security.protocol import SecurityProtocol
 
 IMG = "staging-harbor.tada5hi.net/b0f0imz4srdr7bnl0z8en/b092b95e-7d81-403a-b504-3965d6877908"
