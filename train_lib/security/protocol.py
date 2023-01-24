@@ -16,6 +16,7 @@ import docker
 from train_lib.docker_util.docker_ops import (
     extract_archive,
     extract_query_json,
+    files_from_archive,
     result_files_from_archive,
 )
 from train_lib.security.encryption import FileEncryptor
@@ -141,6 +142,27 @@ class SecurityProtocol:
             self._update_image(img, archive, results_path="/opt")
 
         logger.info("Pre-run protocol success")
+
+    def extract_immutable_files(
+        self, img: str, directory: str, symmetric_key: bytes, query: bytes = None
+    ):
+        """
+        Extracts the immutable files from the docker image and saves them to the specified directory
+        :param img: docker image to extract files from
+        :param directory: directory to save the files to
+        :return:
+        """
+        logger.info("Extracting immutable files from image...")
+        # Extract the files from the image
+        immutable_files, file_names = files_from_archive(
+            extract_archive(img, directory)
+        )
+
+        decrypted_files, query = self.decrypt_immutable_files(
+            immutable_files, symmetric_key, query
+        )
+
+        return decrypted_files, file_names, query
 
     def post_run_protocol(
         self,
@@ -507,7 +529,14 @@ class SecurityProtocol:
                 )
 
     def validate_build_signature(self, immutable_file_hash: str):
-        # Verify that the hash value corresponds with the signature
+        """
+        Validate that the hash of the locally available file corresponds to initial hash provided by the builder
+        in combination with the user signature
+        :param immutable_file_hash:
+        :return:
+        """
+
+        logger.info("Validating build signature... ", nl=False)
         builder_pk = self.key_manager.load_public_key(self.config.build.rsa_public_key)
 
         content = immutable_file_hash + self.config.signature
@@ -518,8 +547,11 @@ class SecurityProtocol:
                 padding.PKCS1v15(),
                 hashes.SHA512(),
             )
+            logger.info("OK")
+
         except Exception as e:
-            logger.error(f"Error verifying build signature: {e}")
+
+            logger.error(f"Error\n {e}")
             raise ValidationError("Error validating build signature.")
 
     def decrypt_immutable_files(

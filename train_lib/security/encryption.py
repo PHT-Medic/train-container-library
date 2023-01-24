@@ -73,6 +73,7 @@ class FileEncryptor:
         Decrypt the given file using symmetric encryption
         :return:
         """
+        file.seek(0)
         data = self._decrypt_aes(file.read())
         return BytesIO(data)
 
