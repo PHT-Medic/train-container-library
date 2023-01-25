@@ -149,8 +149,7 @@ if __name__ == '__main__':
 
     filenames = ["entrypoint.py", "file_1_test.py", "r_script.r", "query.json"]
     files = [
-        BytesIO(os.urandom(random.randint(5000, 20000)))
-        for _ in range(len(filenames) - 2)
+        BytesIO(os.urandom(random.randint(100, 500))) for _ in range(len(filenames) - 2)
     ]
     files.insert(0, entrypoint_file)
     files.append(query_json)
@@ -306,12 +305,6 @@ def train_file_archive(train_files, symmetric_key):
     encryptor = FileEncryptor(symmetric_key)
     # encrypt all the files
     encrypted_files = encryptor.encrypt_files(files, binary_files=True)
-
-    for i, f in enumerate(encrypted_files):
-        f.seek(0)
-        files[i].seek(0)
-        print(f.read())
-        print(files[i].read())
 
     for i, file in enumerate(encrypted_files):
         file.seek(0)

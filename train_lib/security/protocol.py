@@ -110,6 +110,8 @@ class SecurityProtocol:
             img=img, directory=immutable_dir, symmetric_key=key, query=query
         )
 
+        print(file_names)
+
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
 
@@ -119,6 +121,9 @@ class SecurityProtocol:
             ordered_file_list=self.config.file_list,
             query=query,
         )
+
+        # add the decrypted files back to the image
+        self._add_train_files(img, immutable_files, file_names)
 
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
@@ -331,6 +336,70 @@ class SecurityProtocol:
 
         return archive_obj
 
+    def _add_train_files(
+        self, img: str, train_files: List[BytesIO], file_names: List[str], query=None
+    ):
+        """
+        Create in memory tar archive containing the train files and add it to the image
+        :param img: identifier of the image <repository>:<tag>
+        :param train_files: list of train files
+        :param file_names: names of the train files
+        :return:
+        """
+
+        logger.info("Adding train files...", nl=False)
+
+        train_file_archive = self._make_train_files_archive(
+            train_files, file_names, query
+        )
+        client = self.docker_client if self.docker_client else docker.from_env()
+        container = client.containers.create(img)
+        container.put_archive("/opt", train_file_archive)
+        container.wait()
+        # Tag container as latest
+        img_split = img.split(":")
+        if len(img_split) == 2:
+            repo, tag = img_split
+        else:
+            repo = ":".join(img_split[:-1])
+            tag = img_split[-1]
+
+        container.commit(repository=repo, tag=tag)
+        container.wait()
+        container.remove()
+        logger.info("Done")
+
+    @staticmethod
+    def _make_train_files_archive(
+        train_files: List[BytesIO], file_names: List[str], query: BytesIO = None
+    ) -> BytesIO:
+        archive_obj = BytesIO()
+        tar = tarfile.open(fileobj=archive_obj, mode="w")
+
+        if query:
+            query.seek(0)
+            info = TarInfo(name="query.json")
+            info.size = query.getbuffer().nbytes
+            info.mtime = time.time()
+            tar.addfile(info, query)
+        for i, train_file in enumerate(train_files):
+            train_file.seek(0)
+            data = BytesIO(train_file.read())
+            # Create tarinfo object based on file name and size and prepend train_directoy
+
+            print(file_names[i], data.getvalue())
+
+            info = TarInfo(name=f"pht_train/{file_names[i]}")
+            info.size = data.getbuffer().nbytes
+            info.mtime = time.time()
+            # add config data and reset the archive
+            tar.addfile(info, data)
+        print(tar.getmembers())
+        tar.close()
+        archive_obj.seek(0)
+
+        return archive_obj
+
     def _make_train_config_archive(self) -> BytesIO:
         """
         Create in memory tar archive containing the train configuration json file
@@ -415,10 +484,10 @@ class SecurityProtocol:
         logger.info(f"Current hash: {current_hash}")
         if e_h != current_hash:
             raise ValidationError("Immutable Files have changed")
-
-        self.validate_build_signature(current_hash.hex())
         # Verify that the hash value corresponds with the signature
         user_pk.verify(e_h_sig, current_hash, padding.PKCS1v15(), hashes.SHA512())
+        # validate the build signature to ensure no tampering has occurred
+        self.validate_build_signature(current_hash.hex())
 
     def validate_previous_results(self, files: List[BinaryIO]):
         """
