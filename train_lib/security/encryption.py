@@ -31,6 +31,7 @@ class FileEncryptor:
             for i, file in enumerate(files):
                 logging.info(f"file {i + 1}/{len(files)}...")
                 # Encrypt the files and convert them to bytes io file objects
+                file.seek(0)
                 data = file.read()
                 encr_files.append(BytesIO(self._encrypt_aes(data)))
                 logging.info("Done")

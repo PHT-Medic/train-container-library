@@ -99,8 +99,6 @@ class SecurityProtocol:
             private_key_password=private_key_password,
         )
 
-        # Execute the protocol with directly passed files and the instances config file
-        logger.info("Extracting files from image...")
         # Get the content of the immutable files from the image as ByteObjects
         try:
             query = extract_query_json(img)
@@ -114,9 +112,6 @@ class SecurityProtocol:
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
-
-        # decrypt the immutable files
-        logger.info("Decrypting immutable files...")
 
         self.validate_immutable_files(
             files=immutable_files,
