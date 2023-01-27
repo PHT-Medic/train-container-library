@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from loguru import logger
 
 import docker
+import docker.models
 from train_lib.docker_util.docker_ops import (
     extract_archive,
     extract_query_json,
@@ -109,8 +110,6 @@ class SecurityProtocol:
         immutable_files, file_names, query = self.extract_immutable_files(
             img=img, directory=immutable_dir, symmetric_key=key, query=query
         )
-
-        print(file_names)
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)
@@ -288,22 +287,13 @@ class SecurityProtocol:
         logger.info("Adding encrypted result files")
         container.put_archive(results_path, results_archive)
         # add_archive(img, results_archive, results_path)
-        logger.info("Updating user key file ")
+        logger.info("Updating user key file")
         user_key = self._make_user_key()
         # add user key to opt directory
         # add_archive(img, user_key, "/opt")
         container.put_archive("/opt", user_key)
         # Tag container as latest
-        img_split = img.split(":")
-
-        if len(img_split) == 2:
-            repo, tag = img_split
-        else:
-            repo = ":".join(img_split[:-1])
-            tag = img_split[-1]
-        container.commit(repository=repo, tag=tag)
-        container.wait()
-        container.remove()
+        self._commit_to_image(container, img)
 
     @staticmethod
     def _make_results_archive(archive_members, file_members, updated_files):
@@ -352,10 +342,21 @@ class SecurityProtocol:
         train_file_archive = self._make_train_files_archive(
             train_files, file_names, query
         )
+        # tar = tarfile.open(fileobj=train_file_archive, mode="r")
+        #
+        # for m in tar.getmembers():
+        #     print(m.name)
+        #     print(tar.extractfile(m).read())
+
         client = self.docker_client if self.docker_client else docker.from_env()
         container = client.containers.create(img)
+        train_file_archive.seek(0)
         container.put_archive("/opt", train_file_archive)
         container.wait()
+        self._commit_to_image(container, img)
+        logger.info("Done")
+
+    def _commit_to_image(self, container, img):
         # Tag container as latest
         img_split = img.split(":")
         if len(img_split) == 2:
@@ -367,7 +368,6 @@ class SecurityProtocol:
         container.commit(repository=repo, tag=tag)
         container.wait()
         container.remove()
-        logger.info("Done")
 
     @staticmethod
     def _make_train_files_archive(
