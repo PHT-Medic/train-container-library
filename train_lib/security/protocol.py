@@ -143,7 +143,12 @@ class SecurityProtocol:
         logger.info("Pre-run protocol success")
 
     def extract_immutable_files(
-        self, img: str, directory: str, symmetric_key: bytes, query: bytes = None
+        self,
+        img: str,
+        directory: str,
+        symmetric_key: bytes = None,
+        query: bytes = None,
+        decrypt: bool = True,
     ):
         """
         Extracts the immutable files from the docker image and saves them to the specified directory
@@ -157,11 +162,16 @@ class SecurityProtocol:
             extract_archive(img, directory)
         )
 
-        decrypted_files, query = self.decrypt_immutable_files(
-            immutable_files, symmetric_key, query
-        )
+        if decrypt:
+            if not symmetric_key:
+                raise ValueError("No symmetric key provided")
+            decrypted_files, query = self.decrypt_immutable_files(
+                immutable_files, symmetric_key, query
+            )
 
-        return decrypted_files, file_names, query
+            return decrypted_files, file_names, query
+
+        return immutable_files, file_names, query
 
     def post_run_protocol(
         self,
@@ -188,7 +198,7 @@ class SecurityProtocol:
             extract_archive(img, TrainPaths.RESULT_DIR.value)
         )
         # Run the post run protocol
-        encrypted_mutable_files = self._post_run_outside_container(
+        encrypted_mutable_files, symmetric_key = self._post_run_outside_container(
             mutable_files, private_key_path, private_key_password
         )
         results_archive = self._make_results_archive(
@@ -197,6 +207,19 @@ class SecurityProtocol:
         results_archive.seek(0)
 
         self.config = TrainConfig(**self.config.dict(by_alias=True))
+
+        # get immutable files and query from image
+        query = extract_query_json(img)
+        immutable_files, file_names, query = self.extract_immutable_files(
+            img, TrainPaths.IMMUTABLE_DIR.value, query=query, decrypt=False
+        )
+        # Encrypt the immutable files
+        encrypted_files, query = self.encrypt_immutable_files(
+            immutable_files, symmetric_key, query
+        )
+        # Add the encrypted files to the image
+        self._add_train_files(img, encrypted_files, file_names, query)
+
         # update the container with the encrypted files
         self._update_image(
             img, results_archive, results_path="/opt", config_path="/opt"
@@ -208,7 +231,7 @@ class SecurityProtocol:
         mutable_files: List[BytesIO],
         private_key_path: str,
         private_key_password: str = None,
-    ) -> List[BytesIO]:
+    ) -> Tuple[List[BytesIO], bytes]:
         """
         Performs the post run protocol on the mutable files contained in an image. Consisting of encrypting the
         mutable files and updateing the train_config.json. The extracted mutable files are encrypted and the
@@ -258,7 +281,7 @@ class SecurityProtocol:
         self._update_symmetric_keys(new_sym_key)
         # at the last station encrypt the symmetric key using the rsa public key of the user
 
-        return encrypted_results
+        return encrypted_results, new_sym_key
 
     def _update_image(
         self, img, results_archive: BytesIO, results_path: str, config_path: str = None
@@ -342,11 +365,6 @@ class SecurityProtocol:
         train_file_archive = self._make_train_files_archive(
             train_files, file_names, query
         )
-        # tar = tarfile.open(fileobj=train_file_archive, mode="r")
-        #
-        # for m in tar.getmembers():
-        #     print(m.name)
-        #     print(tar.extractfile(m).read())
 
         client = self.docker_client if self.docker_client else docker.from_env()
         container = client.containers.create(img)
@@ -617,6 +635,23 @@ class SecurityProtocol:
 
             logger.error(f"Error\n {e}")
             raise ValidationError("Error validating build signature.")
+
+    def encrypt_immutable_files(
+        self, files: List[BytesIO], symmetric_key: bytes, query=None
+    ):
+        """
+        Encrypts the immutable files
+        :param files: dictionary containing the files to encrypt
+        :param symmetric_key: symmetric key to encrypt the files with
+        :return:
+        """
+        logger.info("Encrypting immutable files...")
+        file_encryptor = FileEncryptor(symmetric_key)
+        encrypted_files = file_encryptor.encrypt_files(files, binary_files=True)
+        if query:
+            encrypted_query = file_encryptor.encrypt(query)
+            return encrypted_files, encrypted_query
+        return encrypted_files, None
 
     def decrypt_immutable_files(
         self, immutable_files: List[BinaryIO], symmetric_key: bytes, query: bytes = None

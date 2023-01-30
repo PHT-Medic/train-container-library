@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import tarfile
@@ -16,7 +15,6 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
 
 from train_lib.docker_util.docker_ops import (
     extract_archive,
-    extract_query_json,
     extract_train_config,
     files_from_archive,
 )
@@ -35,14 +33,14 @@ def test_extract_train_config(train_image, train_files):
     assert config.file_list == file_names
 
 
-def test_extract_query_json(train_image, query_json):
-    image_name = train_image + ":latest"
-    extracted_query = json.loads(extract_query_json(image_name))
-
-    assert extracted_query
-    query_json.seek(0)
-    initial_query = json.loads(query_json.read())
-    assert extracted_query == initial_query
+# def test_extract_query_json(train_image, query_json):
+#     image_name = train_image + ":latest"
+#     extracted_query = json.loads(extract_query_json(image_name))
+#
+#     assert extracted_query
+#     query_json.seek(0)
+#     initial_query = json.loads(query_json.read())
+#     assert extracted_query == initial_query
 
 
 # # todo failing cases

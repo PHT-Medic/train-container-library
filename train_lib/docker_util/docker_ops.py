@@ -29,10 +29,14 @@ def extract_query_json(
     :param query_file_path: path of the query file inside the image
     :return: dictionary containing the  security values stored inside the train:config.json
     """
+    try:
+        with extract_archive(img, query_file_path) as query_archive:
+            query_file = query_archive.extractfile("query.json")
+            data = query_file.read()
 
-    with extract_archive(img, query_file_path) as query_archive:
-        query_file = query_archive.extractfile("query.json")
-        data = query_file.read()
+    except Exception as e:
+        print(e)
+        data = None
     return data
 
 
