@@ -403,7 +403,7 @@ class SecurityProtocol:
         for i, train_file in enumerate(train_files):
             train_file.seek(0)
             data = BytesIO(train_file.read())
-            # Create tarinfo object based on file name and size and prepend train_directoy
+            # Create tarinfo object based on file name and size and prepend train directory
 
             print(file_names[i], data.getvalue())
 
@@ -663,6 +663,10 @@ class SecurityProtocol:
         :param immutable_files: list of binary files to decrypt
         :return: list of decrypted files
         """
+
+        for file in immutable_files:
+            print(file.read())
+            file.seek(0)
         fe = FileEncryptor(key=symmetric_key)
         decrypted_files = fe.decrypt_files(immutable_files, binary_files=True)
         if query:
