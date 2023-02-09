@@ -61,6 +61,8 @@ class FileEncryptor:
                 file.seek(0)
                 logger.info(f"file {i + 1}/{len(files)}...")
                 data = self._decrypt_aes(file.read())
+                print(f"file {i + 1}/{len(files)}...")
+                print(data)
                 decr_files.append(BytesIO(data))
                 logger.info("Done")
             return decr_files
@@ -104,9 +106,7 @@ class FileEncryptor:
         return BytesIO(data)
 
     def _encrypt_aes(self, data: bytes) -> bytes:
-
         padder = padding.PKCS7(PADDING_LENGTH).padder()
-        print("encrypting", len(data), data)
         padded_data = padder.update(data) + padder.finalize()
         print("padded", len(padded_data), len(padded_data) / PADDING_LENGTH)
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv))
@@ -114,23 +114,16 @@ class FileEncryptor:
 
         encrypted = encryptor.update(padded_data) + encryptor.finalize()
 
-        if len(encrypted) % PADDING_LENGTH != 0:
-            raise Exception("Encrypted data is not a multiple of padding length")
+        # if len(encrypted) % PADDING_LENGTH != 0:
+        #     raise Exception("Encrypted data is not a multiple of padding length")
 
         return self.iv + encrypted
 
     def _decrypt_aes(self, data: bytes) -> bytes:
-
-        print(len(data))
-
-        print(data)
-
         iv = data[:IV_LENGTH]
         data = data[IV_LENGTH:]
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv))
         decryptor = cipher.decryptor()
-
-        print(len(data))
 
         decrypted = decryptor.update(data) + decryptor.finalize()
         unpadder = padding.PKCS7(PADDING_LENGTH).unpadder()

@@ -107,9 +107,13 @@ class SecurityProtocol:
             logger.warning(f"Error extracting query json from image: {e}")
             query = None
 
-        immutable_files, file_names, query = self.extract_immutable_files(
-            img=img, directory=immutable_dir, symmetric_key=key, query=query
-        )
+        try:
+            immutable_files, file_names, query = self.extract_immutable_files(
+                img=img, directory=immutable_dir, symmetric_key=key, query=query
+            )
+        except Exception as e:
+            logger.error(f"Error extracting immutable files from image: {e}")
+            raise ValidationError("Error extracting immutable files from image")
 
         # Check that no files have been added or removed
         assert len(immutable_files) == len(self.config.file_list)

@@ -33,19 +33,9 @@ def test_extract_train_config(train_image, train_files):
     assert config.file_list == file_names
 
 
-# def test_extract_query_json(train_image, query_json):
-#     image_name = train_image + ":latest"
-#     extracted_query = json.loads(extract_query_json(image_name))
 #
-#     assert extracted_query
-#     query_json.seek(0)
-#     initial_query = json.loads(query_json.read())
-#     assert extracted_query == initial_query
 
-
-# # todo failing cases
-# def test_validate_master_image(train_image, master_image):
-#     validate_train_image(train_image, master_image)
+##### TODO separate images for each test to avoid BLOCK_LENGTH errors with encrypted images"
 
 
 def test_get_previous_station(train_config):
@@ -218,12 +208,6 @@ def execute_image_and_post_run_protocol(
     init_config = extract_train_config(test_train_image)
     # Execute the image
     client = docker_client
-    container = client.containers.run(image=test_train_image + ":latest", detach=True)
-    exit_code = container.wait()["StatusCode"]
-
-    assert exit_code == 0
-
-    container.commit(test_train_image + ":latest")
 
     # Perform post run protocol
     # if station_id == "station_1":
@@ -238,6 +222,19 @@ def execute_image_and_post_run_protocol(
         sp = SecurityProtocol(
             os.getenv("STATION_ID"), config=init_config, docker_client=docker_client
         )
+        sp.pre_run_protocol(
+            img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
+        )
+
+        container = client.containers.run(
+            image=test_train_image + ":latest", detach=True
+        )
+        exit_code = container.wait()["StatusCode"]
+        print(container.logs())
+        assert exit_code == 0
+
+        container.commit(test_train_image + ":latest")
+
         sp.post_run_protocol(
             img=test_train_image + ":latest",
             private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"),
@@ -273,8 +270,10 @@ def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
     image_name = train_image + "-signature" + ":latest"
 
     container = docker_client.containers.run(image=train_image, detach=True)
-    exit_code = container.wait()["StatusCode"]
 
+    exit_code = container.wait()["StatusCode"]
+    output = container.logs()
+    print(output.decode("utf-8"))
     assert exit_code == 0
 
     container.commit(image_name)
@@ -288,7 +287,7 @@ def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
     # # check that the previous stop has signed the image
     # stop = next((stop for stop in config.route if stop.station == "station_1"), None)
     # assert stop.signature
-    # pre run station 2
+    # pre run station 1
     p1 = tmpdir.join("station_private_key.pem")
     p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
     environment_dict_station_1 = {
