@@ -63,6 +63,16 @@ def test_pre_run_protocol(train_image, tmpdir, key_pairs, docker_client):
             img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
         )
 
+        files, file_names = files_from_archive(
+            extract_archive(train_image, "/opt/pht_train")
+        )
+        print(f"Files post pre run: {files}")
+        for f in files:
+            print(f"File: {f}")
+            print(f"File content: {f.read()}")
+
+        print(f"File names: {file_names}")
+
         # check that the session key cannot be changed
         changed_config_session_key = config.copy()
         changed_config_session_key.session_id = os.urandom(64).hex()
@@ -218,6 +228,7 @@ def execute_image_and_post_run_protocol(
         "STATION_ID": station_id,
         "STATION_PRIVATE_KEY_PATH": str(p1),
     }
+    print(f"Executing train for station: {environment_dict_station_1}")
     with mock.patch.dict(os.environ, environment_dict_station_1):
         sp = SecurityProtocol(
             os.getenv("STATION_ID"), config=init_config, docker_client=docker_client
@@ -269,10 +280,42 @@ def execute_image_and_post_run_protocol(
 def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
     image_name = train_image + "-signature" + ":latest"
 
-    container = docker_client.containers.run(image=train_image, detach=True)
+    # pre run station 1
+    p1 = tmpdir.join("station_private_key.pem")
+    p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
+    environment_dict_station_1 = {
+        "STATION_ID": "station_1",
+        "STATION_PRIVATE_KEY_PATH": str(p1),
+    }
 
-    exit_code = container.wait()["StatusCode"]
-    output = container.logs()
+    init_config = extract_train_config(train_image)
+
+    with mock.patch.dict(os.environ, environment_dict_station_1):
+        sp = SecurityProtocol(
+            os.getenv("STATION_ID"), config=init_config, docker_client=docker_client
+        )
+        sp.pre_run_protocol(
+            img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
+        )
+
+        container = docker_client.containers.run(image=train_image, detach=True)
+
+        exit_code = container.wait()["StatusCode"]
+        output = container.logs()
+
+        # extract the files from the container
+        # tar_stream, _ = container("/train")
+
+        files, file_names = files_from_archive(
+            extract_archive(train_image, "/opt/pht_train")
+        )
+        print(f"Files: {files}")
+        for f in files:
+            print(f"File: {f}")
+            print(f"File content: {f.read()}")
+
+        print(f"File names: {file_names}")
+
     print(output.decode("utf-8"))
     assert exit_code == 0
 

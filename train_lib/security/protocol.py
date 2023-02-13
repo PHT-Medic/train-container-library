@@ -126,7 +126,7 @@ class SecurityProtocol:
         )
 
         # add the decrypted files back to the image
-        self._add_train_files(img, immutable_files, file_names)
+        self._add_train_files(img, immutable_files, file_names, query=BytesIO(query))
 
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
@@ -381,13 +381,17 @@ class SecurityProtocol:
     def _commit_to_image(self, container, img):
         # Tag container as latest
         img_split = img.split(":")
-        if len(img_split) == 2:
+        if len(img_split) == 1:
+            repo = img_split[0]
+            tag = "latest"
+        elif len(img_split) == 2:
             repo, tag = img_split
         else:
             repo = ":".join(img_split[:-1])
             tag = img_split[-1]
 
-        container.commit(repository=repo, tag=tag)
+        print("repo", repo, "tag", tag)
+        img = container.commit(repository=repo, tag=tag)
         container.wait()
         container.remove()
 
@@ -410,6 +414,7 @@ class SecurityProtocol:
             # Create tarinfo object based on file name and size and prepend train directory
 
             print(file_names[i], data.getvalue())
+            data.seek(0)
 
             info = TarInfo(name=f"pht_train/{file_names[i]}")
             info.size = data.getbuffer().nbytes
