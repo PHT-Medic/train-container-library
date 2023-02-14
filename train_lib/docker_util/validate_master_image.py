@@ -10,6 +10,7 @@ _default_path_exceptions = [
     b"opt/pht_train",
     b"opt/train_config.json",
     b"opt/user_sym_key.key",
+    b"opt/.wh.",
 ]
 
 
@@ -55,10 +56,16 @@ def validate_train_image(
         if not dict(sorted(master_hashes.items())) == dict(
             sorted(train_hashes.items())
         ):
-            raise ValueError("File system of train image could not be validated.")
+            raise ValueError(
+                "File system of train image could not be validated. Hashed file system comparison "
+                "implicated error during validation."
+            )
     # if train images does not stem from master image raise Value Error
     else:
-        raise ValueError("File system of train image could not be validated.")
+        raise ValueError(
+            "File system of train image could not be validated. History entries implicated error during "
+            "validation."
+        )
 
 
 def _get_file_hashes(
