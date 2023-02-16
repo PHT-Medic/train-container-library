@@ -5,7 +5,7 @@ from io import BytesIO
 import docker
 
 # statically define files and directories which shall be exempt from hash file comparison
-_default_path_exceptions = [
+_DEFAULT_PATH_EXCEPTIONS = [
     b"opt/pht_results",
     b"opt/pht_train",
     b"opt/train_config.json",
@@ -27,7 +27,7 @@ def _default_docker_client():
 def validate_train_image(
     master_image_name: str,
     train_image_name: str,
-    path_exceptions=_default_path_exceptions,
+    path_exceptions=_DEFAULT_PATH_EXCEPTIONS,
     docker_client=_default_docker_client(),
 ):
     """
