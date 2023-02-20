@@ -16,6 +16,7 @@ from train_lib.security.hashing import hash_immutable_files
 from train_lib.security.train_config import TrainConfig
 
 
+
 @pytest.fixture(scope="session")
 def docker_client():
     try:
@@ -247,7 +248,6 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
     builder_signature = builder_private_key.sign(
         bytes.fromhex(build_sig_data), padding.PKCS1v15(), hashes.SHA512()
     )
-
     config_dict = {
         "@id": "test_train_id",
         "session_id": session_id.hex(),

@@ -90,7 +90,7 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
 
     :param img: identifier of the img to extract the file from
     :param extract_path: path of the file or directory to extract from the container
-    :return: tar archive containing the the extracted path
+    :return: tar archive containing the extracted path
     """
     client = docker.from_env()
     container = client.containers.create(img)
