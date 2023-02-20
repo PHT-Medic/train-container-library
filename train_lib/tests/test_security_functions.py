@@ -55,6 +55,18 @@ def test_encrypt_decrypt_train_files(train_files, symmetric_key, query_json):
         decryted_content = decrypted_files[i].read()
         assert decryted_content == file_content
 
+    new_key = os.urandom(32)
+    fe_2 = FileEncryptor(new_key)
+    encrypted_files_2 = fe_2.encrypt_files(decrypted_files, binary_files=True)
+
+    decrypted_files_2 = fe_2.decrypt_files(encrypted_files_2, binary_files=True)
+
+    for i, file in enumerate(files):
+        file.seek(0)
+        file_content = file.read()
+        decryted_content = decrypted_files_2[i].read()
+        assert decryted_content == file_content
+
 
 def test_aes_encryption():
     key = os.urandom(32)

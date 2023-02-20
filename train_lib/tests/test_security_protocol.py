@@ -33,11 +33,6 @@ def test_extract_train_config(train_image, train_files):
     assert config.file_list == file_names
 
 
-#
-
-##### TODO separate images for each test to avoid BLOCK_LENGTH errors with encrypted images"
-
-
 def test_get_previous_station(train_config):
     sp = SecurityProtocol(station_id="station_2", config=train_config)
     assert sp._get_previous_station().station == "station_1"
@@ -66,7 +61,7 @@ def test_pre_run_protocol(train_image, tmpdir, key_pairs, docker_client):
         files, file_names = files_from_archive(
             extract_archive(train_image, "/opt/pht_train")
         )
-        print(f"Files post pre run: {files}")
+        print(f"Files after pre run: {files}")
         for f in files:
             print(f"File: {f}")
             print(f"File content: {f.read()}")
@@ -95,7 +90,7 @@ def test_pre_run_protocol(train_image, tmpdir, key_pairs, docker_client):
             "query.json",
         ]
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValidationError):
             changed_file_list_sp = SecurityProtocol(
                 os.getenv("STATION_ID"),
                 config=changed_file_list_config,
@@ -447,7 +442,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
 
     # Should throw error because the results file is not correctly encrypted
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             sp = SecurityProtocol(
                 os.getenv("STATION_ID"), config=config, docker_client=docker_client
             )
@@ -478,7 +473,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     train_container.wait()
 
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             sp = SecurityProtocol(
                 os.getenv("STATION_ID"), config=config, docker_client=docker_client
             )
@@ -602,9 +597,11 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
     repo, tag = image_name.split(":")
     container.commit(repository=repo, tag=tag)
     ids = ["station_1", "station_2", "station_3"]
+
+    print("Running train image: " + image_name)
     for i, station_id in enumerate(ids):
         config = extract_train_config(image_name)
-        print(config.route)
+        print("Running station: " + station_id)
         p1 = tmpdir.join("station_private_key.pem")
         p1.write(bytes.fromhex(key_pairs[station_id]["private_key"]))
         environment_dict_station = {
@@ -618,10 +615,11 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
             sp.pre_run_protocol(
                 img=image_name, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
             )
-
             container = docker_client.containers.run(image=train_image, detach=True)
             exit_code = container.wait()["StatusCode"]
 
+            logs = container.logs()
+            print(logs)
             assert exit_code == 0
 
             container.commit(image_name)

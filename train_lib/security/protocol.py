@@ -126,7 +126,7 @@ class SecurityProtocol:
         )
 
         # add the decrypted files back to the image
-        self._add_train_files(img, immutable_files, file_names, query=BytesIO(query))
+        self._add_train_files(img, immutable_files, file_names, query=query)
 
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
@@ -195,7 +195,7 @@ class SecurityProtocol:
         """
         # execute the post run station side extracting the relevant files from the image
         logger.info(
-            f"Executing pre-run protocol at station {self.station_id} for image: {img}"
+            f"Executing post-run protocol at station {self.station_id} for image: {img}"
         )
         # Get the mutable files and tar archive structure
         mutable_files, mf_members, mf_dir = result_files_from_archive(
@@ -367,7 +367,7 @@ class SecurityProtocol:
         logger.info("Adding train files...", nl=False)
 
         train_file_archive = self._make_train_files_archive(
-            train_files, file_names, query
+            train_files=train_files, file_names=file_names, query=None
         )
 
         client = self.docker_client if self.docker_client else docker.from_env()
@@ -389,9 +389,7 @@ class SecurityProtocol:
         else:
             repo = ":".join(img_split[:-1])
             tag = img_split[-1]
-
-        print("repo", repo, "tag", tag)
-        img = container.commit(repository=repo, tag=tag)
+        container.commit(repository=repo, tag=tag)
         container.wait()
         container.remove()
 
@@ -412,8 +410,6 @@ class SecurityProtocol:
             train_file.seek(0)
             data = BytesIO(train_file.read())
             # Create tarinfo object based on file name and size and prepend train directory
-
-            print(file_names[i], data.getvalue())
             data.seek(0)
 
             info = TarInfo(name=f"pht_train/{file_names[i]}")
@@ -421,7 +417,6 @@ class SecurityProtocol:
             info.mtime = time.time()
             # add config data and reset the archive
             tar.addfile(info, data)
-        print(tar.getmembers())
         tar.close()
         archive_obj.seek(0)
 
@@ -673,9 +668,6 @@ class SecurityProtocol:
         :return: list of decrypted files
         """
 
-        for file in immutable_files:
-            print(file.read())
-            file.seek(0)
         fe = FileEncryptor(key=symmetric_key)
         decrypted_files = fe.decrypt_files(immutable_files, binary_files=True)
         if query:
