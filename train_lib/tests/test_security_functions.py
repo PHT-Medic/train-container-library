@@ -37,35 +37,7 @@ def test_encryption_decryption(config_dict_as_json):
 
     assert not file_content_changed
 
-
-def test_encrypt_decrypt_train_files(train_files, symmetric_key, query_json):
-
-    fe = FileEncryptor(symmetric_key)
-    filenames, files = train_files
-    encrypted_files = fe.encrypt_files(files, binary_files=True)
-    encrypted_query = fe.encrypt_file(query_json)
-    encrypted_files.append(encrypted_query)
-
-    decrypted_files = fe.decrypt_files(encrypted_files, binary_files=True)
-    decrypted_files.append(fe.decrypt_file(encrypted_query))
-
-    for i, file in enumerate(files):
-        file.seek(0)
-        file_content = file.read()
-        decryted_content = decrypted_files[i].read()
-        assert decryted_content == file_content
-
-    new_key = os.urandom(32)
-    fe_2 = FileEncryptor(new_key)
-    encrypted_files_2 = fe_2.encrypt_files(decrypted_files, binary_files=True)
-
-    decrypted_files_2 = fe_2.decrypt_files(encrypted_files_2, binary_files=True)
-
-    for i, file in enumerate(files):
-        file.seek(0)
-        file_content = file.read()
-        decryted_content = decrypted_files_2[i].read()
-        assert decryted_content == file_content
+    # TODO test file encryption with temp files
 
 
 def test_aes_encryption():

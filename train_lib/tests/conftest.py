@@ -11,7 +11,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 import docker
-from train_lib.security.encryption import FileEncryptor
 from train_lib.security.hashing import hash_immutable_files
 from train_lib.security.train_config import TrainConfig
 
@@ -35,15 +34,12 @@ def key_pairs():
     station_3_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     user_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
-    builder_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
     # Create public keys
 
     station_1_pk = station_1_sk.public_key()
     station_2_pk = station_2_sk.public_key()
     station_3_pk = station_3_sk.public_key()
     user_pk = user_sk.public_key()
-    builder_pk = builder_sk.public_key()
 
     # serialize the keys to bytes
 
@@ -87,17 +83,6 @@ def key_pairs():
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
-    builder_sk = builder_sk.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-
-    builder_pk = builder_pk.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
     key_pairs = {
         "station_1": {
             "private_key": station_1_sk.hex(),
@@ -112,7 +97,6 @@ def key_pairs():
             "public_key": station_3_pk.hex(),
         },
         "user": {"private_key": user_sk.hex(), "public_key": user_pk.hex()},
-        "builder": {"private_key": builder_sk.hex(), "public_key": builder_pk.hex()},
     }
 
     return key_pairs
@@ -149,35 +133,12 @@ if __name__ == '__main__':
 
     filenames = ["entrypoint.py", "file_1_test.py", "r_script.r", "query.json"]
     files = [
-        BytesIO(os.urandom(random.randint(100, 500))) for _ in range(len(filenames) - 2)
+        BytesIO(os.urandom(random.randint(5000, 20000)))
+        for _ in range(len(filenames) - 2)
     ]
     files.insert(0, entrypoint_file)
     files.append(query_json)
     return filenames, files
-
-
-@pytest.fixture
-def symmetric_key():
-    return b"\xcc\xd3\xd7V\xa5J\x15a-\xa0\xa2+\x88_=X\xb1\xd2=\x9f{!\x95\x07\x14\xf2z\x83WL\x8f\xe4"
-
-
-@pytest.fixture
-def encrypted_symmetric_key(key_pairs, symmetric_key):
-    station_1_pk = serialization.load_pem_public_key(
-        bytes.fromhex(key_pairs["station_1"]["public_key"]),
-        backend=default_backend(),
-    )
-
-    encrypted_key = station_1_pk.encrypt(
-        symmetric_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA512()),
-            algorithm=hashes.SHA512(),
-            label=None,
-        ),
-    )
-
-    return encrypted_key
 
 
 @pytest.fixture
@@ -200,7 +161,7 @@ def query_json():
 
 
 @pytest.fixture
-def train_config(key_pairs, train_files, encrypted_symmetric_key):
+def train_config(key_pairs, train_files):
     filenames, files = train_files
     session_id = os.urandom(64)
 
@@ -222,7 +183,7 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
     )
 
     print("Immutable Hash: ", immutable_hash)
-    # create user signature
+
     user_private_key = serialization.load_pem_private_key(
         bytes.fromhex(key_pairs["user"]["private_key"]),
         password=None,
@@ -232,21 +193,6 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
         immutable_hash, padding.PKCS1v15(), hashes.SHA512()
     )
 
-    # create builder signature
-    builder_private_key = serialization.load_pem_private_key(
-        bytes.fromhex(key_pairs["builder"]["private_key"]),
-        password=None,
-        backend=default_backend(),
-    )
-
-    # create hash of user signature and immutable hash
-
-    build_sig_data = immutable_hash.hex() + user_signature.hex()
-
-    # sign the hash with builder private key
-    builder_signature = builder_private_key.sign(
-        bytes.fromhex(build_sig_data), padding.PKCS1v15(), hashes.SHA512()
-    )
     config_dict = {
         "@id": "test_train_id",
         "session_id": session_id.hex(),
@@ -260,17 +206,12 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
             "id": user_id,
             "rsa_public_key": key_pairs["user"]["public_key"],
         },
-        "build": {
-            "signature": builder_signature.hex(),
-            "rsa_public_key": key_pairs["builder"]["public_key"],
-        },
         "route": [
             {
                 "station": "station_1",
                 "eco_system": "tue",
                 "rsa_public_key": station_public_keys["station_1"],
                 "index": 0,
-                "encrypted_key": encrypted_symmetric_key.hex(),
             },
             {
                 "station": "station_2",
@@ -295,17 +236,12 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
 
 
 @pytest.fixture
-def train_file_archive(train_files, symmetric_key):
+def train_file_archive(train_files):
     archive = BytesIO()
     tar = tarfile.open(fileobj=archive, mode="w")
 
     file_names, files = train_files
-    # init encryptor with symmetric key
-    encryptor = FileEncryptor(symmetric_key)
-    # encrypt all the files
-    encrypted_files = encryptor.encrypt_files(files, binary_files=True)
-
-    for i, file in enumerate(encrypted_files):
+    for i, file in enumerate(files):
         file.seek(0)
         f = tarfile.TarInfo(name=file_names[i])
         f.size = file.getbuffer().nbytes

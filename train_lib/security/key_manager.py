@@ -125,7 +125,7 @@ class KeyManager:
         env_key: str = None, key_path: str = None, password: str = None
     ) -> RSAPrivateKey:
         """
-        Loads the private key from the path provided in the environment variables of the currently
+        Loads the private key from the path provided provided in the environment variables of the currently
         running image
         :param key_path: path to a file containing the private key
         :param env_key: environment variable containing a hex string representing the station private key

@@ -4,7 +4,7 @@ import time
 from enum import Enum
 from io import BytesIO
 from tarfile import TarInfo
-from typing import BinaryIO, List, Tuple, Union
+from typing import BinaryIO, List
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -13,7 +13,6 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from loguru import logger
 
 import docker
-import docker.models
 from train_lib.docker_util.docker_ops import (
     extract_archive,
     extract_query_json,
@@ -92,31 +91,21 @@ class SecurityProtocol:
         logger.info(
             f"Executing pre-run protocol at station {self.station_id} for image: {img}"
         )
-
-        # extract and decrypt symmetric key
-        key = self.key_manager.decrypt_symmetric_key(
-            encrypted_key=self.route_stop.encrypted_key,
-            private_key_path=private_key_path,
-            private_key_password=private_key_password,
+        # Execute the protocol with directly passed files and the instances config file
+        logger.info("Extracting files from image...")
+        # Get the content of the immutable files from the image as ByteObjects
+        immutable_files, file_names = files_from_archive(
+            extract_archive(img, immutable_dir)
         )
 
-        # Get the content of the immutable files from the image as ByteObjects
+        # Check that no files have been added or removed
+        assert len(immutable_files) == len(self.config.file_list)
+
         try:
             query = extract_query_json(img)
         except Exception as e:
             logger.warning(f"Error extracting query json from image: {e}")
             query = None
-
-        try:
-            immutable_files, file_names, query = self.extract_immutable_files(
-                img=img, directory=immutable_dir, symmetric_key=key, query=query
-            )
-        except Exception as e:
-            logger.error(f"Error extracting immutable files from image: {e}")
-            raise ValidationError("Error extracting immutable files from image")
-
-        # Check that no files have been added or removed
-        assert len(immutable_files) == len(self.config.file_list)
 
         self.validate_immutable_files(
             files=immutable_files,
@@ -124,12 +113,13 @@ class SecurityProtocol:
             ordered_file_list=self.config.file_list,
             query=query,
         )
-
-        # add the decrypted files back to the image
-        self._add_train_files(img, immutable_files, file_names, query=query)
-
         if not self._is_first_station_on_route():
             self.verify_digital_signature()
+            key = self.key_manager.decrypt_symmetric_key(
+                encrypted_key=self.route_stop.encrypted_key,
+                private_key_path=private_key_path,
+                private_key_password=private_key_password,
+            )
             file_encryptor = FileEncryptor(key)
             # Decrypt all previously encrypted files
             mutable_files, mf_members, mf_dir = result_files_from_archive(
@@ -145,37 +135,6 @@ class SecurityProtocol:
             self._update_image(img, archive, results_path="/opt")
 
         logger.info("Pre-run protocol success")
-
-    def extract_immutable_files(
-        self,
-        img: str,
-        directory: str,
-        symmetric_key: bytes = None,
-        query: bytes = None,
-        decrypt: bool = True,
-    ):
-        """
-        Extracts the immutable files from the docker image and saves them to the specified directory
-        :param img: docker image to extract files from
-        :param directory: directory to save the files to
-        :return:
-        """
-        logger.info("Extracting immutable files from image...")
-        # Extract the files from the image
-        immutable_files, file_names = files_from_archive(
-            extract_archive(img, directory)
-        )
-
-        if decrypt:
-            if not symmetric_key:
-                raise ValueError("No symmetric key provided")
-            decrypted_files, query = self.decrypt_immutable_files(
-                immutable_files, symmetric_key, query
-            )
-
-            return decrypted_files, file_names, query
-
-        return immutable_files, file_names, query
 
     def post_run_protocol(
         self,
@@ -195,14 +154,14 @@ class SecurityProtocol:
         """
         # execute the post run station side extracting the relevant files from the image
         logger.info(
-            f"Executing post-run protocol at station {self.station_id} for image: {img}"
+            f"Executing pre-run protocol at station {self.station_id} for image: {img}"
         )
         # Get the mutable files and tar archive structure
         mutable_files, mf_members, mf_dir = result_files_from_archive(
             extract_archive(img, TrainPaths.RESULT_DIR.value)
         )
         # Run the post run protocol
-        encrypted_mutable_files, symmetric_key = self._post_run_outside_container(
+        encrypted_mutable_files = self._post_run_outside_container(
             mutable_files, private_key_path, private_key_password
         )
         results_archive = self._make_results_archive(
@@ -211,19 +170,6 @@ class SecurityProtocol:
         results_archive.seek(0)
 
         self.config = TrainConfig(**self.config.dict(by_alias=True))
-
-        # get immutable files and query from image
-        query = extract_query_json(img)
-        immutable_files, file_names, query = self.extract_immutable_files(
-            img, TrainPaths.IMMUTABLE_DIR.value, query=query, decrypt=False
-        )
-        # Encrypt the immutable files
-        encrypted_files, query = self.encrypt_immutable_files(
-            immutable_files, symmetric_key, query
-        )
-        # Add the encrypted files to the image
-        self._add_train_files(img, encrypted_files, file_names, query)
-
         # update the container with the encrypted files
         self._update_image(
             img, results_archive, results_path="/opt", config_path="/opt"
@@ -235,7 +181,7 @@ class SecurityProtocol:
         mutable_files: List[BytesIO],
         private_key_path: str,
         private_key_password: str = None,
-    ) -> Tuple[List[BytesIO], bytes]:
+    ) -> List[BytesIO]:
         """
         Performs the post run protocol on the mutable files contained in an image. Consisting of encrypting the
         mutable files and updateing the train_config.json. The extracted mutable files are encrypted and the
@@ -285,7 +231,7 @@ class SecurityProtocol:
         self._update_symmetric_keys(new_sym_key)
         # at the last station encrypt the symmetric key using the rsa public key of the user
 
-        return encrypted_results, new_sym_key
+        return encrypted_results
 
     def _update_image(
         self, img, results_archive: BytesIO, results_path: str, config_path: str = None
@@ -314,13 +260,22 @@ class SecurityProtocol:
         logger.info("Adding encrypted result files")
         container.put_archive(results_path, results_archive)
         # add_archive(img, results_archive, results_path)
-        logger.info("Updating user key file")
+        logger.info("Updating user key file ")
         user_key = self._make_user_key()
         # add user key to opt directory
         # add_archive(img, user_key, "/opt")
         container.put_archive("/opt", user_key)
         # Tag container as latest
-        self._commit_to_image(container, img)
+        img_split = img.split(":")
+
+        if len(img_split) == 2:
+            repo, tag = img_split
+        else:
+            repo = ":".join(img_split[:-1])
+            tag = img_split[-1]
+        container.commit(repository=repo, tag=tag)
+        container.wait()
+        container.remove()
 
     @staticmethod
     def _make_results_archive(archive_members, file_members, updated_files):
@@ -348,88 +303,6 @@ class SecurityProtocol:
             tar.addfile(file_member, fileobj=updated_files[i])
 
         # Close tarfile and reset BytesIO
-        tar.close()
-        archive_obj.seek(0)
-
-        return archive_obj
-
-    def _add_train_files(
-        self, img: str, train_files: List[BytesIO], file_names: List[str], query=None
-    ):
-        """
-        Create in memory tar archive containing the train files and add it to the image
-        :param img: identifier of the image <repository>:<tag>
-        :param train_files: list of train files
-        :param file_names: names of the train files
-        :return:
-        """
-
-        logger.info("Adding train files...", nl=False)
-
-        train_file_archive = self._make_train_files_archive(
-            train_files=train_files, file_names=file_names, query=None
-        )
-
-        client = self.docker_client if self.docker_client else docker.from_env()
-        container = client.containers.create(img)
-        train_file_archive.seek(0)
-        container.put_archive("/opt", train_file_archive)
-        container.wait()
-        self._commit_to_image(container, img)
-        logger.info("Done")
-
-    def _commit_to_image(self, container, img):
-        """
-        Commit the container to the image and remove the container
-        :param container:
-        :param img:
-        :return:
-        """
-        # Tag container as latest
-        img_split = img.split(":")
-        if len(img_split) == 1:
-            repo = img_split[0]
-            tag = "latest"
-        elif len(img_split) == 2:
-            repo, tag = img_split
-        else:
-            repo = ":".join(img_split[:-1])
-            tag = img_split[-1]
-        container.commit(repository=repo, tag=tag)
-        container.wait()
-        container.remove()
-
-    @staticmethod
-    def _make_train_files_archive(
-        train_files: List[BytesIO], file_names: List[str], query: BytesIO = None
-    ) -> BytesIO:
-        """
-        Create a tar archive containing the train files and the query file
-        :param train_files: list of in memory file objects defining the algorithm of the train
-        :param file_names: names of the train files
-        :param query: optional query file
-        :return: Tar archive containing the train files and the query file
-        """
-        archive_obj = BytesIO()
-        tar = tarfile.open(fileobj=archive_obj, mode="w")
-
-        if query:
-            query.seek(0)
-            info = TarInfo(name="query.json")
-            info.size = query.getbuffer().nbytes
-            info.mtime = time.time()
-            tar.addfile(info, query)
-        for i, train_file in enumerate(train_files):
-            train_file.seek(0)
-            data = BytesIO(train_file.read())
-            # Create tarinfo object based on file name and size and prepend train directory
-            data.seek(0)
-
-            info = TarInfo(name=f"pht_train/{file_names[i]}")
-            info.size = data.getbuffer().nbytes
-            info.mtime = time.time()
-            # add config data and reset the archive
-            tar.addfile(info, data)
         tar.close()
         archive_obj.seek(0)
 
@@ -521,8 +394,6 @@ class SecurityProtocol:
             raise ValidationError("Immutable Files have changed")
         # Verify that the hash value corresponds with the signature
         user_pk.verify(e_h_sig, current_hash, padding.PKCS1v15(), hashes.SHA512())
-        # validate the build signature to ensure no tampering has occurred
-        self.validate_build_signature(current_hash.hex())
 
     def validate_previous_results(self, files: List[BinaryIO]):
         """
@@ -627,67 +498,6 @@ class SecurityProtocol:
                     algorithm=utils.Prehashed(hashes.SHA512()),
                 )
 
-    def validate_build_signature(self, immutable_file_hash: str):
-        """
-        Validate that the hash of the locally available file corresponds to initial hash provided by the builder
-        in combination with the user signature
-        :param immutable_file_hash:
-        :return:
-        """
-
-        logger.info("Validating build signature... ", nl=False)
-        builder_pk = self.key_manager.load_public_key(self.config.build.rsa_public_key)
-
-        content = immutable_file_hash + self.config.signature
-        try:
-            builder_pk.verify(
-                bytes.fromhex(self.config.build.signature),
-                bytes.fromhex(content),
-                padding.PKCS1v15(),
-                hashes.SHA512(),
-            )
-            logger.info("OK")
-
-        except Exception as e:
-
-            logger.error(f"Error\n {e}")
-            raise ValidationError("Error validating build signature.")
-
-    def encrypt_immutable_files(
-        self, files: List[BytesIO], symmetric_key: bytes, query=None
-    ):
-        """
-        Encrypts the immutable files
-        :param files: dictionary containing the files to encrypt
-        :param symmetric_key: symmetric key to encrypt the files with
-        :return:
-        """
-        logger.info("Encrypting immutable files...")
-        file_encryptor = FileEncryptor(symmetric_key)
-        encrypted_files = file_encryptor.encrypt_files(files, binary_files=True)
-        if query:
-            encrypted_query = file_encryptor.encrypt(query)
-            return encrypted_files, encrypted_query
-        return encrypted_files, None
-
-    def decrypt_immutable_files(
-        self, immutable_files: List[BinaryIO], symmetric_key: bytes, query: bytes = None
-    ) -> Union[Tuple[List[BytesIO], bytes], Tuple[List[BytesIO], None]]:
-        """
-        Decrypts the immutable files of the train using the private key of the currently running station
-        :param query: optional bytes for query json
-        :param symmetric_key:
-        :param immutable_files: list of binary files to decrypt
-        :return: list of decrypted files
-        """
-
-        fe = FileEncryptor(key=symmetric_key)
-        decrypted_files = fe.decrypt_files(immutable_files, binary_files=True)
-        if query:
-            decrypted_query = fe.decrypt(query)
-            return decrypted_files, decrypted_query
-        return decrypted_files, None
-
     def _is_first_station_on_route(self) -> bool:
         """
         Returns true if current station is the first station on the route
@@ -716,11 +526,6 @@ class SecurityProtocol:
         return files
 
     def _update_symmetric_keys(self, new_sym_key: bytes):
-        """
-        Updates the symmetric key for the train creator and all stations on the route
-        :param new_sym_key:
-        :return:
-        """
         for i, station in enumerate(self.config.route):
             station.encrypted_key = self.key_manager.encrypt_symmetric_key(
                 new_sym_key, station.rsa_public_key
