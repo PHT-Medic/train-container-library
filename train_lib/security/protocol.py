@@ -379,6 +379,12 @@ class SecurityProtocol:
         logger.info("Done")
 
     def _commit_to_image(self, container, img):
+        """
+        Commit the container to the image and remove the container
+        :param container:
+        :param img:
+        :return:
+        """
         # Tag container as latest
         img_split = img.split(":")
         if len(img_split) == 1:
@@ -397,6 +403,13 @@ class SecurityProtocol:
     def _make_train_files_archive(
         train_files: List[BytesIO], file_names: List[str], query: BytesIO = None
     ) -> BytesIO:
+        """
+        Create a tar archive containing the train files and the query file
+        :param train_files: list of in memory file objects defining the algorithm of the train
+        :param file_names: names of the train files
+        :param query: optional query file
+        :return: Tar archive containing the train files and the query file
+        """
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
 
@@ -703,6 +716,11 @@ class SecurityProtocol:
         return files
 
     def _update_symmetric_keys(self, new_sym_key: bytes):
+        """
+        Updates the symmetric key for the train creator and all stations on the route
+        :param new_sym_key:
+        :return:
+        """
         for i, station in enumerate(self.config.route):
             station.encrypted_key = self.key_manager.encrypt_symmetric_key(
                 new_sym_key, station.rsa_public_key
