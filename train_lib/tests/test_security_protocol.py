@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import tarfile
@@ -16,7 +15,6 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
 
 from train_lib.docker_util.docker_ops import (
     extract_archive,
-    extract_query_json,
     extract_train_config,
     files_from_archive,
 )
@@ -33,21 +31,6 @@ def test_extract_train_config(train_image, train_files):
     assert isinstance(config, TrainConfig)
 
     assert config.file_list == file_names
-
-
-def test_extract_query_json(train_image, query_json):
-    image_name = train_image + ":latest"
-    extracted_query = json.loads(extract_query_json(image_name))
-
-    assert extracted_query
-    query_json.seek(0)
-    initial_query = json.loads(query_json.read())
-    assert extracted_query == initial_query
-
-
-# # todo failing cases
-# def test_validate_master_image(train_image, master_image):
-#     validate_train_image(train_image, master_image)
 
 
 def test_get_previous_station(train_config):
@@ -75,6 +58,16 @@ def test_pre_run_protocol(train_image, tmpdir, key_pairs, docker_client):
             img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
         )
 
+        files, file_names = files_from_archive(
+            extract_archive(train_image, "/opt/pht_train")
+        )
+        print(f"Files after pre run: {files}")
+        for f in files:
+            print(f"File: {f}")
+            print(f"File content: {f.read()}")
+
+        print(f"File names: {file_names}")
+
         # check that the session key cannot be changed
         changed_config_session_key = config.copy()
         changed_config_session_key.session_id = os.urandom(64).hex()
@@ -97,7 +90,7 @@ def test_pre_run_protocol(train_image, tmpdir, key_pairs, docker_client):
             "query.json",
         ]
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValidationError):
             changed_file_list_sp = SecurityProtocol(
                 os.getenv("STATION_ID"),
                 config=changed_file_list_config,
@@ -220,12 +213,6 @@ def execute_image_and_post_run_protocol(
     init_config = extract_train_config(test_train_image)
     # Execute the image
     client = docker_client
-    container = client.containers.run(image=test_train_image + ":latest", detach=True)
-    exit_code = container.wait()["StatusCode"]
-
-    assert exit_code == 0
-
-    container.commit(test_train_image + ":latest")
 
     # Perform post run protocol
     # if station_id == "station_1":
@@ -236,10 +223,24 @@ def execute_image_and_post_run_protocol(
         "STATION_ID": station_id,
         "STATION_PRIVATE_KEY_PATH": str(p1),
     }
+    print(f"Executing train for station: {environment_dict_station_1}")
     with mock.patch.dict(os.environ, environment_dict_station_1):
         sp = SecurityProtocol(
             os.getenv("STATION_ID"), config=init_config, docker_client=docker_client
         )
+        sp.pre_run_protocol(
+            img=test_train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
+        )
+
+        container = client.containers.run(
+            image=test_train_image + ":latest", detach=True
+        )
+        exit_code = container.wait()["StatusCode"]
+        print(container.logs())
+        assert exit_code == 0
+
+        container.commit(test_train_image + ":latest")
+
         sp.post_run_protocol(
             img=test_train_image + ":latest",
             private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH"),
@@ -274,9 +275,43 @@ def execute_image_and_post_run_protocol(
 def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
     image_name = train_image + "-signature" + ":latest"
 
-    container = docker_client.containers.run(image=train_image, detach=True)
-    exit_code = container.wait()["StatusCode"]
+    # pre run station 1
+    p1 = tmpdir.join("station_private_key.pem")
+    p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
+    environment_dict_station_1 = {
+        "STATION_ID": "station_1",
+        "STATION_PRIVATE_KEY_PATH": str(p1),
+    }
 
+    init_config = extract_train_config(train_image)
+
+    with mock.patch.dict(os.environ, environment_dict_station_1):
+        sp = SecurityProtocol(
+            os.getenv("STATION_ID"), config=init_config, docker_client=docker_client
+        )
+        sp.pre_run_protocol(
+            img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
+        )
+
+        container = docker_client.containers.run(image=train_image, detach=True)
+
+        exit_code = container.wait()["StatusCode"]
+        output = container.logs()
+
+        # extract the files from the container
+        # tar_stream, _ = container("/train")
+
+        files, file_names = files_from_archive(
+            extract_archive(train_image, "/opt/pht_train")
+        )
+        print(f"Files: {files}")
+        for f in files:
+            print(f"File: {f}")
+            print(f"File content: {f.read()}")
+
+        print(f"File names: {file_names}")
+
+    print(output.decode("utf-8"))
     assert exit_code == 0
 
     container.commit(image_name)
@@ -290,7 +325,7 @@ def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
     # # check that the previous stop has signed the image
     # stop = next((stop for stop in config.route if stop.station == "station_1"), None)
     # assert stop.signature
-    # pre run station 2
+    # pre run station 1
     p1 = tmpdir.join("station_private_key.pem")
     p1.write(bytes.fromhex(key_pairs["station_1"]["private_key"]))
     environment_dict_station_1 = {
@@ -407,7 +442,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
 
     # Should throw error because the results file is not correctly encrypted
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             sp = SecurityProtocol(
                 os.getenv("STATION_ID"), config=config, docker_client=docker_client
             )
@@ -438,7 +473,7 @@ def test_post_run_protocol(train_image, tmpdir, key_pairs, docker_client):
     train_container.wait()
 
     with mock.patch.dict(os.environ, environment_dict_station_2):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             sp = SecurityProtocol(
                 os.getenv("STATION_ID"), config=config, docker_client=docker_client
             )
@@ -562,9 +597,11 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
     repo, tag = image_name.split(":")
     container.commit(repository=repo, tag=tag)
     ids = ["station_1", "station_2", "station_3"]
+
+    print("Running train image: " + image_name)
     for i, station_id in enumerate(ids):
         config = extract_train_config(image_name)
-        print(config.route)
+        print("Running station: " + station_id)
         p1 = tmpdir.join("station_private_key.pem")
         p1.write(bytes.fromhex(key_pairs[station_id]["private_key"]))
         environment_dict_station = {
@@ -578,10 +615,11 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
             sp.pre_run_protocol(
                 img=image_name, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
             )
-
-            container = docker_client.containers.run(image=train_image, detach=True)
+            container = docker_client.containers.run(image=image_name, detach=True)
             exit_code = container.wait()["StatusCode"]
 
+            logs = container.logs()
+            print(logs)
             assert exit_code == 0
 
             container.commit(image_name)

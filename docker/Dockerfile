@@ -17,8 +17,6 @@ RUN apt -y update && apt-get -y install software-properties-common && \
 
 # install python
 
-
-
 # set poetry environment variables
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_CREATE=false \

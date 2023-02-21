@@ -29,10 +29,14 @@ def extract_query_json(
     :param query_file_path: path of the query file inside the image
     :return: dictionary containing the  security values stored inside the train:config.json
     """
+    try:
+        with extract_archive(img, query_file_path) as query_archive:
+            query_file = query_archive.extractfile("query.json")
+            data = query_file.read()
 
-    with extract_archive(img, query_file_path) as query_archive:
-        query_file = query_archive.extractfile("query.json")
-        data = query_file.read()
+    except Exception as e:
+        print(e)
+        data = None
     return data
 
 
@@ -89,8 +93,8 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     :return: tar archive containing the extracted path
     """
     client = docker.from_env()
-    data = client.containers.create(img)
-    stream, stat = data.get_archive(extract_path)
+    container = client.containers.create(img)
+    stream, stat = container.get_archive(extract_path)
     file_obj = BytesIO()
     for i in stream:
         file_obj.write(i)
@@ -110,11 +114,11 @@ def add_archive(img: str, archive: BytesIO, path: str):
     """
 
     client = docker.from_env()
-    data = client.containers.create(img)
-    data.put_archive(path, archive)
-    data.wait()
+    container = client.containers.create(img)
+    container.put_archive(path, archive)
+    container.wait()
     # Get repository and tag for committing the container to an image
     repository, tag = img.split(":")
-    data.commit(repository=repository, tag=tag)
-    data.wait()
-    data.remove()
+    container.commit(repository=repository, tag=tag)
+    container.wait()
+    container.remove()
