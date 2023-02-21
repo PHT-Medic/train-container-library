@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "train-container-library"
+name = "pht-train-container-library"
 version = "2.0.0b1"
 description = "Python library for handling containerized PHT trains"
 authors = ["Michael Graf <michael.graf@uni-tuebingen.com>"]
