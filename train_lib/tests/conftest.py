@@ -16,8 +16,7 @@ from train_lib.security.hashing import hash_immutable_files
 from train_lib.security.train_config import TrainConfig
 
 
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 def docker_client():
     try:
         client = docker.from_env()
@@ -28,7 +27,7 @@ def docker_client():
     return client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def key_pairs():
     # Create private keys
     station_1_sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -119,7 +118,7 @@ def key_pairs():
     return key_pairs
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def train_files(query_json):
     entrypoint_file_string = """
 import os
@@ -157,12 +156,12 @@ if __name__ == '__main__':
     return filenames, files
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def symmetric_key():
     return b"\xcc\xd3\xd7V\xa5J\x15a-\xa0\xa2+\x88_=X\xb1\xd2=\x9f{!\x95\x07\x14\xf2z\x83WL\x8f\xe4"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def encrypted_symmetric_key(key_pairs, symmetric_key):
     station_1_pk = serialization.load_pem_public_key(
         bytes.fromhex(key_pairs["station_1"]["public_key"]),
@@ -181,7 +180,7 @@ def encrypted_symmetric_key(key_pairs, symmetric_key):
     return encrypted_key
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def query_json():
     minimal_query = {
         "query": {
@@ -200,7 +199,7 @@ def query_json():
     return query
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def train_config(key_pairs, train_files, encrypted_symmetric_key):
     filenames, files = train_files
     session_id = os.urandom(64)
@@ -295,7 +294,7 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
     return TrainConfig(**config_dict)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def train_file_archive(train_files, symmetric_key):
     archive = BytesIO()
     tar = tarfile.open(fileobj=archive, mode="w")
@@ -320,12 +319,12 @@ def train_file_archive(train_files, symmetric_key):
     return archive
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def master_image():
     return "dev-harbor.personalhealthtrain.de/master/python/base:latest"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def train_image(
     train_config: TrainConfig, train_file_archive, docker_client, master_image
 ):

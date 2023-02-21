@@ -615,7 +615,7 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
             sp.pre_run_protocol(
                 img=image_name, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
             )
-            container = docker_client.containers.run(image=train_image, detach=True)
+            container = docker_client.containers.run(image=image_name, detach=True)
             exit_code = container.wait()["StatusCode"]
 
             logs = container.logs()
