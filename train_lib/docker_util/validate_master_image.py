@@ -44,10 +44,7 @@ def validate_train_image(
     train_image = docker_client.images.get(train_image_name)
 
     # check if history entries indicate that train image stems from master image
-    is_history_test_true = all(
-        [entry in train_image.history() for entry in master_image.history()]
-    )
-    if is_history_test_true:
+    if _do_history_test(master_image, train_image):
         # extract file system hashes
         master_hashes = _get_file_hashes(master_image, path_exceptions)
         train_hashes = _get_file_hashes(train_image, path_exceptions)
@@ -66,6 +63,30 @@ def validate_train_image(
             "File system of train image could not be validated. History entries implicated error during "
             "validation."
         )
+
+
+def _do_history_test(master_image, train_image) -> bool:
+    """
+    Compare history entries between images, to ensure that the given train image is a successor to the master image.
+    :param master_image: master image object whose history entries will be used as base
+    :param train_image: train image object whose history entries should contain the master image history entry's
+    :return: boolean fo whether all master image history entries are also in the train image history
+    """
+    # Extract history entry ids
+    master_img_entry_ids = [
+        {key: entry[key] for key in ["Created", "CreatedBy", "Size"]}
+        for entry in master_image.history()
+    ]
+    train_img_entry_ids = [
+        {key: entry[key] for key in ["Created", "CreatedBy", "Size"]}
+        for entry in train_image.history()
+    ]
+
+    # Check whether all entry ids of the master image history are also in the train image's
+    is_history_test_true = all(
+        [entry_dict in train_img_entry_ids for entry_dict in master_img_entry_ids]
+    )
+    return is_history_test_true
 
 
 def _get_file_hashes(

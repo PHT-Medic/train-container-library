@@ -8,89 +8,92 @@ from train_lib.docker_util.validate_master_image import validate_train_image
 
 
 def test_validate_master_image(master_image, train_image, docker_client):
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image (Success)", end="")
-    validate_train_image(master_image, train_image, docker_client=docker_client)
-    print(" -> succeeds")
-    print(f"{time.time() - start_t:.2f}s")
+    print("\nComparison: master_img vs. train_img (SUCCESS)", end="")
+    _file_system_change_test(master_image, train_image, docker_client, "none", True)
 
     docker_client.images.pull("hello-world")
-    start_t = time.time()
-    print("\nComparison: master_image vs. random_image (Fail)", end="")
-    with pytest.raises(ValueError):
-        validate_train_image(master_image, "hello-world", docker_client=docker_client)
-    print(" -> fails")
-    print(f"{time.time() - start_t:.2f}s")
+    print("\nComparison: master_img vs. random_img (FAIL)", end="")
+    _file_system_change_test(master_image, "hello-world", docker_client, "none", False)
 
-    start_t = time.time()
-    print("\nComparison: train_image vs. master_image (FAIL)", end="")
-    with pytest.raises(ValueError):
-        validate_train_image(train_image, master_image, docker_client=docker_client)
-    print(" -> fails")
-    print(f"{time.time() - start_t:.2f}s")
+    print("\nComparison: train_img vs. master_img (FAIL)", end="")
+    _file_system_change_test(train_image, master_image, docker_client, "none", False)
 
-    new_train_image = f"{train_image}_add:faulty"
-    # add archive object to new faulty image
-    _add_img_file(train_image, new_train_image, docker_client, "opt/file")
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image_with_addition (FAIL)", end="")
-    with pytest.raises(ValueError):
-        validate_train_image(master_image, new_train_image, docker_client=docker_client)
-    print(" -> fails")
-    print(f"{time.time() - start_t:.2f}s")
+    for change_type in ["add", "change", "delete"]:
+        for test_result in [True, False]:
+            print(
+                f"\nComparison: master_img vs. train_img_with_{change_type} ({'SUCCESS' if test_result else 'FAIL'})",
+                end="",
+            )
+            _file_system_change_test(
+                master_image, train_image, docker_client, change_type, test_result
+            )
 
-    new_train_image = f"{train_image}_add:not_faulty"
-    # add archive object to new not faulty image
-    _add_img_file(train_image, new_train_image, docker_client, "opt/pht_results/file")
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image_with_addition (SUCCESS)", end="")
-    validate_train_image(master_image, new_train_image, docker_client=docker_client)
-    print(" -> succeeds")
-    print(f"{time.time() - start_t:.2f}s")
 
-    new_train_image = f"{train_image}_change:faulty"
-    # change file in new faulty image
-    _make_change_in_img_file(
-        train_image, new_train_image, docker_client, ".dockerenv", "."
-    )
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image_with_change (FAIL)", end="")
-    with pytest.raises(ValueError):
-        validate_train_image(master_image, new_train_image, docker_client=docker_client)
-    print(" -> fails")
-    print(f"{time.time() - start_t:.2f}s")
+def _file_system_change_test(
+    master_img, train_img, docker_client, change_type: str, positive_test: bool
+):
+    """
+    Changes file system in train image according to given change type, creates a copy in the docker_client, and performs
+    either positive or negative test validation against master image.
+    :param master_img: master image object for validation test
+    :param train_img: train image object onto which changes will be applied
+    :param docker_client: docker client associated with given docker image and where the new image will be created
+    :param change_type: either "add", "change", "delete" or "none" clarifying which kind of change should be applied to
+    the new train image. If no changes are applied the normal train image will be used for the validation test
+    :param positive_test: boolean value determining whether a positive or negative validation test will be performed
+    :return:
+    """
+    if change_type in ["add", "change", "delete", "none"]:
+        # Define name of new train image
+        new_train_img = (
+            f"{train_img}_{change_type}:{'not_' if positive_test else ''}faulty"
+        )
 
-    new_train_image = f"{train_image}_change:not_faulty"
-    # change file in new not faulty image
-    _make_change_in_img_file(
-        train_image, new_train_image, docker_client, "opt/train_config.json", "."
-    )
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image_with_change (SUCCESS)", end="")
-    validate_train_image(master_image, new_train_image, docker_client=docker_client)
-    print(" -> succeeds")
-    print(f"{time.time() - start_t:.2f}s")
+        # Determine and apply change type
+        if change_type == "add":
+            if positive_test:
+                _add_img_file(
+                    train_img, new_train_img, docker_client, "opt/pht_results/file"
+                )
+            else:
+                _add_img_file(train_img, new_train_img, docker_client, "opt/file")
+        elif change_type == "change":
+            if positive_test:
+                _make_change_in_img_file(
+                    train_img,
+                    new_train_img,
+                    docker_client,
+                    "opt/train_config.json",
+                    ".",
+                )
+            else:
+                _make_change_in_img_file(
+                    train_img, new_train_img, docker_client, ".dockerenv", "."
+                )
+        elif change_type == "delete":
+            if positive_test:
+                _delete_img_file(
+                    train_img, new_train_img, docker_client, "opt/train_config.json"
+                )
+            else:
+                _delete_img_file(train_img, new_train_img, docker_client, ".dockerenv")
+        else:
+            new_train_img = train_img
 
-    new_train_image = f"{train_image}_delete:faulty"
-    # delete file in new faulty image
-    _delete_img_file(train_image, new_train_image, docker_client, ".dockerenv")
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image_with_deletion (FAIL)", end="")
-    with pytest.raises(ValueError):
-        validate_train_image(master_image, new_train_image, docker_client=docker_client)
-    print(" -> fails")
-    print(f"{time.time() - start_t:.2f}s")
-
-    new_train_image = f"{train_image}_delete:not_faulty"
-    # delete file in new not faulty image
-    _delete_img_file(
-        train_image, new_train_image, docker_client, "opt/train_config.json"
-    )
-    start_t = time.time()
-    print("\nComparison: master_image vs. train_image_with_deletion (SUCCESS)", end="")
-    validate_train_image(master_image, new_train_image, docker_client=docker_client)
-    print(" -> succeeds")
-    print(f"{time.time() - start_t:.2f}s")
+        # Perform validation test
+        start_t = time.time()
+        if positive_test:
+            validate_train_image(master_img, new_train_img, docker_client=docker_client)
+            print(" -> succeeds")
+        else:
+            with pytest.raises(ValueError):
+                validate_train_image(
+                    master_img, new_train_img, docker_client=docker_client
+                )
+            print(" -> fails")
+        print(f"{time.time() - start_t:.2f}s")
+    else:
+        raise ValueError("File system change test was given an invalid change type.")
 
 
 def _add_img_file(img: str, new_img: str, docker_client, path: str):
@@ -130,21 +133,6 @@ def _make_change_in_img_file(
     :param added_change: string that will be appended to the specified file in the docker image
     :return:
     """
-
-    # # create and commit new copy of image
-    # data = docker_client.containers.create(img)
-    # repository, tag = new_img.split(":")
-    # data.commit(repository=repository, tag=tag)
-    # data.wait()
-    # data.remove()
-    #
-    # # run copy and add file.txt at given path, overwrite new image
-    # data = docker_client.containers.run(new_img, detach=True)
-    # data.exec_run(f"echo '{added_change}' >> {path}")
-    # data.wait()
-    # data.commit(repository=repository, tag=tag)
-    # data.wait()
-    # data.remove()
 
     data = docker_client.containers.create(img)
     # extract specified file
