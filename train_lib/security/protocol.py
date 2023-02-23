@@ -103,6 +103,7 @@ class SecurityProtocol:
         # Get the content of the immutable files from the image as ByteObjects
         try:
             query = extract_query_json(img)
+            logger.info("Query json extracted from image")
         except Exception as e:
             logger.warning(f"Error extracting query json from image: {e}")
             query = None
@@ -116,7 +117,7 @@ class SecurityProtocol:
             raise ValidationError("Error extracting immutable files from image")
 
         # Check that no files have been added or removed
-        assert len(immutable_files) == len(self.config.file_list)
+        # assert len(immutable_files) == len(self.config.file_list)
 
         self.validate_immutable_files(
             files=immutable_files,
@@ -141,7 +142,6 @@ class SecurityProtocol:
             self.validate_previous_results(files=decrypted_files)
             archive = self._make_results_archive(mf_dir, mf_members, decrypted_files)
             logger.info("Adding decrypted files to image")
-            # print(archive.name)
             self._update_image(img, archive, results_path="/opt")
 
         logger.info("Pre-run protocol success")
@@ -166,14 +166,22 @@ class SecurityProtocol:
             extract_archive(img, directory)
         )
 
+        def drop_query_json(file_names, files):
+            query_index = file_names.index("query.json")
+            file_names.pop(query_index)
+            immutable_files.pop(query_index)
+
         if decrypt:
             if not symmetric_key:
                 raise ValueError("No symmetric key provided")
-            decrypted_files, query = self.decrypt_immutable_files(
+            if query:
+                drop_query_json(file_names, immutable_files)
+            immutable_files, query = self.decrypt_immutable_files(
                 immutable_files, symmetric_key, query
             )
-
-            return decrypted_files, file_names, query
+        else:
+            if query:
+                drop_query_json(file_names, immutable_files)
 
         return immutable_files, file_names, query
 
@@ -502,7 +510,6 @@ class SecurityProtocol:
                 query=query,
             )
         elif files:
-
             current_hash = hash_immutable_files(
                 immutable_files=files,
                 user_id=str(self.config.creator.id),

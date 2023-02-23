@@ -61,7 +61,6 @@ class FileEncryptor:
                 file.seek(0)
                 logger.info(f"file {i + 1}/{len(files)}...")
                 data = self._decrypt_aes(file.read())
-                # print("decrypted data", data)
                 decr_files.append(BytesIO(data))
                 logger.info("Done")
             return decr_files

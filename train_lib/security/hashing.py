@@ -49,6 +49,8 @@ def hash_immutable_files(
     digest.update(session_id)
     if query_file:
         digest.update(query_file)
+    if query:
+        digest.update(query)
     return digest.finalize()
 
 

@@ -1,6 +1,8 @@
 import tarfile
 from io import BytesIO
 
+from loguru import logger
+
 import docker
 from train_lib.security.train_config import TrainConfig
 
@@ -35,7 +37,7 @@ def extract_query_json(
             data = query_file.read()
 
     except Exception as e:
-        print(e)
+        logger.error(f"Error extracting query.json from image {img}: {e}")
         data = None
     return data
 
