@@ -374,8 +374,15 @@ class SecurityProtocol:
 
         logger.info("Adding train files...", nl=False)
 
+        if query:
+            if isinstance(query, bytes):
+                query = BytesIO(query)
+            elif isinstance(query, BytesIO):
+                pass
+            else:
+                raise TypeError("Query must be of type bytes or BytesIO")
         train_file_archive = self._make_train_files_archive(
-            train_files=train_files, file_names=file_names, query=None
+            train_files=train_files, file_names=file_names, query=query
         )
 
         client = self.docker_client if self.docker_client else docker.from_env()
@@ -423,21 +430,17 @@ class SecurityProtocol:
 
         if query:
             query.seek(0)
-            info = TarInfo(name="query.json")
+            info = TarInfo(name="pht_train/query.json")
             info.size = query.getbuffer().nbytes
             info.mtime = time.time()
             tar.addfile(info, query)
         for i, train_file in enumerate(train_files):
             train_file.seek(0)
-            data = BytesIO(train_file.read())
-            # Create tarinfo object based on file name and size and prepend train directory
-            data.seek(0)
-
             info = TarInfo(name=f"pht_train/{file_names[i]}")
-            info.size = data.getbuffer().nbytes
+            info.size = train_file.getbuffer().nbytes
             info.mtime = time.time()
             # add config data and reset the archive
-            tar.addfile(info, data)
+            tar.addfile(info, train_file)
         tar.close()
         archive_obj.seek(0)
 

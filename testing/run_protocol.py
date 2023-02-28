@@ -3,7 +3,7 @@ import os
 import sys
 
 from train_lib.security.protocol import SecurityProtocol
-from train_lib.docker_util.docker_ops import extract_train_config
+from train_lib.docker_util.docker_ops import extract_train_config, extract_query_json
 import docker
 
 
@@ -37,6 +37,7 @@ def protocol(step, train_image, station_id, private_key_path, private_key_passwo
             private_key_path=private_key_path,
             private_key_password=private_key_password,
         )
+        query = extract_query_json(train_image)
     elif step == "post-run":
         protocol.post_run_protocol(
             train_image,
