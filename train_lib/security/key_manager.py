@@ -9,6 +9,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 from train_lib.security.train_config import TrainConfig
 
+SYMMETRIC_KEY_LENGTH = 256
+
 
 class KeyManager:
     """
@@ -46,7 +48,7 @@ class KeyManager:
         Create a symmetric fernet key for encrypting sensitive files
         :return:
         """
-        key = AESCCM.generate_key(256)
+        key = AESCCM.generate_key(SYMMETRIC_KEY_LENGTH)
         return key
 
     def decrypt_symmetric_key(

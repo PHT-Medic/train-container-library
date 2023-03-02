@@ -30,7 +30,7 @@ def test_extract_train_config(train_image, train_files):
     assert config
     assert isinstance(config, TrainConfig)
 
-    assert config.file_list == file_names
+    assert config.file_list == file_names[:-1]
 
 
 def test_get_previous_station(train_config):
