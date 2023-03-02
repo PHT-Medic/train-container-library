@@ -247,6 +247,8 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
     builder_signature = builder_private_key.sign(
         bytes.fromhex(build_sig_data), padding.PKCS1v15(), hashes.SHA512()
     )
+    filenames_no_query = filenames[:-1]
+
     config_dict = {
         "@id": "test_train_id",
         "session_id": session_id.hex(),
@@ -285,7 +287,7 @@ def train_config(key_pairs, train_files, encrypted_symmetric_key):
                 "index": 2,
             },
         ],
-        "file_list": filenames,
+        "file_list": filenames_no_query,
         "hash": immutable_hash.hex(),
         "signature": user_signature.hex(),
         "@context": {"link": "https://www.w3.org/2018/credentials/v1"},

@@ -8,7 +8,7 @@ from loguru import logger
 
 IV_LENGTH = 16
 
-PADDING_LENGTH = 128
+PADDING_LENGTH = 256
 
 
 class FileEncryptor:

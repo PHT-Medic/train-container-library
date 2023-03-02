@@ -2,6 +2,7 @@ from typing import BinaryIO, List, Union
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from loguru import logger
 
 
 def hash_immutable_files(
@@ -28,12 +29,14 @@ def hash_immutable_files(
     if binary_files:
         if immutable_file_names:
             for f in ordered_file_list:
+                logger.trace(f"Hashing file {f}")
                 # TODO ugly workaround fix this
                 if f.startswith("./"):
                     f = f[2:]
 
                 index = immutable_file_names.index(f)
                 if f == "query.json":
+                    logger.debug("Found query file")
                     query_file = immutable_files[index].read()
                     continue
                 data = immutable_files[index].read()
@@ -50,6 +53,7 @@ def hash_immutable_files(
     if query_file:
         digest.update(query_file)
     if query:
+        logger.debug("Adding query to hash")
         digest.update(query)
     return digest.finalize()
 

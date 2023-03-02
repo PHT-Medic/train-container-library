@@ -51,7 +51,6 @@ def protocol(step, train_image, station_id, private_key_path, private_key_passwo
             private_key_password=private_key_password,
         )
         # execute the image
-
         container = client.containers.run(train_image, detach=True)
         container.wait()
         print(container.logs())

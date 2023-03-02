@@ -37,6 +37,13 @@ def test_encryption_decryption(config_dict_as_json):
 
     assert not file_content_changed
 
+    AESCCM.generate_key(256)
+    other_file_encryptor = FileEncryptor(key)
+    again_encrypted_files = other_file_encryptor.encrypt_files(
+        decrypted_files, binary_files=True
+    )
+    other_file_encryptor.decrypt_files(again_encrypted_files, binary_files=True)
+
 
 def test_encrypt_decrypt_train_files(train_files, symmetric_key, query_json):
 

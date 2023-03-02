@@ -5,6 +5,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 from train_lib.security.train_config import TrainConfig
 
@@ -45,7 +46,8 @@ class KeyManager:
         Create a symmetric fernet key for encrypting sensitive files
         :return:
         """
-        return os.urandom(32)
+        key = AESCCM.generate_key(256)
+        return key
 
     def decrypt_symmetric_key(
         self,

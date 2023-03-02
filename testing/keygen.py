@@ -2,6 +2,29 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
 
+test = {
+    "type_differences": [
+        {
+            "dataframe_type": ("race", "equal"),
+            "aggregator_type": ("race", "categorical"),
+        }
+    ],
+    "column_name_differences": [
+        {
+            "dataframe_column_name": ("FSMIs", "unstructured"),
+            "aggregator_column_name": ("FSMI", "unstructured"),
+        },
+        {
+            "dataframe_column_name": ("MRI_images", "unstructured"),
+            "aggregator_column_name": ("MRI_Img", "unstructured"),
+        },
+    ],
+    "column_semantic_differences": [
+        {"dataframe_distinct_column": ("Cancer_Images", "unstructured")},
+        {"aggregator_distinct_column": ("gender", "equal")},
+    ],
+}
+
 
 def generate_user_key_pair():
     user_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
