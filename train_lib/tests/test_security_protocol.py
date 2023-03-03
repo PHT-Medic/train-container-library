@@ -592,10 +592,19 @@ def test_pre_run_protocol_wrong_results_hash(
 
 
 def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client):
-    image_name = train_image + "-multi" + ":latest"
+
+    # setup the separate images for the test
+    image_name = train_image + "-multi"
     container = docker_client.containers.create(train_image)
-    repo, tag = image_name.split(":")
-    container.commit(repository=repo, tag=tag)
+    container.commit(repository=image_name, tag="latest")
+    container.commit(repository=image_name, tag="base")
+    container.wait()
+    container.remove()
+    image_name += ":latest"
+
+    # repo, tag = base_image_name.split(":")
+    # container.commit(repository=repo, tag=tag)
+
     ids = ["station_1", "station_2", "station_3"]
 
     print("Running train image: " + image_name)
@@ -609,12 +618,17 @@ def test_multi_execution_protocol(train_image, tmpdir, key_pairs, docker_client)
             "STATION_PRIVATE_KEY_PATH": str(p1),
         }
         with mock.patch.dict(os.environ, environment_dict_station):
+
+            private_key_path = os.getenv("STATION_PRIVATE_KEY_PATH")
             sp = SecurityProtocol(
                 os.getenv("STATION_ID"), docker_client=docker_client, config=config
             )
-            sp.pre_run_protocol(
-                img=image_name, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
+            sym_key = sp.key_manager.decrypt_symmetric_key(
+                sp.route_stop.encrypted_key, private_key_path=private_key_path
             )
+            print("Symmetric key: ")
+            print(sym_key)
+            sp.pre_run_protocol(img=image_name, private_key_path=private_key_path)
             container = docker_client.containers.run(image=image_name, detach=True)
             exit_code = container.wait()["StatusCode"]
 

@@ -5,11 +5,10 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 from train_lib.security.train_config import TrainConfig
 
-SYMMETRIC_KEY_LENGTH = 256
+SYMMETRIC_KEY_LENGTH = 32
 
 
 class KeyManager:
@@ -48,7 +47,7 @@ class KeyManager:
         Create a symmetric fernet key for encrypting sensitive files
         :return:
         """
-        key = AESCCM.generate_key(SYMMETRIC_KEY_LENGTH)
+        key = os.urandom(SYMMETRIC_KEY_LENGTH)
         return key
 
     def decrypt_symmetric_key(
@@ -62,7 +61,7 @@ class KeyManager:
         :arg encrypted_key: the encrypted symmetric key to decrypt in hex format
         :arg private_key_path: path to the private key file
         :arg private_key_password: optional password to decrypt the private key
-        :return: symmetric fernet key used to encrypt and decrypt files
+        :return: symmetric AES key used to encrypt and decrypt files
         """
         private_key = self.load_private_key(
             key_path=private_key_path, password=private_key_password
