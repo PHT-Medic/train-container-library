@@ -273,7 +273,14 @@ def execute_image_and_post_run_protocol(
 
 
 def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
-    image_name = train_image + "-signature" + ":latest"
+    image_name = train_image + "-signature"
+    # Create a new image with a different name
+    container = docker_client.containers.create(train_image)
+    container.commit(repository=image_name, tag="latest")
+    container.commit(repository=image_name, tag="base")
+    container.wait()
+    container.remove()
+    image_name += ":latest"
 
     # pre run station 1
     p1 = tmpdir.join("station_private_key.pem")
@@ -283,17 +290,17 @@ def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
         "STATION_PRIVATE_KEY_PATH": str(p1),
     }
 
-    init_config = extract_train_config(train_image)
+    init_config = extract_train_config(image_name)
 
     with mock.patch.dict(os.environ, environment_dict_station_1):
         sp = SecurityProtocol(
             os.getenv("STATION_ID"), config=init_config, docker_client=docker_client
         )
         sp.pre_run_protocol(
-            img=train_image, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
+            img=image_name, private_key_path=os.getenv("STATION_PRIVATE_KEY_PATH")
         )
 
-        container = docker_client.containers.run(image=train_image, detach=True)
+        container = docker_client.containers.run(image=image_name, detach=True)
 
         exit_code = container.wait()["StatusCode"]
         output = container.logs()
@@ -316,7 +323,7 @@ def test_digital_signature(train_image, tmpdir, key_pairs, docker_client):
 
     container.commit(image_name)
 
-    config = extract_train_config(train_image)
+    config = extract_train_config(image_name)
 
     assert not config.route[0].signature
 

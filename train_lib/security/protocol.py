@@ -805,6 +805,7 @@ class SecurityProtocol:
         try:
             client.images.get(base_image)
             return base_image
-        except docker.errors.ImageNotFound:
+        except Exception as e:
             logger.error(f"Base image {base_image} not found for image {img}")
+            logger.error(e)
             raise ValueError(f"Base image {base_image} not found for image {img}")
