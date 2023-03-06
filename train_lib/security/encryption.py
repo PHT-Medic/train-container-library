@@ -105,7 +105,7 @@ class FileEncryptor:
 
     def _encrypt_aes(self, data: bytes) -> bytes:
 
-        logger.debug("Encrypting Data: " + str(data[:100]))
+        logger.debug("Encryption data preview: " + str(data[:100]))
         padder = padding.PKCS7(PADDING_LENGTH).padder()
         padded_data = padder.update(data)
         padded_data += padder.finalize()
@@ -131,5 +131,5 @@ class FileEncryptor:
 
         unpadded_data = unpadder.update(decrypted)
         unpadded_data += unpadder.finalize()
-        logger.info("Decrypted data: " + str(unpadded_data[:100]))
+        logger.debug("Decrypted data: " + str(unpadded_data[:100]))
         return unpadded_data

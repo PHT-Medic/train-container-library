@@ -40,56 +40,88 @@ def protocol(step, train_image, station_id, private_key_path, private_key_passwo
         )
         train_image = train_image + ":latest"
 
-    img = client.images.get(train_image)
-    if not img:
-        click.echo("Image not found. Pulling...")
-        client.images.pull(train_image)
+    # get the image or pull it
+
+    click.echo("Pulling train image...")
+    client.images.pull(train_image)
+
+    # pull base image if not present
+    repo = train_image.split(":")[0]
+    try:
+        click.echo("Pulling base image...")
+        client.images.pull(repo, tag="base")
+    except Exception as e:
+        print(e)
+        click.echo("Base image not found. Retagging...")
+        # tag the input image as base
+        client.images.get(train_image).tag(repo, tag="base")
 
     config = extract_train_config(train_image)
     protocol = SecurityProtocol(config=config, station_id=station_id)
     if step == "pre-run":
-        debug_pre_run(
+        click.echo("Executing pre-run protocol...")
+        debug_run(
             protocol,
+            step,
             train_image,
             private_key_path=private_key_path,
             private_key_password=private_key_password,
         )
     elif step == "post-run":
-        protocol.post_run_protocol(
+        click.echo("Executing post-run protocol...")
+        debug_run(
+            protocol,
+            step,
             train_image,
             private_key_path=private_key_path,
             private_key_password=private_key_password,
         )
     elif step == "full":
-        protocol.pre_run_protocol(
+        click.echo("Executing pre-run protocol...")
+        debug_run(
+            protocol,
+            "pre-run",
             train_image,
             private_key_path=private_key_path,
             private_key_password=private_key_password,
         )
+        click.echo("Executing train image...")
         # execute the image
         container = client.containers.run(train_image, detach=True)
         container.wait()
         print(container.logs())
-
-        protocol.post_run_protocol(
+        click.echo("Executing post-run protocol...")
+        debug_run(
+            protocol,
+            "post-run",
             train_image,
             private_key_path=private_key_path,
             private_key_password=private_key_password,
         )
 
 
-def debug_pre_run(
+def debug_run(
     sp: SecurityProtocol,
+    step: str,
     train_image: str,
     private_key_path: str,
     private_key_password: str,
 ):
     display_train_dir(train_image)
-    sp.pre_run_protocol(
-        train_image,
-        private_key_path=private_key_path,
-        private_key_password=private_key_password,
-    )
+    if step == "pre-run":
+
+        sp.pre_run_protocol(
+            train_image,
+            private_key_path=private_key_path,
+            private_key_password=private_key_password,
+        )
+    elif step == "post-run":
+        sp.post_run_protocol(
+            train_image,
+            private_key_path=private_key_path,
+            private_key_password=private_key_password,
+        )
+
     display_train_dir(train_image)
 
 

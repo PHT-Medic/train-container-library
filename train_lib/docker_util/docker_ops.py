@@ -124,3 +124,17 @@ def add_archive(img: str, archive: BytesIO, path: str):
     container.commit(repository=repository, tag=tag)
     container.wait()
     container.remove()
+
+
+def display_archive_content(tar_archive: tarfile.TarFile):
+    """
+    Displays the content of the given tar archive
+
+    :param tar_archive: the tar archive to display the content of
+    """
+    logger.debug("Displaying archive content: ")
+    for member in tar_archive.getmembers():
+        name = member.name
+        size = member.size
+        file_preview = tar_archive.extractfile(member).read(100)
+        logger.debug(f"Name: {name}, Size: {size}, Preview: {file_preview}")

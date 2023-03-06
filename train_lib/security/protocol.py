@@ -16,6 +16,7 @@ import docker
 import docker.errors
 import docker.models
 from train_lib.docker_util.docker_ops import (
+    display_archive_content,
     extract_archive,
     extract_query_json,
     files_from_archive,
@@ -32,6 +33,12 @@ class TrainPaths(Enum):
     IMMUTABLE_DIR = "/opt/pht_train"
     RESULT_DIR = "/opt/pht_results"
     CONFIG_PATH = "/opt/train_config.json"
+
+
+class TrainTags(Enum):
+    LATEST = "latest"
+    BASE = "base"
+    DECRYPTED = "decrypted"
 
 
 class SecurityProtocol:
@@ -134,6 +141,7 @@ class SecurityProtocol:
             self.verify_digital_signature()
             file_encryptor = FileEncryptor(key)
             # Decrypt all previously encrypted files
+            logger.info("Decrypting results files")
             mutable_files, mf_members, mf_dir = result_files_from_archive(
                 extract_archive(img, mutable_dir)
             )
@@ -144,7 +152,7 @@ class SecurityProtocol:
             results_archive = self._make_results_archive(
                 mf_dir, mf_members, decrypted_files
             )
-            logger.info("Decrypted results files to image")
+
         self._update_image(
             img,
             results_archive=results_archive,
@@ -152,48 +160,10 @@ class SecurityProtocol:
             train_files=immutable_files,
             file_names=file_names,
             query=query,
+            tag="latest-decrypted",
         )
 
-        logger.info("Pre-run protocol success")
-
-    def extract_immutable_files(
-        self,
-        img: str,
-        directory: str,
-        symmetric_key: bytes = None,
-        query: bytes = None,
-        decrypt: bool = True,
-    ):
-        """
-        Extracts the immutable files from the docker image and saves them to the specified directory
-        :param img: docker image to extract files from
-        :param directory: directory to save the files to
-        :return:
-        """
-        logger.info("Extracting immutable files from image...")
-        # Extract the files from the image
-        immutable_files, file_names = files_from_archive(
-            extract_archive(img, directory)
-        )
-
-        def drop_query_json(file_names, files):
-            query_index = file_names.index("query.json")
-            file_names.pop(query_index)
-            immutable_files.pop(query_index)
-
-        if decrypt:
-            if not symmetric_key:
-                raise ValueError("No symmetric key provided")
-            if query:
-                drop_query_json(file_names, immutable_files)
-            immutable_files, query = self.decrypt_immutable_files(
-                immutable_files, symmetric_key, query
-            )
-        else:
-            if query:
-                drop_query_json(file_names, immutable_files)
-
-        return immutable_files, file_names, query
+        logger.info(f"Successfully executed pre run protocol on img: {img}")
 
     def post_run_protocol(
         self,
@@ -240,7 +210,7 @@ class SecurityProtocol:
             immutable_files, symmetric_key, query
         )
         # Add the encrypted files to the image
-        self._add_train_files(img, encrypted_files, file_names, query)
+        # self._add_train_files(img, encrypted_files, file_names, query)
 
         # update the container with the encrypted files
         self._update_image(
@@ -255,6 +225,45 @@ class SecurityProtocol:
         )
 
         logger.info(f"Successfully executed post run protocol on img: {img}")
+
+    def extract_immutable_files(
+        self,
+        img: str,
+        directory: str,
+        symmetric_key: bytes = None,
+        query: bytes = None,
+        decrypt: bool = True,
+    ):
+        """
+        Extracts the immutable files from the docker image and saves them to the specified directory
+        :param img: docker image to extract files from
+        :param directory: directory to save the files to
+        :return:
+        """
+        logger.info("Extracting immutable files from image...")
+        # Extract the files from the image
+        immutable_files, file_names = files_from_archive(
+            extract_archive(img, directory)
+        )
+
+        def drop_query_json(file_names, files):
+            query_index = file_names.index("query.json")
+            file_names.pop(query_index)
+            immutable_files.pop(query_index)
+
+        if decrypt:
+            if not symmetric_key:
+                raise ValueError("No symmetric key provided")
+            if query:
+                drop_query_json(file_names, immutable_files)
+            immutable_files, query = self.decrypt_immutable_files(
+                immutable_files, symmetric_key, query
+            )
+        else:
+            if query:
+                drop_query_json(file_names, immutable_files)
+
+        return immutable_files, file_names, query
 
     def validate_immutable_files(
         self,
@@ -492,7 +501,7 @@ class SecurityProtocol:
         :param private_key_path: path to private key used to sign the results
         :return:
         """
-        logger.info(f"prev results hash {self.config.result_hash}")
+        logger.info(f"Previous results hash: {self.config.result_hash}")
         # Update the hash value of the mutable files
         e_d = hash_results(
             result_files=mutable_files,
@@ -500,7 +509,7 @@ class SecurityProtocol:
             binary_files=True,
         )
         self.config.result_hash = e_d.hex()
-        logger.info(f"new results hash: {self.config.result_hash}")
+        logger.info(f"Updated results hash: {self.config.result_hash}")
 
         # Load the local private key and sign the hash of the results files
         sk = self.key_manager.load_private_key(
@@ -543,15 +552,12 @@ class SecurityProtocol:
         file_names: List[str] = None,
         query: bytes = None,
         rebase: bool = False,
+        tag: str = "latest",
     ):
         """
         Update the base image with the encrypted results files and the updated train_config.json and tag it as
-        latest
-        :param img: identifier of the image <repository>:<tag>
-        :param results_archive: tar archive containing the encrypted results
-        :param results_path: path to write the results to
-        :param config_path: path to write the updated train_config.json
-        :return:
+        latest.
+
         """
         # If a config path is given update the train config inside the container
         client = self.docker_client if self.docker_client else docker.from_env()
@@ -576,7 +582,9 @@ class SecurityProtocol:
         # add the updated results archive
         if results_archive:
             logger.info("Adding encrypted result files")
+            results_archive.seek(0)
             container.put_archive(results_path, results_archive)
+            container.wait()
         # add_archive(img, results_archive, results_path)
 
         if self.config.creator.encrypted_key:
@@ -584,6 +592,7 @@ class SecurityProtocol:
             user_key = self._make_user_key()
             # add user key to opt directory
             # add_archive(img, user_key, "/opt")
+            user_key.seek(0)
             container.put_archive("/opt", user_key)
             container.wait()
 
@@ -596,12 +605,16 @@ class SecurityProtocol:
             train_archive = self._make_train_files_archive(
                 train_files, file_names, query
             )
+            tar = tarfile.open(fileobj=train_archive, mode="r")
+            display_archive_content(tar)
+
+            train_archive.seek(0)
             # add the train archive to the image
             container.put_archive("/opt", train_archive)
             container.wait()
 
         # Tag container as latest
-        self._commit_to_image(container, img)
+        self._commit_to_image(container, img, tag)
 
     @staticmethod
     def _make_results_archive(archive_members, file_members, updated_files):
@@ -664,7 +677,7 @@ class SecurityProtocol:
         container.wait()
         logger.info("Done")
 
-    def _commit_to_image(self, container, img):
+    def _commit_to_image(self, container, img, tag: str = "latest"):
         """
         Commit the container to the image and remove the container
         :param container:
@@ -676,14 +689,17 @@ class SecurityProtocol:
         img_split = img.split(":")
         if len(img_split) == 1:
             repo = img_split[0]
-            tag = "latest"
+            docker_tag = "latest"
         elif len(img_split) == 2:
-            repo, tag = img_split
+            repo, docker_tag = img_split
         else:
             repo = ":".join(img_split[:-1])
-            tag = img_split[-1]
-        logger.debug(f"Committing Container ({container.id}) to image ({repo}:{tag})")
-        container.commit(repository=repo, tag=tag)
+            docker_tag = img_split[-1]
+
+        logger.debug(
+            f"Committing Container ({container.id}) to image ({repo}:{docker_tag})"
+        )
+        container.commit(repository=repo, tag=docker_tag)
         container.wait()
         container.remove()
 
