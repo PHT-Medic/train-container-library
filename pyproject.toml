@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pht-train-container-library"
-version = "2.0.0a7"
+version = "2.0.0a8"
 description = "Python library for handling containerized PHT trains"
 authors = ["Michael Graf <michael.graf@uni-tuebingen.com>"]
 readme = "README.md"
