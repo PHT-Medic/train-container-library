@@ -572,6 +572,7 @@ class SecurityProtocol:
             config_archive.seek(0)
             # add_archive(img, config_archive, config_path)
             container.put_archive(config_path, config_archive)
+            container.wait()
         # add the updated results archive
         if results_archive:
             logger.info("Adding encrypted result files")
@@ -584,6 +585,7 @@ class SecurityProtocol:
             # add user key to opt directory
             # add_archive(img, user_key, "/opt")
             container.put_archive("/opt", user_key)
+            container.wait()
 
         if train_files:
             if not file_names:
@@ -596,6 +598,8 @@ class SecurityProtocol:
             )
             # add the train archive to the image
             container.put_archive("/opt", train_archive)
+            container.wait()
+
         # Tag container as latest
         self._commit_to_image(container, img)
 
@@ -641,8 +645,6 @@ class SecurityProtocol:
         :return:
         """
 
-        logger.info("Adding train files...", nl=False)
-
         if query:
             if isinstance(query, bytes):
                 query = BytesIO(query)
@@ -656,6 +658,7 @@ class SecurityProtocol:
 
         client = self.docker_client if self.docker_client else docker.from_env()
         container = client.containers.create(img)
+        logger.info(f"Adding train files to container: {container.id}")
         train_file_archive.seek(0)
         container.put_archive("/opt", train_file_archive)
         container.wait()
@@ -701,14 +704,20 @@ class SecurityProtocol:
         if query:
             if isinstance(query, bytes):
                 query = BytesIO(query)
+            logger.debug("Adding query file to train archive")
             query.seek(0)
             info = TarInfo(name="pht_train/query.json")
             info.size = query.getbuffer().nbytes
             info.mtime = time.time()
             tar.addfile(info, query)
+
         for i, train_file in enumerate(train_files):
+            name = f"pht_train/{file_names[i]}"
             train_file.seek(0)
-            info = TarInfo(name=f"pht_train/{file_names[i]}")
+            logger.debug(f"Adding train file: {name} to archive")
+            logger.debug(train_file.read())
+            train_file.seek(0)
+            info = TarInfo(name=name)
             info.size = train_file.getbuffer().nbytes
             info.mtime = time.time()
             # add config data and reset the archive
