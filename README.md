@@ -77,7 +77,7 @@ To use the protocol in your own python application, after installing the library
 with `pip install pht-train-container-library` an instance of the protocol can be to validate docker images as follows:
 
 ```python
-from train_lib.security import SecurityProtocol
+from train_lib.security.protocol import SecurityProtocol
 from train_lib.docker_util.docker_ops import extract_train_config
 
 image_name = '<image-repo>:<image-tag>'

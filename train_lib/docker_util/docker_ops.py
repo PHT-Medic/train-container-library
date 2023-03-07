@@ -1,6 +1,8 @@
 import tarfile
 from io import BytesIO
 
+from loguru import logger
+
 import docker
 from train_lib.security.train_config import TrainConfig
 
@@ -29,10 +31,14 @@ def extract_query_json(
     :param query_file_path: path of the query file inside the image
     :return: dictionary containing the  security values stored inside the train:config.json
     """
+    try:
+        with extract_archive(img, query_file_path) as query_archive:
+            query_file = query_archive.extractfile("query.json")
+            data = query_file.read()
 
-    with extract_archive(img, query_file_path) as query_archive:
-        query_file = query_archive.extractfile("query.json")
-        data = query_file.read()
+    except Exception as e:
+        logger.error(f"Error extracting query.json from image {img}: {e}")
+        data = None
     return data
 
 
@@ -89,8 +95,8 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     :return: tar archive containing the extracted path
     """
     client = docker.from_env()
-    data = client.containers.create(img)
-    stream, stat = data.get_archive(extract_path)
+    container = client.containers.create(img)
+    stream, stat = container.get_archive(extract_path)
     file_obj = BytesIO()
     for i in stream:
         file_obj.write(i)
@@ -110,11 +116,25 @@ def add_archive(img: str, archive: BytesIO, path: str):
     """
 
     client = docker.from_env()
-    data = client.containers.create(img)
-    data.put_archive(path, archive)
-    data.wait()
+    container = client.containers.create(img)
+    container.put_archive(path, archive)
+    container.wait()
     # Get repository and tag for committing the container to an image
     repository, tag = img.split(":")
-    data.commit(repository=repository, tag=tag)
-    data.wait()
-    data.remove()
+    container.commit(repository=repository, tag=tag)
+    container.wait()
+    container.remove()
+
+
+def display_archive_content(tar_archive: tarfile.TarFile):
+    """
+    Displays the content of the given tar archive
+
+    :param tar_archive: the tar archive to display the content of
+    """
+    logger.debug("Displaying archive content: ")
+    for member in tar_archive.getmembers():
+        name = member.name
+        size = member.size
+        file_preview = tar_archive.extractfile(member).read(100)
+        logger.debug(f"Name: {name}, Size: {size}, Preview: {file_preview}")

@@ -4,6 +4,8 @@ docker-compose_bak.yml
 rebuild.sh
 *.env
 $HOME
+station_key.pem
+config_schema.json
 
 # Sphinx documentation
 docs/_build/
