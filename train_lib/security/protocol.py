@@ -170,6 +170,7 @@ class SecurityProtocol:
         img: str = None,
         private_key_path: str = None,
         private_key_password: str = None,
+        rebase: bool = True,
     ):
         """
         Updates the necessary values in the train_config.json and encrypts the updated files after a successful train
@@ -179,6 +180,7 @@ class SecurityProtocol:
         :param private_key_path: path to the private key associated with the current station and with the corresponding
             public key registered in vault under the PID chosen by the station
         :param private_key_password: optional password to decrypt the private key
+        :param rebase: if True the image will be rebased on the latest version of the base image
         :return:
         """
         # execute the post run station side extracting the relevant files from the image
@@ -221,7 +223,7 @@ class SecurityProtocol:
             train_files=encrypted_files,
             file_names=file_names,
             query=query,
-            rebase=True,
+            rebase=rebase,
         )
 
         logger.info(f"Successfully executed post run protocol on img: {img}")

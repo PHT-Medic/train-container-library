@@ -34,4 +34,6 @@ if __name__ == "__main__":
         protocol.pre_run_protocol(img=image, private_key_path=private_key_path)
 
     elif protocol_step == Commands.POST:
-        protocol.post_run_protocol(img=image, private_key_path=private_key_path)
+        protocol.post_run_protocol(
+            img=image, private_key_path=private_key_path, rebase=False
+        )

@@ -15,28 +15,8 @@ RUN apt -y update && apt-get -y install software-properties-common && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/cache/apt/archives/*
 
-# install python
-
-
-
-# set poetry environment variables
-ENV POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_VIRTUALENVS_IN_PROJECT=false \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VERSION=1.3.0
-
-
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
-
-ENV PATH="$PATH:$POETRY_HOME/bin"
-
-COPY . /opt/protocol
-WORKDIR /opt/protocol
-RUN poetry install
-RUN chmod +x /opt/protocol/docker/entrypoint/entrypoint.sh && \
-    chmod +x /opt/protocol/docker/entrypoint/run_protocol.py
+# install train container library
+RUN pip install --force-reinstall --no-cache-dir -v "pht-train-container-library==2.0.0"
 
 ENTRYPOINT ["/opt/protocol/docker/entrypoint/entrypoint.sh"]
 
