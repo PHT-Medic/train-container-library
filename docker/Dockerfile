@@ -16,7 +16,7 @@ RUN apt -y update && apt-get -y install software-properties-common && \
     rm -rf /var/cache/apt/archives/*
 
 # install train container library
-RUN pip install --force-reinstall --no-cache-dir -v "pht-train-container-library==2.0.0"
+RUN pip install --force-reinstall --no-cache-dir -v "pht-train-container-library==2.0.1"
 
 ENTRYPOINT ["/opt/protocol/docker/entrypoint/entrypoint.sh"]
 
