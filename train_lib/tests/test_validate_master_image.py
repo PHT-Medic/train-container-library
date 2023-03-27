@@ -7,7 +7,7 @@ import pytest
 from train_lib.docker_util.validate_master_image import validate_train_image
 
 
-def test_validate_master_image(master_image, train_image, docker_client):
+def test_validate_master_image(master_image: str, train_image: str, docker_client):
     print("\nComparison: master_img vs. train_img (SUCCESS)", end="")
     _file_system_change_test(master_image, train_image, docker_client, "none", True)
 
@@ -30,13 +30,17 @@ def test_validate_master_image(master_image, train_image, docker_client):
 
 
 def _file_system_change_test(
-    master_img, train_img, docker_client, change_type: str, positive_test: bool
+    master_img: str,
+    train_img: str,
+    docker_client,
+    change_type: str,
+    positive_test: bool,
 ):
     """
     Changes file system in train image according to given change type, creates a copy in the docker_client, and performs
     either positive or negative test validation against master image.
-    :param master_img: master image object for validation test
-    :param train_img: train image object onto which changes will be applied
+    :param master_img: master image identifier for validation test
+    :param train_img: train image identifier onto which changes will be applied
     :param docker_client: docker client associated with given docker image and where the new image will be created
     :param change_type: either "add", "change", "delete" or "none" clarifying which kind of change should be applied to
     the new train image. If no changes are applied the normal train image will be used for the validation test
@@ -113,8 +117,7 @@ def _add_img_file(img: str, new_img: str, docker_client, path: str):
     data.remove()
 
     # run copy and add file.txt at given path, overwrite new image
-    data = docker_client.containers.run(new_img, detach=True)
-    data.exec_run(f"touch {path}")
+    data = docker_client.containers.run(new_img, command=f"touch {path}", detach=True)
     data.wait()
     data.commit(repository=repository, tag=tag)
     data.wait()
@@ -182,8 +185,7 @@ def _delete_img_file(img: str, new_img: str, docker_client, path: str):
     data.remove()
 
     # run copy and remove specified file at given path, overwrite new image
-    data = docker_client.containers.run(new_img, detach=True)
-    data.exec_run(f"rm {path}")
+    data = docker_client.containers.run(new_img, command=f"rm {path}", detach=True)
     data.wait()
     data.commit(repository=repository, tag=tag)
     data.wait()
