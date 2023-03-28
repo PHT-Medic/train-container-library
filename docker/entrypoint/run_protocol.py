@@ -14,9 +14,16 @@ class Commands(Enum):
 if __name__ == "__main__":
     args = sys.argv[1:]
 
+    if len(args) != 2:
+        raise ValueError(
+            f"Invalid number of arguments. Expected 2 ([0] <protocol-step> [1] <train-image>), "
+            f"got {len(args)}. \n {args}"
+        )
+
     protocol_step = Commands(args[0])
     station_id = os.getenv("STATION_ID")
     private_key_path = os.getenv("PRIVATE_KEY_PATH")
+    private_key_password = os.getenv("PRIVATE_KEY_PASSWORD")
 
     if not station_id:
         raise ValueError("STATION_ID environment variable is not set")
@@ -31,9 +38,16 @@ if __name__ == "__main__":
 
     protocol = SecurityProtocol(station_id=station_id, config=config)
     if protocol_step == Commands.PRE:
-        protocol.pre_run_protocol(img=image, private_key_path=private_key_path)
+        protocol.pre_run_protocol(
+            img=image,
+            private_key_path=private_key_path,
+            private_key_password=private_key_password,
+        )
 
     elif protocol_step == Commands.POST:
         protocol.post_run_protocol(
-            img=image, private_key_path=private_key_path, rebase=False
+            img=image,
+            private_key_path=private_key_path,
+            rebase=False,
+            private_key_password=private_key_password,
         )
