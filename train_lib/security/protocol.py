@@ -15,6 +15,7 @@ from loguru import logger
 import docker
 import docker.errors
 import docker.models
+from train_lib.docker_util import TIMEOUT
 from train_lib.docker_util.docker_ops import (
     display_archive_content,
     extract_archive,
@@ -562,7 +563,11 @@ class SecurityProtocol:
 
         """
         # If a config path is given update the train config inside the container
-        client = self.docker_client if self.docker_client else docker.from_env()
+        client = (
+            self.docker_client
+            if self.docker_client
+            else docker.from_env(timeout=TIMEOUT)
+        )
 
         # if rebase create container based on base image
         if rebase:
@@ -671,7 +676,11 @@ class SecurityProtocol:
             train_files=train_files, file_names=file_names, query=query
         )
 
-        client = self.docker_client if self.docker_client else docker.from_env()
+        client = (
+            self.docker_client
+            if self.docker_client
+            else docker.from_env(timeout=TIMEOUT)
+        )
         container = client.containers.create(img)
         logger.info(f"Adding train files to container: {container.id}")
         train_file_archive.seek(0)
@@ -827,7 +836,11 @@ class SecurityProtocol:
         :param img:
         :return:
         """
-        client = self.docker_client if self.docker_client else docker.from_env()
+        client = (
+            self.docker_client
+            if self.docker_client
+            else docker.from_env(timeout=TIMEOUT)
+        )
         base_image = ":".join(img.split(":")[:-1]) + ":base"
         try:
             client.images.get(base_image)

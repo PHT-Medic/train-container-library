@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 import docker
+from train_lib.docker_util import TIMEOUT
 from train_lib.security.encryption import FileEncryptor
 from train_lib.security.hashing import hash_immutable_files
 from train_lib.security.train_config import TrainConfig
@@ -19,7 +20,7 @@ from train_lib.security.train_config import TrainConfig
 @pytest.fixture
 def docker_client():
     try:
-        client = docker.from_env()
+        client = docker.from_env(timeout=TIMEOUT)
 
     except Exception:
         client = docker.DockerClient(base_url="unix://var/run/docker.sock")

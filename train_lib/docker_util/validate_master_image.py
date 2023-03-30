@@ -3,6 +3,7 @@ import tarfile
 from io import BytesIO
 
 import docker
+from train_lib.docker_util import TIMEOUT
 
 # statically define files and directories which shall be exempt from hash file comparison
 _DEFAULT_PATH_EXCEPTIONS = [
@@ -16,10 +17,12 @@ _DEFAULT_PATH_EXCEPTIONS = [
 
 def _default_docker_client():
     try:
-        client = docker.from_env()
+        client = docker.from_env(timeout=TIMEOUT)
 
     except Exception:
-        client = docker.DockerClient(base_url="unix://var/run/docker.sock")
+        client = docker.DockerClient(
+            base_url="unix://var/run/docker.sock", timeout=TIMEOUT
+        )
 
     return client
 

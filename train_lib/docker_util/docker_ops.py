@@ -4,6 +4,7 @@ from io import BytesIO
 from loguru import logger
 
 import docker
+from train_lib.docker_util import TIMEOUT
 from train_lib.security.train_config import TrainConfig
 
 
@@ -94,7 +95,7 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
     :param extract_path: path of the file or directory to extract from the container
     :return: tar archive containing the extracted path
     """
-    client = docker.from_env()
+    client = docker.from_env(timeout=TIMEOUT)
     container = client.containers.create(img)
     stream, stat = container.get_archive(extract_path)
     file_obj = BytesIO()
@@ -115,7 +116,7 @@ def add_archive(img: str, archive: BytesIO, path: str):
     :return:
     """
 
-    client = docker.from_env()
+    client = docker.from_env(timeout=TIMEOUT)
     container = client.containers.create(img)
     container.put_archive(path, archive)
     container.wait()
