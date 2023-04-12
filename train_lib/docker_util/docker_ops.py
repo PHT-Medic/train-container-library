@@ -4,7 +4,9 @@ from io import BytesIO
 from loguru import logger
 
 import docker
+from docker.models.containers import Container
 from train_lib.docker_util import TIMEOUT
+from train_lib.security.constants import TrainTags
 from train_lib.security.train_config import TrainConfig
 
 
@@ -37,8 +39,8 @@ def extract_query_json(
             query_file = query_archive.extractfile("query.json")
             data = query_file.read()
 
-    except Exception as e:
-        logger.error(f"Error extracting query.json from image {img}: {e}")
+    except Exception:
+        logger.warning(f"Could not extract query.json from train image: {img}")
         data = None
     return data
 
@@ -103,6 +105,7 @@ def extract_archive(img: str, extract_path: str) -> tarfile.TarFile:
         file_obj.write(i)
     file_obj.seek(0)
     tar = tarfile.open(mode="r", fileobj=file_obj)
+    container.remove()
     return tar
 
 
@@ -139,3 +142,55 @@ def display_archive_content(tar_archive: tarfile.TarFile):
         size = member.size
         file_preview = tar_archive.extractfile(member).read(100)
         logger.debug(f"Name: {name}, Size: {size}, Preview: {file_preview}")
+
+
+def rebase_train_image(base_image: str, train_image: str):
+    """
+    Rebase the given image on the given base image
+
+    :param base_image: the base image to rebase the new image on
+    :param latest_image: the image to rebase
+    """
+    client = docker.from_env(timeout=TIMEOUT)
+    latest_container = client.containers.create(train_image)
+    base_container = client.containers.create(base_image)
+
+    def _copy(src: Container, dest: Container, path: str):
+        """
+        Copy the given file from the src container to the dest container
+
+        :param src: the source container
+        :param dest: the destination container
+        """
+        src_archive, stat = src.get_archive(path)
+        src.wait()
+        dest.put_archive(path, src_archive)
+        dest.wait()
+
+    # copy the archives from the PHT directories and commit the base image with under the latest tag
+    _copy(latest_container, base_container, "/opt")
+
+    repo = repository_from_image(train_image)
+    base_container.commit(repository=repo, tag=TrainTags.LATEST.value)
+    base_container.wait()
+
+    # remove the containers
+    latest_container.remove()
+    base_container.remove()
+
+
+def repository_from_image(img: str) -> str:
+    """
+    Extracts the repository from the given image identifier
+
+    :param img: the image identifier
+    :return: the repository of the given image
+    """
+
+    split = img.split(":")
+    if len(split) == 1:
+        return img
+    elif len(split) == 2:
+        return split[0]
+    else:
+        return ":".join(split[:-1])

@@ -1,18 +1,22 @@
+from io import BytesIO
+import json
 import click
 import os
 import sys
+import tarfile
 
 from train_lib.security.protocol import SecurityProtocol
 from train_lib.docker_util.docker_ops import (
     extract_train_config,
     extract_query_json,
     extract_archive,
+    add_archive,
 )
 import docker
 
 
 @click.command()
-@click.argument("step", type=click.Choice(["pre-run", "post-run", "full"]))
+@click.argument("step", type=click.Choice(["pre-run", "post-run", "full", "sim-full"]))
 @click.argument("train_image", type=str)
 @click.option("station_id", "--station-id", "-i", type=str, required=True)
 @click.option(
@@ -31,7 +35,6 @@ import docker
     default=None,
 )
 def protocol(step, train_image, station_id, private_key_path, private_key_password):
-
     # check the train image
     client = docker.from_env()
     if len(train_image.split(":")) != 2:
@@ -99,6 +102,44 @@ def protocol(step, train_image, station_id, private_key_path, private_key_passwo
             private_key_password=private_key_password,
         )
 
+    # run pre-run protocol add a fake results file to the image and then run post run protocol
+    elif step == "sim-full":
+        debug_run(
+            protocol,
+            "pre-run",
+            train_image,
+            private_key_path=private_key_path,
+            private_key_password=private_key_password,
+        )
+        # todo add a fake results file
+
+        # generate a fake results file
+        archive = make_fake_results_archive()
+        add_archive(train_image, archive, "/opt/pht_results")
+
+        debug_run(
+            protocol,
+            "post-run",
+            train_image,
+            private_key_path=private_key_path,
+            private_key_password=private_key_password,
+        )
+
+    else:
+        click.echo("Invalid step. Must be one of: pre-run, post-run, full, sim-full")
+
+
+def make_fake_results_archive():
+    archive = BytesIO()
+    results = {"these are": "fake results", "random": os.urandom(10).hex()}
+
+    results_io = BytesIO(json.dumps(results).encode("utf-8"))
+
+    with tarfile.open(fileobj=archive, mode="w") as tar:
+        tar.addfile(tarfile.TarInfo("results.json"), results_io)
+    archive.seek(0)
+    return archive
+
 
 def debug_run(
     sp: SecurityProtocol,
@@ -109,7 +150,6 @@ def debug_run(
 ):
     display_train_dir(train_image)
     if step == "pre-run":
-
         sp.pre_run_protocol(
             train_image,
             private_key_path=private_key_path,

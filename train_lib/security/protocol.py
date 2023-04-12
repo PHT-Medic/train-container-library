@@ -1,7 +1,6 @@
 import os
 import tarfile
 import time
-from enum import Enum
 from io import BytesIO
 from tarfile import TarInfo
 from typing import BinaryIO, List, Tuple, Union
@@ -21,25 +20,15 @@ from train_lib.docker_util.docker_ops import (
     extract_archive,
     extract_query_json,
     files_from_archive,
+    rebase_train_image,
     result_files_from_archive,
 )
+from train_lib.security.constants import TrainPaths
 from train_lib.security.encryption import FileEncryptor
 from train_lib.security.errors import ValidationError
 from train_lib.security.hashing import hash_immutable_files, hash_results
 from train_lib.security.key_manager import KeyManager
 from train_lib.security.train_config import RouteEntry, TrainConfig
-
-
-class TrainPaths(Enum):
-    IMMUTABLE_DIR = "/opt/pht_train"
-    RESULT_DIR = "/opt/pht_results"
-    CONFIG_PATH = "/opt/train_config.json"
-
-
-class TrainTags(Enum):
-    LATEST = "latest"
-    BASE = "base"
-    DECRYPTED = "decrypted"
 
 
 class SecurityProtocol:
@@ -224,8 +213,13 @@ class SecurityProtocol:
             train_files=encrypted_files,
             file_names=file_names,
             query=query,
-            rebase=rebase,
         )
+
+        if rebase:
+            base_image = self._get_base_image(img)
+
+            # Rebase the image on the latest version of the base image
+            rebase_train_image(base_image=base_image, train_image=img)
 
         logger.info(f"Successfully executed post run protocol on img: {img}")
 
@@ -340,7 +334,6 @@ class SecurityProtocol:
         if results_hash != bytes.fromhex(self.config.result_hash):
             raise ValidationError("Previous results have changed")
         try:
-
             station_public_key.verify(
                 signature=bytes.fromhex(self.config.result_signature),
                 data=results_hash,
@@ -408,7 +401,6 @@ class SecurityProtocol:
             if stop.index >= self.route_stop.index:
                 break
             else:
-
                 if not stop.signature:
                     error = ValidationError(
                         f"Missing digital signature for previous stop {stop}. \n"
@@ -449,7 +441,6 @@ class SecurityProtocol:
             logger.info("OK")
 
         except Exception as e:
-
             logger.error(f"Error\n {e}")
             raise ValidationError("Error validating build signature.")
 
@@ -554,7 +545,6 @@ class SecurityProtocol:
         train_files: List[BytesIO] = None,
         file_names: List[str] = None,
         query: bytes = None,
-        rebase: bool = False,
         tag: str = "latest",
     ):
         """
@@ -568,16 +558,7 @@ class SecurityProtocol:
             if self.docker_client
             else docker.from_env(timeout=TIMEOUT)
         )
-
-        # if rebase create container based on base image
-        if rebase:
-            logger.info("Rebasing image")
-            # get base image
-            base_img = self._get_base_image(img)
-            # create container based on base image
-            container = client.containers.create(base_img)
-        else:
-            container = client.containers.create(img)
+        container = client.containers.create(img)
 
         if config_path:
             logger.info("Updating train config")
@@ -622,6 +603,7 @@ class SecurityProtocol:
 
         # Tag container as latest
         self._commit_to_image(container, img, tag)
+        container.remove()
 
     @staticmethod
     def _make_results_archive(archive_members, file_members, updated_files):
@@ -712,7 +694,6 @@ class SecurityProtocol:
         )
         container.commit(repository=repo, tag=docker_tag)
         container.wait()
-        container.remove()
 
     @staticmethod
     def _make_train_files_archive(
@@ -742,7 +723,6 @@ class SecurityProtocol:
             name = f"pht_train/{file_names[i]}"
             train_file.seek(0)
             logger.debug(f"Adding train file: {name} to archive")
-            logger.debug(train_file.read())
             train_file.seek(0)
             info = TarInfo(name=name)
             info.size = train_file.getbuffer().nbytes
@@ -777,7 +757,6 @@ class SecurityProtocol:
         archive_obj = BytesIO()
         tar = tarfile.open(fileobj=archive_obj, mode="w")
         # Extract user key from config and convert it to bytesio
-        print(self.config.creator)
         data = BytesIO(bytes.fromhex(self.config.creator.encrypted_key))
         info = TarInfo(name="user_sym_key.key")
         info.size = data.getbuffer().nbytes
@@ -809,7 +788,7 @@ class SecurityProtocol:
         """
         files = list()
         logger.info("Detecting files...")
-        for (dir_path, dir_names, file_names) in os.walk(target_dir):
+        for dir_path, dir_names, file_names in os.walk(target_dir):
             files += [os.path.join(dir_path, file) for file in file_names]
         logger.info(f"Found {len(files)} Files")
         return files
