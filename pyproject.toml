@@ -21,7 +21,7 @@ requests_oauthlib = "*"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.230"
 pytest = "^7.2.0"
-black = "^22.12.0"
+black = ">=22.12,<24.0"
 coverage = "^7.1.0"
 python-dotenv = "^0.21.0"
 pytest-dotenv = "^0.5.2"
