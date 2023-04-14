@@ -12,6 +12,7 @@ docs/_build/
 .venv
 
 /test/example_results
+.vscode/
 
 
 # Created by .ignore support plugin (hsz.mobi)
