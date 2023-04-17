@@ -4,7 +4,6 @@ from io import BytesIO
 from loguru import logger
 
 import docker
-from docker.models.containers import Container
 from train_lib.docker_util import TIMEOUT
 from train_lib.security.constants import TrainTags
 from train_lib.security.train_config import TrainConfig
@@ -152,23 +151,14 @@ def rebase_train_image(base_image: str, train_image: str):
     :param latest_image: the image to rebase
     """
     client = docker.from_env(timeout=TIMEOUT)
+
     latest_container = client.containers.create(train_image)
     base_container = client.containers.create(base_image)
 
-    def _copy(src: Container, dest: Container, path: str):
-        """
-        Copy the given file from the src container to the dest container
-
-        :param src: the source container
-        :param dest: the destination container
-        """
-        src_archive, stat = src.get_archive(path)
-        src.wait()
-        dest.put_archive(path, src_archive)
-        dest.wait()
-
-    # copy the archives from the PHT directories and commit the base image with under the latest tag
-    _copy(latest_container, base_container, "/opt")
+    src_archive, state = latest_container.get_archive("/opt")
+    logger.debug(f"Rebase copy state: {state}")
+    base_container.put_archive("/", src_archive)
+    base_container.wait()
 
     repo = repository_from_image(train_image)
     base_container.commit(repository=repo, tag=TrainTags.LATEST.value)
