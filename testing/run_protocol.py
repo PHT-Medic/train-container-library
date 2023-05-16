@@ -92,6 +92,7 @@ def protocol(step, train_image, station_id, private_key_path, private_key_passwo
         # execute the image
         container = client.containers.run(train_image, detach=True)
         container.wait()
+        container.commit(repository=repo, tag="latest")
         print(container.logs())
         click.echo("Executing post-run protocol...")
         debug_run(
