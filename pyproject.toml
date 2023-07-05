@@ -16,6 +16,9 @@ fhir-kindling = "*"
 pandas = "*"
 loguru = "*"
 requests_oauthlib = "*"
+resource = "^0.2.1"
+psutil = "^5.9.4"
+memory-profiler = "^0.61.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,4 +1,5 @@
 import hashlib
+import multiprocessing as mp
 import tarfile
 from io import BytesIO
 
@@ -32,6 +33,7 @@ def validate_train_image(
     train_image_name: str,
     path_exceptions=_DEFAULT_PATH_EXCEPTIONS,
     docker_client=_default_docker_client(),
+    num_cpus=4,
 ):
     """
     Validates a train image against an official master image
@@ -39,9 +41,9 @@ def validate_train_image(
     :param train_image_name: string identifier of the docker image defining a train
     :param path_exceptions: list of byte strings containing paths that shall be exempt from file system comparison
     :param docker_client: docker client able to apply for the master and train docker image
+    :param num_cpus: number of cpu cores used
     :return:
     """
-
     # extract docker images by name through client
     master_image = docker_client.images.get(master_image_name)
     train_image = docker_client.images.get(train_image_name)
@@ -49,8 +51,8 @@ def validate_train_image(
     # check if history entries indicate that train image stems from master image
     if _do_history_test(master_image, train_image):
         # extract file system hashes
-        master_hashes = _get_file_hashes(master_image, path_exceptions)
-        train_hashes = _get_file_hashes(train_image, path_exceptions)
+        master_hashes = _get_file_hashes(master_image, path_exceptions, num_cpus)
+        train_hashes = _get_file_hashes(train_image, path_exceptions, num_cpus)
 
         # if comparison of hashed files systems turns out as False raise ValueError
         if not dict(sorted(master_hashes.items())) == dict(
@@ -93,7 +95,7 @@ def _do_history_test(master_image, train_image) -> bool:
 
 
 def _get_file_hashes(
-    docker_image, path_exceptions: list[bytes]
+    docker_image, path_exceptions: list[bytes], num_cpus: int
 ) -> dict[bytes : list[str]]:
     """
     Extracts file system of docker image and returns dictionary with byte paths as keys and list of hashed file
@@ -101,10 +103,11 @@ def _get_file_hashes(
     :param docker_image: docker image object whose file system is to be extracted and hashed
     :param path_exceptions: list of byte strings for paths that, if they start with either of them, will be excluded
                             from the returned hashed file system
+    :param num_cpus: number of cpu cores used
     :return: dictionary containing the hashed file system with byte paths as keys and list of associated
              hashed file contents
     """
-    # init dict which will collected hashes and be returned
+    # init dict which will collect hashes and be returned
     image_hashes = {}
 
     # extract file system form images as chunks collected into a bytearray
@@ -115,36 +118,71 @@ def _get_file_hashes(
     # unzip chunk.tar from buffer
     with tarfile.open(fileobj=BytesIO(bytes_arr)) as outer:
         # isolate and extract layer.tar files
-        layers_tars = [n for n in outer.getnames() if n.endswith("/layer.tar")]
-        for i, layer_tar in enumerate(layers_tars):
-            layer_file = outer.extractfile(layer_tar)
-            if layer_file is None:
-                continue
+        layers = [
+            (n, outer, path_exceptions)
+            for n in outer.getnames()
+            if n.endswith("/layer.tar")
+        ]
 
-            # unzip layer.tar files
-            with tarfile.open(fileobj=layer_file, encoding="utf-8") as layer:
-                # collect paths in file system as keys and file contents as items in dictionary, if path does not start
-                # with any of the excepted paths
-                paths_in_layer = {
-                    x.encode("utf-8"): layer.getmember(x)
-                    for x in layer.getnames()
-                    if all(
-                        [not x.encode("utf-8").startswith(y) for y in path_exceptions]
-                    )
-                }
+        # init and execute (a)synchronous multiprocessing for hashing function
+        pool = mp.Pool(num_cpus) if num_cpus != -1 else mp.Pool(mp.cpu_count())
+        # results = []
+        # def collect_result(result):
+        #     global results
+        #     results.append(result)
+        # pool.map_async(_apply_hash_function_to_layers, layers, callback=collect_result)
+        results = pool.map(_apply_hash_function_to_layers, layers)
+        pool.close()
+        # pool.join()
 
-                # collect hashes of file contents into lists using the paths as keys for all layer.tar files
-                for path, content in paths_in_layer.items():
-                    # path leads to anything but a file, set list with empty string (e.g. It is there. And that's it.)
-                    if not content.isfile():
-                        image_hashes[path] = [""]
-                    else:
-                        f = layer.extractfile(content)
-                        h = hashlib.sha256()
-                        h.update(f.read())
-                        if path in image_hashes.keys():
-                            image_hashes[path].append(h.hexdigest())
-                            image_hashes[path] = sorted(image_hashes[path])
-                        else:
-                            image_hashes[path] = [h.hexdigest()]
+        # aggregate multiprocessing results
+        for result in results:
+            # integrate hash results into full image hash
+            for path in result.keys():
+                hashes = [] if path not in image_hashes.keys() else image_hashes[path]
+                hashes.extend(result[path])
+                image_hashes[path] = sorted([h for h in hashes if h])
+
     return image_hashes
+
+
+def _apply_hash_function_to_layers(
+    layer: tuple[str, tarfile.TarFile, list[bytes]]
+) -> dict[str:str]:
+    """
+    Apply hash function to layers in file system and return dictionary with hashed layer contents
+    :param layer: tuple containing name of layer file, content of the full tarfile, and list of filepath exceptions
+    :return: dictionary containing the hashed contents of a single layer
+    """
+    # init dict which will collect hashes and be returned
+    layer_hashes = {}
+
+    layer_tar, outer, path_exceptions = layer
+    layer_file = outer.extractfile(layer_tar)
+    if layer_file is not None:
+        # unzip layer.tar files
+        with tarfile.open(fileobj=layer_file, encoding="utf-8") as layer:
+            # collect paths in file system as keys and file contents as items in dictionary, if path does not start
+            # with any of the excepted paths
+            paths_in_layer = {
+                x.encode("utf-8"): layer.getmember(x)
+                for x in layer.getnames()
+                if all([not x.encode("utf-8").startswith(y) for y in path_exceptions])
+            }
+
+            # collect hashes of file contents into lists using the paths as keys for all layer.tar files
+            for path, content in paths_in_layer.items():
+                # path leads to anything but a file, set list with empty string (e.g. It is there. And that's it.)
+                if not content.isfile():
+                    layer_hashes[path] = [""]
+                else:
+                    f = layer.extractfile(content)
+                    h = hashlib.sha256()
+                    h.update(f.read())
+                    if path in layer_hashes.keys():
+                        layer_hashes[path].append(h.hexdigest())
+                        layer_hashes[path] = layer_hashes[path]
+                    else:
+                        layer_hashes[path] = [h.hexdigest()]
+
+    return layer_hashes
