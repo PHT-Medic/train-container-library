@@ -7,16 +7,25 @@ import pytest
 from train_lib.docker_util.validate_master_image import validate_train_image
 
 
-def test_validate_master_image(master_image: str, train_image: str, docker_client):
+def test_validate_master_image(
+    master_image: str, train_image: str, docker_client, num_cpus=4
+):
     print("\nComparison: master_img vs. train_img (SUCCESS)", end="")
-    _file_system_change_test(master_image, train_image, docker_client, "none", True)
+    _file_system_change_test(
+        master_image, train_image, docker_client, num_cpus, "none", True
+    )
 
     docker_client.images.pull("hello-world")
     print("\nComparison: master_img vs. random_img (FAIL)", end="")
-    _file_system_change_test(master_image, "hello-world", docker_client, "none", False)
+    _file_system_change_test(
+        master_image, "hello-world", docker_client, num_cpus, "none", False
+    )
 
-    print("\nComparison: train_img vs. master_img (FAIL)", end="")
-    _file_system_change_test(train_image, master_image, docker_client, "none", False)
+    if master_image != train_image:
+        print("\nComparison: train_img vs. master_img (FAIL)", end="")
+        _file_system_change_test(
+            train_image, master_image, docker_client, num_cpus, "none", False
+        )
 
     for change_type in ["add", "change", "delete"]:
         for test_result in [True, False]:
@@ -25,7 +34,12 @@ def test_validate_master_image(master_image: str, train_image: str, docker_clien
                 end="",
             )
             _file_system_change_test(
-                master_image, train_image, docker_client, change_type, test_result
+                master_image,
+                train_image,
+                docker_client,
+                num_cpus,
+                change_type,
+                test_result,
             )
 
 
@@ -33,6 +47,7 @@ def _file_system_change_test(
     master_img: str,
     train_img: str,
     docker_client,
+    num_cpus: int,
     change_type: str,
     positive_test: bool,
 ):
@@ -42,6 +57,7 @@ def _file_system_change_test(
     :param master_img: master image identifier for validation test
     :param train_img: train image identifier onto which changes will be applied
     :param docker_client: docker client associated with given docker image and where the new image will be created
+    :param num_cpus: number of cpus used
     :param change_type: either "add", "change", "delete" or "none" clarifying which kind of change should be applied to
     the new train image. If no changes are applied the normal train image will be used for the validation test
     :param positive_test: boolean value determining whether a positive or negative validation test will be performed
@@ -49,6 +65,7 @@ def _file_system_change_test(
     """
     if change_type in ["add", "change", "delete", "none"]:
         # Define name of new train image
+        train_img = train_img if ":" not in train_img else train_img.split(":")[0]
         new_train_img = (
             f"{train_img}_{change_type}:{'not_' if positive_test else ''}faulty"
         )
@@ -87,12 +104,20 @@ def _file_system_change_test(
         # Perform validation test
         start_t = time.time()
         if positive_test:
-            validate_train_image(master_img, new_train_img, docker_client=docker_client)
+            validate_train_image(
+                master_img,
+                new_train_img,
+                docker_client=docker_client,
+                num_cpus=num_cpus,
+            )
             print(" -> succeeds")
         else:
             with pytest.raises(ValueError):
                 validate_train_image(
-                    master_img, new_train_img, docker_client=docker_client
+                    master_img,
+                    new_train_img,
+                    docker_client=docker_client,
+                    num_cpus=num_cpus,
                 )
             print(" -> fails")
         print(f"{time.time() - start_t:.2f}s")

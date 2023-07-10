@@ -117,12 +117,15 @@ def _get_file_hashes(
 
     # unzip chunk.tar from buffer
     with tarfile.open(fileobj=BytesIO(bytes_arr)) as outer:
-        # isolate and extract layer.tar files
-        layers = [
-            (n, outer, path_exceptions)
-            for n in outer.getnames()
-            if n.endswith("/layer.tar")
-        ]
+        # collect layer tarfiles and add them together with path exceptions to list of tuples
+        layer_tars = []
+        for n in outer.getnames():
+            if n.endswith("/layer.tar"):
+                layer_file = outer.extractfile(n)
+                if layer_file is not None:
+                    bytes_arr = bytearray()
+                    bytes_arr.extend(layer_file.read())
+                    layer_tars.append((bytes_arr, path_exceptions))
 
         # init and execute (a)synchronous multiprocessing for hashing function
         pool = mp.Pool(num_cpus) if num_cpus != -1 else mp.Pool(mp.cpu_count())
@@ -131,7 +134,7 @@ def _get_file_hashes(
         #     global results
         #     results.append(result)
         # pool.map_async(_apply_hash_function_to_layers, layers, callback=collect_result)
-        results = pool.map(_apply_hash_function_to_layers, layers)
+        results = pool.map(_apply_hash_function_to_layers, layer_tars)
         pool.close()
         # pool.join()
 
@@ -147,42 +150,41 @@ def _get_file_hashes(
 
 
 def _apply_hash_function_to_layers(
-    layer: tuple[str, tarfile.TarFile, list[bytes]]
+    layer_tars: tuple[bytearray, list[bytes]]
 ) -> dict[str:str]:
     """
     Apply hash function to layers in file system and return dictionary with hashed layer contents
-    :param layer: tuple containing name of layer file, content of the full tarfile, and list of filepath exceptions
-    :return: dictionary containing the hashed contents of a single layer
+    :param layer_tars: tuple containing single layer tarfile as bytearray and list of filepath exceptions
+    :return: dictionary containing the hashed contents of the single layer
     """
     # init dict which will collect hashes and be returned
     layer_hashes = {}
 
-    layer_tar, outer, path_exceptions = layer
-    layer_file = outer.extractfile(layer_tar)
-    if layer_file is not None:
-        # unzip layer.tar files
-        with tarfile.open(fileobj=layer_file, encoding="utf-8") as layer:
-            # collect paths in file system as keys and file contents as items in dictionary, if path does not start
-            # with any of the excepted paths
-            paths_in_layer = {
-                x.encode("utf-8"): layer.getmember(x)
-                for x in layer.getnames()
-                if all([not x.encode("utf-8").startswith(y) for y in path_exceptions])
-            }
+    outer_layer_bytes_arr, path_exceptions = layer_tars
 
-            # collect hashes of file contents into lists using the paths as keys for all layer.tar files
-            for path, content in paths_in_layer.items():
-                # path leads to anything but a file, set list with empty string (e.g. It is there. And that's it.)
-                if not content.isfile():
-                    layer_hashes[path] = [""]
+    # open layer tarfile bytearray as tarfile
+    with tarfile.open(fileobj=BytesIO(outer_layer_bytes_arr)) as outer_layer:
+        # collect paths in file system as keys and file contents as items in dictionary, if path does not start
+        # with any of the excepted paths
+        paths_in_layer = {
+            x.encode("utf-8"): outer_layer.getmember(x)
+            for x in outer_layer.getnames()
+            if all([not x.encode("utf-8").startswith(y) for y in path_exceptions])
+        }
+
+        # collect hashes of file contents into lists using the paths as keys for all layer.tar files
+        for path, content in paths_in_layer.items():
+            # path leads to anything but a file, set list with empty string (e.g. It is there. And that's it.)
+            if not content.isfile():
+                layer_hashes[path] = [""]
+            else:
+                f = outer_layer.extractfile(content)
+                h = hashlib.sha256()
+                h.update(f.read())
+                if path in layer_hashes.keys():
+                    layer_hashes[path].append(h.hexdigest())
+                    layer_hashes[path] = layer_hashes[path]
                 else:
-                    f = layer.extractfile(content)
-                    h = hashlib.sha256()
-                    h.update(f.read())
-                    if path in layer_hashes.keys():
-                        layer_hashes[path].append(h.hexdigest())
-                        layer_hashes[path] = layer_hashes[path]
-                    else:
-                        layer_hashes[path] = [h.hexdigest()]
+                    layer_hashes[path] = [h.hexdigest()]
 
     return layer_hashes
