@@ -1,5 +1,8 @@
 general:
   vulnerabilities:
+    - CVE-2023-3390
+    - CVE-2023-3389
+    - CVE-2023-3338
     - CVE-2023-35829
     - CVE-2023-35827
     - CVE-2023-35824
