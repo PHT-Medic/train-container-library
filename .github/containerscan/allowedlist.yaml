@@ -1,5 +1,7 @@
 general:
   vulnerabilities:
+    - CVE-2023-29007
+    - CVE-2023-25652
     - CVE-2023-3390
     - CVE-2023-3389
     - CVE-2023-3338
