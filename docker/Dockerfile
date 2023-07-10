@@ -10,7 +10,8 @@ RUN apt -y update && apt-get -y install software-properties-common && \
     build-essential \
     apt-utils \
     locales \
-    curl && \
+    curl \
+    git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/cache/apt/archives/*
