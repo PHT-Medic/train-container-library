@@ -11,6 +11,7 @@ RUN apt -y update && apt-get -y install software-properties-common && \
     apt-utils \
     locales \
     curl && \
+    apt-get remove -yqq git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/cache/apt/archives/*
