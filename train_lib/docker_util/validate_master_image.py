@@ -1,5 +1,4 @@
 import hashlib
-import multiprocessing as mp
 import tarfile
 from io import BytesIO
 
@@ -127,16 +126,20 @@ def _get_file_hashes(
                     bytes_arr.extend(layer_file.read())
                     layer_tars.append((bytes_arr, path_exceptions))
 
-        # init and execute (a)synchronous multiprocessing for hashing function
-        pool = mp.Pool(num_cpus) if num_cpus != -1 else mp.Pool(mp.cpu_count())
-        # results = []
-        # def collect_result(result):
-        #     global results
-        #     results.append(result)
-        # pool.map_async(_apply_hash_function_to_layers, layers, callback=collect_result)
-        results = pool.map(_apply_hash_function_to_layers, layer_tars)
-        pool.close()
+        # # init and execute (a)synchronous multiprocessing for hashing function #TODO
+        # pool = mp.Pool(num_cpus) if num_cpus != -1 else mp.Pool(mp.cpu_count())
+        # # results = []
+        # # def collect_result(result):
+        # #     global results
+        # #     results.append(result)
+        # # pool.map_async(_apply_hash_function_to_layers, layers, callback=collect_result)
+        # results = pool.map(_apply_hash_function_to_layers, layer_tars)
+        # pool.close()
         # pool.join()
+
+        results = [
+            _apply_hash_function_to_layers(layer_tar) for layer_tar in layer_tars
+        ]
 
         # aggregate multiprocessing results
         for result in results:
